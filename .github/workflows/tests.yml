@@ -1,0 +1,26 @@
+name: Science tests (fresh clone)
+
+# Runs the test suite on a clean machine. Tests that need the full terrain data (several hundred MB,
+# about 25 minutes to rebuild) skip themselves; the rest download only what they need (Zenodo model data,
+# open-access paper PDFs).
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: science
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: science/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: python -c "from marsshield import ingest; ingest.fetch_zenodo(); ingest.fetch_papers()"
+      - run: python -m pytest tests -q -rs

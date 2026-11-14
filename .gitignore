@@ -1,0 +1,15 @@
+# environments and builds
+.venv/
+web/node_modules/
+web/.next/
+web/out/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# downloaded source data: re-fetched by `python -m marsshield.pipeline` (provenance sidecars document each file)
+data/raw/
+data/*.log
+
+# large regenerable product (53 MB); rebuilt by the pipeline (marsshield.terrain)
+data/processed/walk_grid.npz

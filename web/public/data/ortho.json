@@ -1,0 +1,16 @@
+{
+ "x0": 8142400.5,
+ "y0": -279700.5,
+ "res": 1.0,
+ "shape": [
+  3000,
+  3500
+ ],
+ "nan_fraction": 4.1142857142857146e-05,
+ "stretch": [
+  37.3125,
+  172.3125
+ ],
+ "source": "https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/MSL/MSL_Gale_Orthophoto_Mosaic_25cm_v3.tif",
+ "product": "USGS MSL Gale Merged Orthophoto Mosaic 25cm v3, 4x4 block mean to 1 m"
+}

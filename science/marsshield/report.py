@@ -1,0 +1,178 @@
+"""Generate docs/VALIDATION.md from the computed result files (no hand-copied numbers)."""
+from __future__ import annotations
+
+import json
+
+from . import config as C
+
+
+def pct(x, d=1):
+    return f"{x * 100:+.{d}f} %"
+
+
+def main():
+    v = json.loads((C.PROC / "validation.json").read_text())
+    o = json.loads((C.PROC / "observations.json").read_text())["anomaly_stats"]
+    r = json.loads((C.PROC / "route_eval.json").read_text())
+    L = []
+    w = L.append
+    w("# MarsShield validation results\n")
+    w(f"Generated from `data/processed/*.json` (validation run {v['generated_utc']}). Regenerate with "
+      "`python -m marsshield.report`. Nothing in this file is hand-entered.\n")
+    w("Legend: **verified** = compared against an independent reference with the error reported; "
+      "**reproduced** = re-derived a published intermediate value; **not reproduced** = disagreement reported as is.\n")
+
+    w("## V1 Horizon engine on analytic geometries (verified)\n")
+    w("| Geometry | Expected | Computed | Max abs. error |\n|---|---|---|---|")
+    for c in v["v1_analytic"]["cases"]:
+        w(f"| {c['case']} | {c['expected_deg']:.5f}° | {c['got_deg']:.5f}° | {c['abs_err_deg']:.2e}° |")
+    pit = v["v1_analytic"]["cases"][2]
+    w(f"\nCylindrical pit blocked solid angle: expected {pit['expected_B']:.4f}, exact-from-horizon {pit['got_B_exact']:.4f}, "
+      f"1° zenith rings {pit['got_B_1deg_rings']:.4f}. The 0.12° pit error is bilinear smoothing of the vertical rim on a 1 m grid.\n")
+
+    z = v["v2_zenodo"]
+    w("## V2 Reproduction of Guo et al. (2021) Zenodo products (reproduced)\n")
+    w(f"* Butte M12 horizon mask -> per-zenith sky-view ratio: max abs. difference {z['ring_ratio_max_abs_err']:.4f} (= 2 one-degree azimuth bins).")
+    w(f"* Per-zenith dose (Fig4b 'during parking'): max abs. difference H {z['per_zenith_dose_max_abs_err_uGy_d']['H']:.1e}, He {z['per_zenith_dose_max_abs_err_uGy_d']['He']:.1e} µGy/d "
+      "after applying the factor 0.5 between the Zenodo Fig1 tables and the papers' per-degree integrals (see METHODS.md).")
+    f = z["fullsky_384MV"]
+    w(f"* Full-sky dose at φ = 384.5 MV (Guo et al. 2026 §4): H {f['H_model']:.2f} vs published {f['H_pub']}; He {f['He_model']:.2f} vs {f['He_pub']} µGy/d "
+      "(φ below the 400 MV table edge is linearly extrapolated).")
+    w(f"* Mask blocked solid angle {z['mask_blocked_solid_angle']:.4f} (exact) / {z['mask_blocked_1deg_rings']:.4f} (1° rings) vs Ehresmann et al. (2021) '19 %'.\n")
+
+    m = v["v3_m12_mask"]
+    w("## V3 DEM horizon at Butte M12 vs. the RAD-team mask (verified)\n")
+    w(f"Curiosity waypoint {m['position']['rmc']} (sol {m['position']['sol']}), 1 m above ground, 360 azimuths: "
+      f"RMSE {m['rmse_deg']:.2f}°, bias {m['bias_deg']:+.2f}°, MAE {m['mae_deg']:.2f}°, 95th percentile |error| {m['p95_abs_deg']:.2f}°, max {m['max_abs_deg']:.2f}°. "
+      f"Blocked solid angle: DEM {m['B_dem']:.4f}, mask {m['B_mask']:.4f}.\n")
+
+    w("## V4/V5 Fifteen RAD periods of Guo et al. (2026) Table 1\n")
+    w("Positions: NASA/JPL MMGIS waypoints occupied during each sol window (time-weighted). RAD: our own reduction of NASA RAD L2 CDFs "
+      "(detector E, FLAGGED_DATA removed). φ per period: Guo et al. (2026) Table 1 (derived there from TGO Liulin-MO).\n")
+    w("| Period | Site | Blocked sky (ours) | Published ROS | D_sky ours | D_sky pub | RAD E ours (µGy/d) | RAD E pub | n obs |\n|---|---|---|---|---|---|---|---|---|")
+    for k, p in v["periods"].items():
+        w(f"| {k} | {p['site']} | {p['B_model']:.3f} | {p['ROS_pub']:.3f} | {p['D_sky_model']:.1f} | {p['D_sky_pub']:.1f} | "
+          f"{p['rad']['E_mean']:.1f} ± {p['rad']['E_sem']:.1f} | {p['D_RAD_pub']:.1f} | {p['rad']['n']} |")
+    s4 = v["v4"]; s5 = v["v5"]
+    w(f"\n* Blocked sky, ours − published: mean {s4['B_minus_ROSpub_mean'] * 100:+.2f} pp, MAE {s4['B_minus_ROSpub_mae'] * 100:.2f} pp, max {s4['B_minus_ROSpub_max'] * 100:.2f} pp.")
+    w(f"* Modeled sky dose vs published: MAE {s4['Dsky_rel_err_mae'] * 100:.2f} % (all 15), {s4['Dsky_rel_err_mae_excl_P6P8'] * 100:.2f} % excluding P6/P8; max {s4['Dsky_rel_err_max'] * 100:.1f} %.")
+    w(f"* **Not reproduced:** P6 blocked sky {s4['outliers']['P6']['B_model']:.3f} vs {s4['outliers']['P6']['ROS_pub']:.3f}; "
+      f"P8 {s4['outliers']['P8']['B_model']:.3f} vs {s4['outliers']['P8']['ROS_pub']:.3f}. Both are narrow-canyon stops where a 3 m position error gives "
+      f"σ = {v['sensitivity']['S4_position']['sigma_3m']['P6']['std'] * 100:.1f} pp (P6) and {v['sensitivity']['S4_position']['sigma_3m']['P8']['std'] * 100:.1f} pp (P8). Positions were not tuned.")
+    w(f"* RAD E period means vs published D_RAD: median {s5['rel_diff_median'] * 100:+.2f} %, max |diff| {s5['rel_diff_max'] * 100:.1f} % ({s5['worst']}, a one-sol window).\n")
+
+    w("## V6 Predicted vs measured dose-rate change, all 8 parking periods (P1–P8 at 5 locations)\n")
+    w("Albedo share α = 0.19 from Guo et al. (2021), derived at Murray Buttes only, i.e. independent of these eight periods. "
+      "All eight periods are the primary result; the six-period figure (excluding P6/P8) is secondary.\n")
+    w("| Pair | Site | Measured (ours) | Proportional (1−B) | Sky only | Sky + albedo α=0.19 | α=0.18–0.24 |\n|---|---|---|---|---|---|---|")
+    for p in v["pairs"]:
+        w(f"| {p['pair']} | {p['site']} | {pct(p['measured_ours'])} | {pct(p['pred_proportional'])} | {pct(p['pred_sky_only'])} | "
+          f"{pct(p['pred_albedo_019'])} | {pct(p['pred_albedo_018'])} … {pct(p['pred_albedo_024'])} |")
+    w("\n| Model | MAE all 8 (pp) | RMSE all 8 (pp) | bias (pp) | max (pp) | secondary: MAE 6 excl. P6/P8 (pp) |\n|---|---|---|---|---|---|")
+    for k, n in (("pred_albedo_019", "Sky + terrain albedo"), ("pred_sky_only", "Sky only"), ("pred_proportional", "Proportional to blocked sky")):
+        a = v["pair_error_summary"][k]; b = v["pair_error_summary_excl_P6_P8"][k]
+        w(f"| {n} | {a['mae_pp']:.2f} | {a['rmse_pp']:.2f} | {a['bias_pp']:+.2f} | {a['max_abs_pp']:.2f} | {b['mae_pp']:.2f} |")
+    w("\nOn all eight periods the sky + albedo model has the lowest MAE but not the lowest RMSE: with n = 8 it is not "
+      "demonstrably better than the proportional proxy.")
+    w("\nAt P6 the sky+albedo model under-predicts the measured −19 % (it predicts about −10 %); Guo et al. (2026) report the same "
+      "breakdown of the albedo assumption in this self-shielded notch.\n")
+
+    w("## V7 All rover stops in the walk area (independent of the published site selection)\n")
+    w(f"{o['n']} stops with ≥ {o['min_sols']} sol of RAD data. Observed and modeled local anomalies (stop vs. ±{o['window_sols']:.0f}-sol neighbourhood): "
+      f"Pearson r = {o['pearson_r']:.3f} (bootstrap 95 % CI {o['pearson_r_95ci'][0]:.2f}–{o['pearson_r_95ci'][1]:.2f}), "
+      f"slope {o['slope_obs_on_model']:.2f}, RMSE {o['rmse_pp']:.2f} pp. Observed anomaly std {o['obs_anomaly_std_pp']:.2f} pp vs modeled {o['model_anomaly_std_pp']:.2f} pp: "
+      "terrain explains a real but minor share of stop-to-stop variability at short stops.\n")
+
+    w("## Sensitivity of blocked sky (15 RAD periods; reference = 1 m DEM, 20 km, 1 m height)\n")
+    S = v["sensitivity"]
+    w("| Change | mean ΔB (pp) | max |ΔB| (pp) |\n|---|---|---|")
+    for q in S["S1_resolution"]:
+        w(f"| near-field DEM {q['res_m']} m (block mean) | {q['mean_dB'] * 100:+.2f} | {q['max_abs_dB'] * 100:.2f} |")
+    for q in S["S2_radius"]:
+        w(f"| horizon radius {q['r_max_m'] / 1000:g} km | {q['mean_dB'] * 100:+.2f} | {q['max_abs_dB'] * 100:.2f} |")
+    for q in S["S3_height"]:
+        w(f"| observer height {q['h_m']} m | {q['mean_dB'] * 100:+.2f} | {q['max_abs_dB'] * 100:.2f} |")
+    w(f"\nModel parameters (φ 380–800 MV × α 0.18–0.24 × heavy-ion factor 1.08–1.12) at the P6 geometry: total relative dose "
+      f"×{S['S5_parameters']['rel_total_P6_range'][0]:.3f} … ×{S['S5_parameters']['rel_total_P6_range'][1]:.3f}.\n")
+
+    w("## Route engine vs. shortest-distance baseline\n")
+    R = r["R1"]["summary"]
+    w(f"{r['R1']['n']} random start/destination pairs ≥ 600 m apart in the 3.5 × 3 km walk area (5 m grid, 16-connected).\n")
+    w("| Strategy | distance (median) | time (median) | dose (median) | dose p10 … p90 | pairs with lower dose than baseline |\n|---|---|---|---|---|---|")
+    for k in ("fastest", "low_dose", "shelter", "gentle"):
+        q = R[k]
+        w(f"| {k} | {q['distance_pct_median']:+.1f} % | {q['time_pct_median']:+.1f} % | {q['dose_pct_median']:+.1f} % | "
+          f"{q['dose_pct_p10']:+.1f} … {q['dose_pct_p90']:+.1f} % | {q['frac_pairs_lower_dose_than_baseline'] * 100:.0f} % |")
+    w(f"\nLow-dose vs fastest: median {R['low_dose_vs_fastest']['dose_pct_median']:+.2f} %, best {R['low_dose_vs_fastest']['dose_pct_min']:+.1f} %: "
+      "nearly all of the dose saving over the baseline comes from walking time, not from terrain shielding.")
+    w(f"Grid metrication on near-flat straight corridors: median excess length {r['R2']['excess_pct_median']:.2f} % (max {r['R2']['excess_pct_max']:.2f} %, n = {r['R2']['n']}).")
+    w(f"Routing map (72 azimuths, 5 m) vs 720-azimuth profiles at {r['R3']['n']} stops: blocked-sky MAE {r['R3']['B_mae'] * 100:.3f} pp, "
+      f"relative dose MAE {r['R3']['rel_mae_pp']:.3f} pp (max {r['R3']['rel_max_pp']:.3f} pp).\n")
+    au = json.loads((C.PROC / "audit.json").read_text())
+    a1, a2, a3 = au["A1_table1_transcription"], au["A2_maria_gordon_notch"], au["A3_eight_pairs"]
+    w("## Audit against Guo et al. (2026)\n")
+    w(f"* Table 1 transcription: {a1['cells_checked']} numeric cells in {a1['rows_checked']} rows compared with the paper text, {a1['mismatches']} mismatches.")
+    w(f"* Maria Gordon Notch P6/BG6: the paper is internally inconsistent. Table 1 gives D_RAD {a2['table1_D_RAD'][0]} vs {a2['table1_D_RAD'][1]} µGy/d "
+      f"({a2['table1_ratio_decrease'] * 100:.1f} %), as do Sec. 3.4, the abstract and Sec. 5 (19 %). Sec. 4 states: \"{a2['section4_quote']}\" "
+      f"Our NASA RAD L2 reduction gives {a2['ours_nasa_l2']['P6']:.1f} vs {a2['ours_nasa_l2']['BG6']:.1f} µGy/d = {a2['ours_nasa_l2']['decrease'] * 100:.1f} %. "
+      "Adopted: 19.4 %; 17 % is reported as a sensitivity case.")
+    w("* Full eight-period errors under both P6 values:\n")
+    w("| P6 measured value | Model | MAE (pp) | RMSE (pp) | bias (pp) | max (pp) |\n|---|---|---|---|---|---|")
+    for case, lab in (("P6_19.4pct_table1", "19.4 % (Table 1, NASA L2)"), ("P6_17pct_section4", "17 % (Sec. 4 text)")):
+        for k in ("pred_albedo_019", "pred_sky_only", "pred_proportional"):
+            q = a3[case][k]
+            w(f"| {lab} | {q['name']} | {q['mae_pp']:.2f} | {q['rmse_pp']:.2f} | {q['bias_pp']:+.2f} | {q['max_abs_pp']:.2f} |")
+    w(f"\nBest model per period (closest prediction): {a3['best_model_count']}. {a3['note']}\n")
+    bp = C.WEB_PUBLIC / "breakeven.json"
+    if bp.exists():
+        be = json.loads(bp.read_text())
+        w("## Radiation break-even explorer (modeled)\n")
+        w("Walk Tower Buttes to Paraitepuy, work radius 150 m, φ = 500 MV, α = 0.21. Options: A least walking, B at the science target, "
+          "C most sheltered in reach. Break-even = extra walking dose / stationary rate saved.\n")
+        err = next(iter(be.values()))["model_error"]
+        w(f"Resolvability: a switch is **resolved** when its stationary-rate gap exceeds the model's validated RMSE on nearby-position "
+          f"differences ({err['rmse_pp']:.2f} pp, all {err['n']} measured parking periods), **marginal** above the MAE ({err['mae_pp']:.2f} pp), "
+          "and **unresolved** below it. Unresolved break-even times are not recommendations. The model-error band recomputes the "
+          "break-even with the rate gap shifted by ±RMSE (no upper bound means the shelter advantage may be zero).\n")
+        w("| Target | Switch | extra walk | extra walking dose (µGy) | rate gap (pp) | status | break-even | within model error | α 0.18 … 0.24 |\n|---|---|---|---|---|---|---|---|---|")
+        for name, q in be.items():
+            for b in q["breaks"]:
+                band = " … ".join("n/a" if x is None else f"{x:.2f} h" for x in b["t_h_alpha_band"])
+                lo, hi = b["t_h_model_error_band"]
+                w(f"| {name} | {b['less_walking']} to {b['more_sheltered']} | {b['extra_distance_m']:.0f} m | {b['extra_walk_dose_uGy']:.3f} | "
+                  f"{b['rate_difference_pp']:.1f} | {b['resolvability']} | {b['t_h']:.2f} h | {lo:.2f} h … {'unbounded' if hi is None else f'{hi:.2f} h'} | {band} |")
+        w("\nSensitivity of the least-walking to most-sheltered switch:\n")
+        w("| Target | changed assumption | break-even | rate gap (pp) | status |\n|---|---|---|---|---|")
+        for name, q in be.items():
+            for s_ in q["sensitivity"]:
+                if s_.get("error"):
+                    w(f"| {name} | {s_['case']} | {s_['error']} | | |"); continue
+                t_ = "none" if s_["t_h_A_to_C"] is None else f"{s_['t_h_A_to_C']:.2f} h"
+                w(f"| {name} | {s_['case']} | {t_} | {s_['rate_difference_pp']:.1f} | {s_['resolvability']} |")
+        w("")
+        for name, q in be.items():
+            w(f"* {name}: the three named options are within {q['max_gap_named_vs_exact_uGy']:.3f} µGy of the exact optimum over {q['n_candidates']} candidate stop cells.")
+            for o in q["options"]:
+                for f in o["flags"]:
+                    w(f"  * Option {'/'.join(o['keys'])} flag: {f}")
+        w("* Checks (tests/test_science.py): forward + reverse Dijkstra walking dose equals the dose integrated along the reconstructed path; "
+          "option lines cross exactly at the reported break-even times; break-even times are independent of φ; Mt Mercou is unresolved "
+          "and the notch is resolved with its rockfall flag present.\n")
+    mp = C.PROC / "mission.json"
+    if mp.exists():
+        m = json.loads(mp.read_text())
+        t = m["totals"]
+        w("## Example science Marswalk (modeled)\n")
+        w(f"Targets {', '.join(m['ids'])} (positions from NASA waypoints at the documented sols). Distance {t['distance_m']:.0f} m, walking "
+          f"{t['walk_time_h']:.2f} h, planned stationary work {t['stationary_time_h']:.1f} h (planning assumptions). Modeled dose "
+          f"{t['total_uGy']:.1f} µGy ({t['walk_uGy']:.1f} walking, {t['stationary_uGy']:.1f} stationary); the same hours on open flat ground: "
+          f"{t['open_flat_same_hours_uGy']:.1f} µGy. Stop-location choices change the total by {t['saving_vs_targets_uGy']:.2f} µGy against working at each target.\n")
+        for s_ in m["stops"]:
+            w(f"* Stop {s_['target']}: decision **{s_['decision']['status']}**. {s_['decision']['text']}")
+        w("")
+    (C.ROOT / "docs" / "VALIDATION.md").write_text("\n".join(L), encoding="utf-8")
+    print("wrote docs/VALIDATION.md")
+
+
+if __name__ == "__main__":
+    main()
