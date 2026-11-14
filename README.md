@@ -27,6 +27,14 @@ Built for the NASA Space Apps Challenge 2026, *Interplanetary Survival Guide: Ma
 Map layers: modeled dose rate, sky blocked, slope, orbital image (USGS HiRISE orthophoto) and relief. Curiosity's RAD stops are clickable and show sol, dates, measured dose rate and local anomaly.
 If WebGL is unavailable, the app shows the orbital image and all panels keep working.
 
+## Screens
+
+| | |
+|---|---|
+| ![Opening finding](docs/img/1-opening-finding.png) The opening finding, with measured and modeled claims labelled | ![Science Marswalk](docs/img/2-science-marswalk.png) A documented Curiosity science stop: objective, quote, source, measured RAD, modeled dose, assumptions |
+| ![Break-even, resolved](docs/img/3-break-even-notch.png) Maria Gordon Notch: a resolved break-even, with steep-stop and cliff flags | ![Break-even, unresolved](docs/img/4-break-even-unresolved.png) Mt Mercou: differences below model error are marked unresolved |
+| ![Orbital image](docs/img/5-orbital-image.png) USGS HiRISE orthophoto draped on the 1 m terrain | ![RAD observation](docs/img/6-rad-observation.png) Clicking a Curiosity stop shows the measured RAD observation |
+
 ## What is verified and what is modeled
 
 | | Status |
