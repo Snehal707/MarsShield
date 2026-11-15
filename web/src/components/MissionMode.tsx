@@ -10,7 +10,7 @@ import { A, Chip, download, Grammar, h, km, M, More, P, Seg, sgn, Slider, Tradeo
 
 type Eng = ReturnType<typeof useEngine>;
 export type SceneSpec = { lines?: SceneLine[]; pins?: ScenePin[]; ring?: { x: number; y: number; r: number } | null; skyId?: string | null };
-const STEPS = ["Destination", "Route", "Activity", "Trade-off", "Evidence", "Conclusion"];
+const STEPS = ["Destination", "Route", "Activity", "Where to stand", "Evidence", "Summary"];
 const STRATS: [Objective, string][] = [["low_dose", "Lowest dose"], ["fastest", "Fastest"], ["shortest", "Shortest"], ["shelter", "Hug shelter"]];
 const OPT_COLORS: Record<string, string> = { A: "#3987e5", B: "#d95926", C: "#199e70" };
 
@@ -30,6 +30,8 @@ function siteFlags(ds: Dataset, x: number, y: number): string[] {
   if (rise) out.push(`Below steep terrain rising ${rise.toFixed(0)} m within 40 m. Rockfall is not modeled.`);
   return out;
 }
+
+const flagTag = (f: string) => (f.startsWith("Steep") ? "steep ground" : f.startsWith("Below") ? "below a cliff" : "flag");
 
 export function MissionMode({ ds, eng, setScene, focusOn }: { ds: Dataset; eng: Eng; setScene: (s: SceneSpec) => void; focusOn: (x: number, y: number, dist?: number) => void }) {
   const byId = useMemo(() => Object.fromEntries(ds.scienceTargets.map((t) => [t.id, t])) as Record<string, ScienceTarget>, [ds]);
@@ -92,18 +94,18 @@ export function MissionMode({ ds, eng, setScene, focusOn }: { ds: Dataset; eng: 
     if (!be || !bOpt) return null;
     const bestAt = (t: number) => be.options.reduce((a, o) => (o.W + t * o.r < a.W + t * a.r ? o : a));
     const best = bestAt(dur), lo = bestAt(D.duration_h[0]), hi = bestAt(D.duration_h[2]);
-    if (best === bOpt) return { status: "stay", chip: "supported", label: "Stay at the target", best,
+    if (best === bOpt) return { status: "stay", chip: "supported", label: "Stay at the target", best, gain: 0, dpp: 0,
       text: "Working at the science target already has the lowest modeled dose for this duration." };
     const dpp = Math.abs(best.rel - bOpt.rel) * 100, gain = bOpt.W + dur * bOpt.r - (best.W + dur * best.r);
     const res = dpp >= err.rmse_pp ? "resolved" : dpp >= err.mae_pp ? "marginal" : "unresolved";
     const k = best.keys[0];
-    if (res === "unresolved") return { status: "unresolved", chip: "unresolved", label: "Model cannot tell", best,
+    if (res === "unresolved") return { status: "unresolved", chip: "unresolved", label: "Model cannot tell", best, gain, dpp,
       text: `Spot ${k} would save ${gain.toFixed(2)} µGy, but its dose rate differs from the target by only ${dpp.toFixed(1)} points, less than the model's mean validated error (${err.mae_pp.toFixed(1)} points). The model cannot rank these spots, so the plan stays at the target.` };
-    if (res === "marginal") return { status: "marginal", chip: "marginal", label: "Within model error", best,
+    if (res === "marginal") return { status: "marginal", chip: "marginal", label: "Within model error", best, gain, dpp,
       text: `Spot ${k} would save ${gain.toFixed(2)} µGy (${dpp.toFixed(1)}-point rate difference). That is above the model's mean error (${err.mae_pp.toFixed(1)}) but below its RMS error (${err.rmse_pp.toFixed(1)}), so the saving is not reliable. The plan stays at the target; you can choose spot ${k} below.` };
-    if (!(lo === best && hi === best)) return { status: "duration", chip: "marginal", label: "Depends on duration", best,
+    if (!(lo === best && hi === best)) return { status: "duration", chip: "marginal", label: "Depends on duration", best, gain, dpp,
       text: `Spot ${k} saves ${gain.toFixed(2)} µGy at ${h(dur)} (${dpp.toFixed(1)}-point difference, resolved), but is not the best spot across the whole planned range (${h(D.duration_h[0])} to ${h(D.duration_h[2])}). The plan stays at the target; you can choose spot ${k} below.` };
-    return { status: "recommended", chip: "resolved", label: "Move to the sheltered spot", best,
+    return { status: "recommended", chip: "resolved", label: "Move to the sheltered spot", best, gain, dpp,
       text: `Spot ${k} saves ${gain.toFixed(2)} µGy against working at the target (${dpp.toFixed(1)}-point rate difference, resolved against model error) across the planned duration range. The plan uses spot ${k}.` };
   }, [be, bOpt, dur, D, err]);
 
@@ -125,12 +127,23 @@ export function MissionMode({ ds, eng, setScene, focusOn }: { ds: Dataset; eng: 
       distance: R ? R.reduce((a, l) => a + l.distance_m, 0) : 0, xy: R ? R.flatMap((m, i) => (i ? m.xy.slice(1) : m.xy)) : [] };
   }, [spot, R, sel, ret, tgtRel, Dflat]);
   const stopDose = dur * plan.rate, total = plan.walkDose + stopDose, totalT = plan.walkT + dur;
+  // the explanation always describes the spot the plan actually uses
+  const choiceText = (() => {
+    if (!spot || !bOpt || !decision) return "";
+    const k = spot.keys[0], totB = bOpt.W + dur * bOpt.r;
+    const head = `Your plan: spot ${k}${planKey && planKey !== defaultKey ? " (your choice)" : ""}. Walking ${plan.walkDose.toFixed(1)} + ${h(dur)} at the spot ${stopDose.toFixed(1)} = ${total.toFixed(1)} µGy.`;
+    if (spot === bOpt) return decision.status === "stay" || decision.status === "unresolved" ? `${head} Working at the target, as the model cannot rank the alternatives.`
+      : `${head} Spot ${decision.best.keys[0]} would save ${decision.gain.toFixed(2)} µGy (${decision.label.toLowerCase()}).`;
+    const dpp = Math.abs(spot.rel - bOpt.rel) * 100, res = dpp >= err.rmse_pp ? "resolved" : dpp >= err.mae_pp ? "marginal" : "unresolved";
+    return `${head} That is ${sgn(total - totB, 2)} µGy against working at the target; the ${dpp.toFixed(1)}-point dose-rate difference is ${res === "resolved" ? "larger than the model's validated error" : res === "marginal" ? "within the model's RMS error, so the saving is uncertain" : "smaller than the model's validated error, so the model cannot say this spot is better"}.`;
+  })();
   const overLimit = limit > 0 && totalT > limit;
 
   // what the terrain shows
   useEffect(() => {
-    const pins: ScenePin[] = ds.scienceTargets.map((t) => ({ key: t.id, x: t.x, y: t.y, label: t.name.split(",")[0], color: t.id === dest ? "#d0904f" : t.id === start ? "#efe6d8" : "#a39582",
-      selected: t.id === dest, onClick: step === 0 ? () => pickDest(t.id) : undefined }));
+    const pins: ScenePin[] = ds.scienceTargets.filter((t) => step === 0 || step === 5 || (t.id === dest && step !== 3) || t.id === start).map((t) => ({ key: t.id, x: t.x, y: t.y,
+      label: t.id === start && step > 0 ? `Start: ${t.name.split(",")[0]}` : t.name.split(",")[0], color: t.id === dest ? "#d0904f" : t.id === start ? "#efe6d8" : "#b9ab97",
+      selected: t.id === dest && step !== 3, size: t.id === dest ? 6 : 4, onClick: step === 0 ? () => pickDest(t.id) : undefined }));
     const lines: SceneLine[] = [];
     if (routes && step >= 1 && step <= 2)
       for (const [o] of STRATS) {
@@ -139,11 +152,13 @@ export function MissionMode({ ds, eng, setScene, focusOn }: { ds: Dataset; eng: 
           color: ROUTE_COLORS[o], width: o === sel ? 5 : 2, opacity: o === sel ? 1 : 0.55, dashed: o === "shelter", animate: true });
       }
     if (step >= 4 && plan.xy.length) lines.push({ key: `final-${sel}-${plan.spotKey}`, xy: plan.xy, color: ROUTE_COLORS[sel], width: 4 });
+    if (step >= 4 && spot && plan.spotKey) pins.push({ key: "plan-stop", x: spot.x, y: spot.y, label: `Your stop: ${plan.spotKey}`, color: OPT_COLORS[plan.spotKey], size: 5.5, selected: true });
     let ring = null;
     if (be && step === 3) {
       for (const o of be.options) {
         lines.push({ key: `be-${o.keys.join("")}-${radius}-${suit}-${sel}-${ret}`, xy: o.xy, color: OPT_COLORS[o.keys[0]], width: o === spot ? 4 : 2, animate: true });
-        pins.push({ key: `opt${o.keys.join("")}`, x: o.x, y: o.y, label: o === spot ? `${o.keys.join("=")} · plan` : o.keys.join("="), color: OPT_COLORS[o.keys[0]], high: true, onClick: () => setPlanKey(o.keys[0]) });
+        pins.push({ key: `opt${o.keys.join("")}`, x: o.x, y: o.y, label: o === spot ? `${o.keys[0]}: your stop` : o.keys[0], color: OPT_COLORS[o.keys[0]], high: true,
+          selected: o === spot, size: o === spot ? 6.5 : 4.2, onClick: () => setPlanKey(o.keys[0]) });
       }
       ring = { x: D.x, y: D.y, r: radius };
     }
@@ -153,7 +168,7 @@ export function MissionMode({ ds, eng, setScene, focusOn }: { ds: Dataset; eng: 
 
   // frame the whole work radius so every compared spot stays in view
   const tradeDist = Math.max(520, radius * 5.2);
-  const goto = (s: number) => { setStep(s); if (s >= 1 && s <= 2) focusOn((S.x + D.x) / 2, (S.y + D.y) / 2, 2300); if (s === 3) focusOn(D.x, D.y, tradeDist); if (s === 4) focusOn(D.x, D.y, 420); };
+  const goto = (s: number) => { setStep(s); if (s >= 1 && s <= 2) focusOn((S.x + D.x) / 2, (S.y + D.y) / 2, 2300); if (s === 3) focusOn(D.x, D.y, tradeDist); if (s >= 4) focusOn(spot?.x ?? D.x, spot?.y ?? D.y, Math.max(420, (spot?.dist_from_target_m ?? 0) * 4)); };
   useEffect(() => { if (step === 3) focusOn(D.x, D.y, tradeDist); }, [tradeDist]); // eslint-disable-line react-hooks/exhaustive-deps
   const exportRun = () => download(`marsshield-mission-${dest}.json`, {
     kind: "MarsShield mission plan (modeled exposure; not a safety assessment)", generated: new Date().toISOString(), computed_in: "browser engine (verified against Python pipeline)",
@@ -162,7 +177,8 @@ export function MissionMode({ ds, eng, setScene, focusOn }: { ds: Dataset; eng: 
     routes: Object.fromEntries(STRATS.map(([o]) => [o, routes?.[o] ? { distance_m: sum("distance_m", o), time_h: sum("time_h", o), walking_dose_uGy: sum("dose_uGy", o) } : null])),
     plan: {
       route_strategy: sel,
-      stop: plan.spotKey ? { option: plan.spotKey, label: plan.spotLabel, x: spot?.x, y: spot?.y, distance_from_target_m: plan.fromTarget, rel_rate: plan.rel } : "target point (stop comparison not computed)",
+      stop: plan.spotKey ? { option: plan.spotKey, label: plan.spotLabel, x: spot?.x, y: spot?.y, distance_from_target_m: plan.fromTarget, rel_rate: plan.rel,
+        terrain_flags: spot ? siteFlags(ds, spot.x, spot.y) : [] } : "target point (stop comparison not computed)",
       walk_out_dose_uGy: plan.outDose, walk_back_dose_uGy: ret ? plan.backDose : null,
       walking: { distance_m: plan.distance, time_h: plan.walkT, dose_uGy: plan.walkDose },
       stationary: { duration_h: dur, rate_uGy_h: plan.rate, dose_uGy: stopDose },
@@ -178,30 +194,37 @@ export function MissionMode({ ds, eng, setScene, focusOn }: { ds: Dataset; eng: 
   return (
     <>
       <div className="panel-head">
-        <p className="eyebrowless">Plan a science Marswalk</p>
-        <p className="sub">{D.name}</p>
-        <nav className="steps" aria-label="Mission steps">
-          {STEPS.map((s, i) => <button key={s} aria-current={i === step ? "step" : undefined} className={i < step ? "done" : ""} onClick={() => goto(i)}>{i + 1}. {s}</button>)}
-        </nav>
+        <p className="kicker">Plan a science Marswalk</p>
+        <h1 className="panel-title">{D.name.split(",")[0]}</h1>
+        <div className="progress" role="list" aria-label="Mission steps">
+          {STEPS.map((q, i) => <button key={q} role="listitem" aria-label={`Step ${i + 1}: ${q}`} title={q} aria-current={i === step ? "step" : undefined}
+            className={i < step ? "done" : ""} onClick={() => goto(i)} />)}
+        </div>
+        <p className="progress-label"><b>{STEPS[step]}</b><span>Step {step + 1} of {STEPS.length}</span></p>
       </div>
       <div className="panel-body">
         {step === 0 && (<>
           <h2 className="q">Where will the astronaut do science?</h2>
-          <p className="muted">Nine sites Curiosity actually studied. Choose one here or click its marker on the terrain.</p>
-          <div className="dest">
+          <div className="dest-grid" role="radiogroup" aria-label="Science destination">
             {ds.scienceTargets.map((t) => (
-              <button key={t.id} aria-pressed={t.id === dest} onClick={() => pickDest(t.id)}>
-                <i /><b>{t.name}</b><span>{t.objective}</span>
-              </button>
-            ))}
+              <button key={t.id} role="radio" aria-checked={t.id === dest} onClick={() => pickDest(t.id)}>{t.name.split(",")[0]}</button>))}
           </div>
-          <More label="Why geologists went there, and the source">
-            <p className="prose"><b>Look for:</b> {D.look_for}</p>
-            <p className="prose"><b>What Curiosity found:</b> {D.curiosity_found}</p>
-            <blockquote className="quote">&ldquo;{D.objective_quote}&rdquo;</blockquote>
-            <p className="muted">{D.sources.map((s) => s.cite).join("; ")}. Position: NASA/JPL waypoint {D.waypoint.rmc}, sol {D.waypoint.sol}.</p>
-          </More>
-          <button className="btn primary" onClick={() => goto(1)}>Plan the route</button>
+          <div className="dest-card">
+            <p className="dest-sub">{(() => { const q = D.name.split(",").slice(1).join(",").trim(); return q ? q[0].toUpperCase() + q.slice(1) : "Gale Crater"; })()}. {D.activity_label}.</p>
+            <p className="lede">{D.objective}</p>
+            <dl className="facts">
+              <div><dt>Work time</dt><dd><A>{h(D.duration_h[1])}</A></dd></div>
+              <div><dt>Work area</dt><dd><A>{D.work_radius_m} m</A> radius</dd></div>
+              {D.measured_rad && <div><dt>Curiosity measured</dt><dd><M>{D.measured_rad.E_mean_uGy_d.toFixed(0)} µGy/day</M></dd></div>}
+            </dl>
+            <More label="Geology, Curiosity's findings and sources">
+              <p className="prose"><b>Look for:</b> {D.look_for}</p>
+              <p className="prose"><b>What Curiosity found:</b> {D.curiosity_found}</p>
+              <blockquote className="quote">&ldquo;{D.objective_quote}&rdquo;</blockquote>
+              <p className="muted">{D.sources.map((q) => q.cite).join("; ")}. Position: NASA/JPL waypoint {D.waypoint.rmc}, sol {D.waypoint.sol}.</p>
+            </More>
+          </div>
+          <button className="btn primary" onClick={() => goto(1)}>Plan the route to {D.name.split(",")[0]}</button>
         </>)}
 
         {step === 1 && (<>
@@ -265,32 +288,47 @@ export function MissionMode({ ds, eng, setScene, focusOn }: { ds: Dataset; eng: 
         </>)}
 
         {step === 3 && (<>
-          <h2 className="q">Is it worth walking to a more sheltered spot?</h2>
-          <p className="prose">The science can be done anywhere within <A>{radius} m</A> of the target. A sheltered spot means extra walking but a lower dose rate while working.
-            Walking is compared along your <b>{plan.strategy.toLowerCase()}</b> route{ret ? ", there and back" : ", one way"}.</p>
-          {!be && <p className="muted">Comparing every workable spot within the radius, in your browser…</p>}
-          {be && (<>
-            <TradeoffChart T={be.T} envelope={be.envelope} dwell={dur} err={`${err.mae_pp.toFixed(1)} points`}
-              options={be.options.map((o) => ({ key: o.keys.join("="), W: o.W, r: o.r, color: OPT_COLORS[o.keys[0]],
-                dashed: o !== be.options[0] && Math.abs(o.rel - be.options[0].rel) * 100 < err.mae_pp }))} />
-            <table className="data pick">
-              <thead><tr><th>Spot</th><th>From target</th><th>Rate</th><th>Total at {h(dur)}</th></tr></thead>
-              <tbody>{be.options.map((o) => (
-                <tr key={o.keys.join("")} aria-selected={o === spot} tabIndex={0} onClick={() => setPlanKey(o.keys[0])} onKeyDown={(e) => e.key === "Enter" && setPlanKey(o.keys[0])}><td><span className="sw" style={{ borderColor: OPT_COLORS[o.keys[0]] }} />{o.keys.join("=")}: {o.labels[0]}</td>
-                  <td>{o.dist_from_target_m.toFixed(0)} m</td><td><P>×{o.rel.toFixed(3)}</P></td><td><P>{(o.W + dur * o.r).toFixed(1)} µGy</P></td></tr>))}</tbody>
-            </table>
-            {decision && (
-              <div className="callout">
-                <div className="row"><Chip kind={decision.chip}>{decision.label}</Chip></div>
-                <p className="prose">{decision.text}</p>
-                {siteFlags(ds, decision.best.x, decision.best.y).map((f) => <p key={f} className="flagline">{f}</p>)}
-                <p className="muted">A screening rule, not a guarantee: the error threshold comes from only eight measured parking periods.</p>
-              </div>
-            )}
-            <p className="plan-note">Your plan: spot <b>{plan.spotKey}</b> ({plan.spotLabel.toLowerCase()}, {plan.fromTarget.toFixed(0)} m from the target){planKey && planKey !== defaultKey ? ", your choice" : ""}.
-              {" "}Walking <P>{plan.walkDose.toFixed(1)}</P> + {h(dur)} at the spot <P>{stopDose.toFixed(1)}</P> = <P>{total.toFixed(1)} µGy</P>. Click a row to plan at another spot.</p>
+          <h2 className="q">Where should the astronaut stand while working?</h2>
+          <p className="prose">The work can be done anywhere within <A>{radius} m</A> of the target. Three candidate spots are marked on the terrain; walking is compared along your <b>{plan.strategy.toLowerCase()}</b> route{ret ? ", there and back" : ", one way"}.</p>
+          {!be && <p className="muted">Comparing every workable spot within {radius} m, in your browser…</p>}
+          {be && decision && bOpt && (<>
+            <div className="verdict">
+              <Chip kind={decision.chip}>{decision.label}</Chip>
+              <p className="verdict-head">{decision.status === "stay" ? "The science target is already the lowest-dose spot."
+                : <>Spot {decision.best.keys[0]} would save <P>{decision.gain.toFixed(2)} µGy</P> over {h(dur)}, {((decision.gain / (bOpt.W + dur * bOpt.r)) * 100).toFixed(0)} % of the plan.</>}</p>
+              {decision.status !== "stay" && <p className="muted">Its dose rate differs from the target&apos;s by {decision.dpp.toFixed(1)} points; the model&apos;s validated error is {err.mae_pp.toFixed(1)} (mean) to {err.rmse_pp.toFixed(1)} (RMS) points.</p>}
+            </div>
+            <div className="spots" role="radiogroup" aria-label="Where to stand">
+              {be.options.map((o) => {
+                const tot = o.W + dur * o.r, vsB = tot - (bOpt.W + dur * bOpt.r), tags = siteFlags(ds, o.x, o.y).map(flagTag);
+                return (
+                  <button key={o.keys.join("")} role="radio" aria-checked={o === spot} onClick={() => setPlanKey(o.keys[0])}>
+                    <i style={{ background: OPT_COLORS[o.keys[0]] }}>{o.keys[0]}</i>
+                    <span className="spot-name">{o.labels.join(" and ")}<small>{o.dist_from_target_m.toFixed(0)} m from the target{tags.length ? <em>{tags.join(", ")}</em> : null}</small></span>
+                    <span className="spot-total"><P>{tot.toFixed(1)} µGy</P><small>{o === bOpt ? "the target" : `${sgn(vsB, 2)} vs target`}</small></span>
+                  </button>);
+              })}
+            </div>
+            {spot && (() => {
+              const flags = siteFlags(ds, spot.x, spot.y);
+              return <div className="hazards"><b>At your stop, spot {spot.keys[0]}</b>
+                {flags.length ? flags.map((f) => <p key={f} className="flagline">{f}</p>) : <p className="muted">No steep ground or steep terrain above flagged within 40 m. Rockfall, footing and suit limits are not modeled.</p>}</div>;
+            })()}
+            <p className="plan-note">{choiceText}</p>
+            <More label="Investigate: dose against time at the stop">
+              <TradeoffChart T={be.T} envelope={be.envelope} dwell={dur} err={`${err.mae_pp.toFixed(1)} points`}
+                options={be.options.map((o) => ({ key: o.keys.join("="), W: o.W, r: o.r, color: OPT_COLORS[o.keys[0]],
+                  dashed: o !== be.options[0] && Math.abs(o.rel - be.options[0].rel) * 100 < err.mae_pp }))} />
+              <table className="data">
+                <thead><tr><th>Spot</th><th>Walking</th><th>Dose rate</th><th>Total at {h(dur)}</th></tr></thead>
+                <tbody>{be.options.map((o) => (
+                  <tr key={o.keys.join("")}><td><span className="sw" style={{ borderColor: OPT_COLORS[o.keys[0]] }} />{o.keys.join("=")}</td>
+                    <td><P>{o.W.toFixed(1)} µGy</P></td><td><P>×{o.rel.toFixed(3)}</P></td><td><P>{(o.W + dur * o.r).toFixed(1)} µGy</P></td></tr>))}</tbody>
+              </table>
+              <p className="muted">{decision.text} A screening rule, not a guarantee: the error threshold comes from only eight measured parking periods.</p>
+            </More>
           </>)}
-          <Slider label={<>Work radius <A>(how far the task can move)</A></>} value={radius} min={20} max={200} step={10} onChange={(v) => { setRadius(v); }} fmt={(v) => `${v} m`} />
+          <Slider label={<>Work area radius <A>(how far the task can move)</A></>} value={radius} min={20} max={200} step={10} onChange={(v) => { setRadius(v); }} fmt={(v) => `${v} m`} />
           <button className="btn primary" disabled={!be} onClick={() => goto(4)}>Check the evidence</button>
         </>)}
 
@@ -325,6 +363,7 @@ export function MissionMode({ ds, eng, setScene, focusOn }: { ds: Dataset; eng: 
             <li>Route: <b>{plan.strategy.toLowerCase()}</b>, {km(plan.distance)}, {h(plan.walkT)} walking{ret ? " including the return" : ""}.</li>
             <li>Work: {h(dur)} at {D.name.split(",")[0]}, {plan.spotKey ? `standing at spot ${plan.spotKey} (${plan.spotLabel.toLowerCase()}, ${plan.fromTarget.toFixed(0)} m from the target)` : "at the target point"}{limit ? `; ${overLimit ? "exceeds" : "within"} your ${limit} h limit` : ""}.</li>
             <li>Modeled galactic cosmic-ray dose: <P>{plan.walkDose.toFixed(1)}</P> walking + <P>{stopDose.toFixed(1)}</P> working = <P>{total.toFixed(1)} µGy</P>, {h(totalT)} outside.</li>
+            {spot && siteFlags(ds, spot.x, spot.y).map((f) => <li key={f} className="flagline">{f}</li>)}
             {decision && <li>Stop comparison: {decision.label.toLowerCase()}{decision.status !== "stay" && decision.best !== spot ? `; spot ${decision.best.keys[0]} would save ${(plan.walkDose + stopDose - (decision.best.W + dur * decision.best.r)).toFixed(2)} µGy but was not adopted` : ""}.</li>}
           </ul>
           <div className="callout">

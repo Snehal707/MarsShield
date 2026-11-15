@@ -13,6 +13,17 @@ Built for the NASA Space Apps Challenge 2026, *Interplanetary Survival Guide: Ma
 
 **Public demo (no backend needed):** https://snehal707.github.io/MarsShield/
 
+## The opening: Maria Gordon Notch
+
+The site opens with a five-step guided story on the real terrain:
+1. **The place.** In December 2021 Curiosity parked twice, 16 m apart: deep inside the notch, then at its mouth.
+2. **The question.** How much lower is the dose deep inside? Visitors can guess first.
+3. **The model.** The published physical model predicts 9.8 % lower.
+4. **The measurement.** NASA's RAD measured 19.4 % lower (285 → 230 µGy/day).
+5. **What it means.** A simple blocked-sky rule (18 %) came closer here, but across all eight measured spots neither model is reliably better.
+
+The comparison is drawn as bars of the drop itself, so "twice the predicted drop" is visible at a glance. Every number is read from the exported RAD reduction. Clicking the wordmark replays the story.
+
 ## Three ways in
 
 | Mode | Question it answers | What you can change in the browser |
@@ -21,7 +32,7 @@ Built for the NASA Space Apps Challenge 2026, *Interplanetary Survival Guide: Ma
 | **Experiment** | Test the radiation models against Curiosity's measurements: predict first, then reveal. Three experiments: terrain vs time at 322 stops; physical model vs blocked-sky rule at the 8 parking periods; the stops where the models disagree most. | Model, baseline, stop subset, number of time blocks, bootstrap block length, albedo α, the paper's alternative P6 drop, number of disagreement stops. Verdicts and intervals are recomputed live; every experiment exports JSON. |
 | **Evidence** | What was measured, what was modeled, and how well they agree, including the RAD + REMS pressure analysis, validation, limitations and provenance. | Read-only. |
 
-The terrain is the main view. Map layers show modeled dose rate, orbital image (USGS HiRISE orthophoto), model disagreement, relief, sky blocked and slope. Curiosity's RAD stops can be hovered and clicked.
+The terrain is the main view, with a single **Layers** control: modeled dose rate, orbital image (USGS HiRISE orthophoto), relief, model disagreement, sky blocked and slope. Curiosity's 322 RAD stops are hidden by default and can be switched on there. Every experiment follows the same sequence: question, prediction, reveal NASA's observations, result, explanation. Uncertainty and statistics are one click away rather than in the way.
 
 Colors keep sources apart throughout: measured values are white, model values blue, and planning assumptions underlined in dashed gold. If WebGL is unavailable, the app shows the orbital image and every panel keeps working.
 
@@ -35,11 +46,11 @@ Audiences and the question each can answer: [docs/AUDIENCES.md](docs/AUDIENCES.m
 
 | | |
 |---|---|
-| ![Opening](docs/img/1-opening.png) Opening: measured vs modeled shelter at Maria Gordon Notch | ![Mission route](docs/img/2-mission-route.png) Mission: four route strategies, computed in the browser |
-| ![Trade-off](docs/img/3-mission-tradeoff.png) Mission: where to stand, judged against model error | ![Experiment](docs/img/4-experiment-terrain.png) Experiment: predict 322 stops, then reveal RAD |
-| ![Disagreement](docs/img/5-experiment-disagreement.png) Where the two models disagree; verdict resampled by site | ![Evidence](docs/img/6-evidence-rad-pressure.png) Evidence: the RAD + REMS pressure analysis |
+| ![Notch story](docs/img/1-notch-story.png) The opening story: model prediction vs Curiosity's measurement at Maria Gordon Notch | ![Destination](docs/img/2-mission-destination.png) Mission: compact destination choice, objective first |
+| ![Where to stand](docs/img/3-where-to-stand.png) Where to stand: decision and dose difference first; the selected spot's own hazard flags | ![Summary](docs/img/4-mission-summary.png) The plan's route, stop and totals, all from one computation |
+| ![Experiment](docs/img/5-experiment-result.png) Experiment: question, prediction, reveal, result, explanation | ![Parking](docs/img/6-experiment-parking.png) Physical model or simple rule: cannot tell them apart |
 
-Phone layout: [docs/img/7-phone.png](docs/img/7-phone.png). No-WebGL fallback: [docs/img/8-no-webgl.png](docs/img/8-no-webgl.png). Screens of the previous interface, including the mission summary before the plan-consistency fix, are in `docs/img/before/`.
+Phone: [story](docs/img/7-phone-story.png), [where to stand](docs/img/8-phone-where-to-stand.png). No-WebGL fallback: [docs/img/9-no-webgl.png](docs/img/9-no-webgl.png). Earlier interfaces are in `docs/img/before/` (`v2-*` is the version before the current redesign).
 
 ## What is verified and what is modeled
 

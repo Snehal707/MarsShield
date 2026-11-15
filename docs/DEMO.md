@@ -3,41 +3,44 @@
 Use the public demo at https://snehal707.github.io/MarsShield/.
 Everything below runs in the browser, with no Python backend. Routes, trade-offs and experiments are recalculated live from the precomputed terrain.
 
-## 1. Opening (20 s)
+## 1. The notch story (45 s)
 
-The page opens on Maria Gordon Notch. The dark curtain over it is the sky its walls hide.
+The site opens on Maria Gordon Notch with two markers: Curiosity's two parking spots, 16 m apart.
+1. **The place**, then **Ask the question**. The dark curtain is the sky the walls hide: 33 % inside, 18 % at the mouth (modeled).
+2. Drag **Your guess**. Then **See the prediction**: the physical model's bar shows a 9.8 % drop.
+3. **Reveal the measurement**: Curiosity's bar shows 19.4 %, twice the model's drop.
+4. **What it means**: a simple rule came closer here (18 %), but across the eight measured spots neither model is reliably better.
 
-The panel gives two numbers side by side:
-- **−19.4 %:** the dose rate Curiosity *measured* in the notch.
-- **−9.8 %:** what the published terrain model *predicts* for the same comparison.
+Measured values are white, model values blue, and planning assumptions underlined in dashed gold, throughout the app.
 
-Measured values are white and model values are blue throughout the app. Planning assumptions are underlined with a gold dashed line.
-
-Click **Plan a Marswalk**.
+Click **Plan a Marswalk to the notch**.
 
 ## 2. Mission (70 s)
 
-1. **Destination.** The default is Maria Gordon Notch. Each of the nine targets shows its objective and source.
+1. **Destination.** Nine targets in a compact grid. The selected one shows its objective, work time and work area, with geology and sources on demand.
 2. **Route.** Click **Plan the route**.
    - Four strategies are computed in the browser, return trip included, in about a second.
    - Point out that the lowest-dose and fastest routes match, while hugging the cliffs costs about 30 % more time and dose.
    - Move the walking-speed slider: everything recalculates.
 3. **Activity.** Set the work duration and an optional EVA limit. The budget bar shows walking versus working time.
-4. **Trade-off.** Ask "Where should the astronaut stand?"
-   - Three candidate spots appear on the terrain, with a dose-versus-time chart.
-   - At the notch's 30 m work radius the verdict is **Model cannot tell**: the spots differ by less than the model's validated error.
-   - Widen the radius to see when a difference becomes resolvable.
+4. **Where to stand.** The decision and the actual dose difference come first.
+   - At the notch's 30 m work area the verdict is **Model cannot tell**: spot C would save 0.36 µGy, a 0.9-point rate difference below the model's error.
+   - Widen the work area to 150 m: C saves 2.5 µGy, still within model error.
+   - Click spot C. Its route, totals, explanation and **its own** hazard flags (14.9° slope, terrain rising 20 m above) replace spot B's.
+   - The dose-versus-time chart is under **Investigate**.
 5. **Evidence.** Shows the Curiosity RAD measurements near the stop and the published periods.
-6. **Conclusion.** Gives the plan, what it does *not* tell you (effective dose, solar storms, rockfall, life support), and a JSON export.
+6. **Summary.** Gives the plan, what it does *not* tell you (effective dose, solar storms, rockfall, life support), and a JSON export.
 
 ## 3. Experiment (60 s)
 
-Open **Experiment**, then **Does the landscape change the dose?**
-- Choose a model and a baseline. Predictions for 322 rover stops are made on held-out time blocks, before any measurement is shown.
-- Click **Reveal**. The verdict appears with intervals from resampling whole sites and time blocks: the terrain model predicts better than time only, with 11.7 % lower RMSE (22 % lower MSE).
-- The panel then flags that 6 stops at Maria Gordon Notch carry 59 % of that gain. Click **No notch**: the gain shrinks but remains. It also states that the test reconstructs local anomalies and is only partly independent of the model's calibration.
+Open **Experiment**, then **Does the landscape explain the radiation Curiosity measured?** Every experiment runs the same five steps.
+1. **Question.**
+2. **Prediction.** The terrain model's blue dots for 322 stops, made on held-out time blocks.
+3. Click **Reveal**: white rings show what RAD measured.
+4. **Result.** The terrain model is 11.7 % closer to the measurements (typical error).
+5. **Explanation.** 6 stops at Maria Gordon Notch carry 59 % of that gain. Click **Test again without the notch**: 5.5 %, smaller but still real. Without the 10 % most shielded stops it is indistinguishable from zero. A note states that the test reconstructs local anomalies and is only partly independent.
 
-Then open **Physical model or simple rule?** and **Where would a measurement best separate the models?** Both end in **cannot distinguish**, with the reason given. This is the honest result.
+Then open **Physical model or simple rule?** and **Where would a measurement settle it?** Both end in **Cannot tell them apart**, with the reason given.
 
 ## 4. Evidence (30 s)
 

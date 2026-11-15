@@ -14,7 +14,7 @@ export type ScenePin = { key: string; x: number; y: number; color: string; label
 export type Focus = { x: number; y: number; dist?: number; n: number } | null;
 
 type Props = {
-  ds: Dataset; layer: Layer; alpha: number; exaggeration: number; disagreeErrPP: number; disagreeRefPP: number;
+  ds: Dataset; layer: Layer; alpha: number; exaggeration: number; disagreeErrPP: number; disagreeRefPP: number; viewShiftPx?: number;
   lines?: SceneLine[]; pins?: ScenePin[]; sky?: Sky | null; ring?: { x: number; y: number; r: number } | null;
   showObs: boolean; onObsClick?: (s: Stop) => void; onObsHover?: (s: Stop | null, cx: number, cy: number) => void;
   onPinHover?: (key: string | null, cx: number, cy: number) => void;
@@ -224,22 +224,22 @@ function labelLift(pins: ScenePin[], i: number) {
 function Pin({ ds, pin, exag, onHover, lift = 0 }: { ds: Dataset; pin: ScenePin; exag: number; onHover?: Props["onPinHover"]; lift?: number }) {
   const { sx, sz } = mapToScene(ds.meta, pin.x, pin.y);
   const gy = groundY(ds, pin.x, pin.y, exag);
-  const h = pin.high ? 30 : 16, size = pin.size ?? (pin.selected ? 4.5 : 3.2);
+  const h = pin.high ? 30 : 16;
+  // markers are screen-space (constant size at any camera distance); the stem stays in 3D so height reads correctly
+  const px = Math.round((pin.size ?? (pin.selected ? 5.5 : 4)) * 3);
+  const below = lift % 2 === 1, stack = below ? 0 : (lift / 2) * 17;
   return (
     <group position={[sx, gy, sz]}>
-      <mesh position={[0, h, 0]}
-        onClick={pin.onClick ? (e) => { e.stopPropagation(); pin.onClick!(); } : undefined}
-        onPointerOver={(e) => { if (pin.onClick) document.body.style.cursor = "pointer"; onHover?.(pin.key, e.nativeEvent.clientX, e.nativeEvent.clientY); }}
-        onPointerOut={() => { document.body.style.cursor = ""; onHover?.(null, 0, 0); }}>
-        <sphereGeometry args={[pin.onClick ? size * 2.2 : size, 16, 16]} />
-        <meshBasicMaterial color={pin.color} transparent opacity={pin.onClick ? 0.0001 : 1} depthWrite={false} />
-      </mesh>
-      {pin.onClick && <mesh position={[0, h, 0]}><sphereGeometry args={[size, 16, 16]} /><meshBasicMaterial color={pin.color} /></mesh>}
       <mesh position={[0, h / 2, 0]}><cylinderGeometry args={[0.6, 0.6, h, 6]} /><meshBasicMaterial color={pin.color} /></mesh>
-      {pin.label && (
-        <Html position={[0, lift % 2 ? 0 : h + 9, 0]} center zIndexRange={[2, 0]} style={{ pointerEvents: "none", whiteSpace: "nowrap", marginTop: lift % 2 ? 12 : -(lift / 2) * 18, fontSize: pin.selected ? 13 : 12, fontWeight: pin.selected ? 700 : 600,
-          color: pin.selected ? "#e7b37d" : "#efe6d8", textShadow: "0 1px 3px #000, 0 0 8px rgba(0,0,0,.6)" }}>{pin.label}</Html>
-      )}
+      <Html position={[0, h, 0]} center zIndexRange={[3, 0]}>
+        <div className={`pin${pin.selected ? " sel" : ""}${pin.onClick ? " click" : ""}`} style={{ width: px, height: px, background: pin.color }}
+          role={pin.onClick ? "button" : undefined} aria-label={pin.onClick ? pin.label ?? pin.key : undefined} tabIndex={pin.onClick ? 0 : undefined}
+          onClick={pin.onClick ? (e) => { e.stopPropagation(); pin.onClick!(); } : undefined}
+          onKeyDown={pin.onClick ? (e) => { if (e.key === "Enter") pin.onClick!(); } : undefined}
+          onMouseEnter={(e) => onHover?.(pin.key, e.clientX, e.clientY)} onMouseLeave={() => onHover?.(null, 0, 0)}>
+          {pin.label && <span className={`pin-label${below ? " below" : ""}`} style={stack ? { bottom: `calc(100% + ${6 + stack}px)` } : undefined}>{pin.label}</span>}
+        </div>
+      </Html>
     </group>
   );
 }
@@ -284,6 +284,16 @@ function WorkRing({ ds, ring, exag }: { ds: Dataset; ring: { x: number; y: numbe
 }
 
 // Smooth camera flight to a focus point (0.9 s, eased); instant when reduced motion is requested.
+/** Shift the projection so the camera's focus appears centred in the visible part of the canvas (left of the panel). */
+function ViewShift({ px }: { px: number }) {
+  const { camera, size } = useThree() as unknown as { camera: THREE.PerspectiveCamera; size: { width: number; height: number } };
+  useEffect(() => {
+    if (px) camera.setViewOffset(size.width, size.height, px, 0, size.width, size.height); else camera.clearViewOffset();
+    camera.updateProjectionMatrix();
+  }, [camera, size.width, size.height, px]);
+  return null;
+}
+
 function CameraRig({ focus, ds, exag }: { focus: Focus; ds: Dataset; exag: number }) {
   const { camera, controls } = useThree() as unknown as { camera: THREE.PerspectiveCamera; controls: { target: THREE.Vector3; update: () => void } | null };
   const anim = useRef<{ t0: number; fromT: THREE.Vector3; toT: THREE.Vector3; fromP: THREE.Vector3; toP: THREE.Vector3 } | null>(null);
@@ -320,6 +330,7 @@ export default function TerrainScene(p: Props) {
       {p.pins?.map((q, i) => <Pin key={q.key} ds={p.ds} pin={q} exag={p.exaggeration} onHover={p.onPinHover} lift={labelLift(p.pins!, i)} />)}
       <OrbitControls makeDefault maxPolarAngle={Math.PI * 0.47} minDistance={60} maxDistance={7000} enableDamping />
       <CameraRig focus={p.focus} ds={p.ds} exag={p.exaggeration} />
+      <ViewShift px={p.viewShiftPx ?? 0} />
     </Canvas>
   );
 }

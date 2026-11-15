@@ -83,3 +83,8 @@ export function TradeoffChart({ options, T, envelope, dwell, err }: {
     </figure>
   );
 }
+
+/** One stage of an experiment's fixed sequence: Question, Prediction, NASA observations, Result, Explanation. */
+export function Step({ n, title, children }: { n: number; title: string; children: ReactNode }) {
+  return <section className="exp-step" aria-label={title}><h3><i>{n}</i>{title}</h3>{children}</section>;
+}

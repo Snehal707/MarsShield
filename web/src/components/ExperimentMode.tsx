@@ -3,13 +3,13 @@ import { useEffect, useMemo, useState } from "react";
 import type { Dataset, TSRow } from "@/lib/data";
 import { corrCI, crossValidate, dMSE, MODELS, parkingPredictions, parkingVerdict, pct, rng, rmse, siteDMSE, siteOf, siteShares, type ModelId } from "@/lib/stats";
 import type { SceneSpec } from "./MissionMode";
-import { Chip, download, Grammar, M, More, P, Seg, sgn, Slider } from "./ui";
+import { Chip, download, M, More, P, Seg, sgn, Slider, Step } from "./ui";
 
 type Exp = "terrain" | "parking" | "disagree";
 const EXPS: { id: Exp; title: string; q: string; n: string }[] = [
-  { id: "terrain", title: "Does the landscape explain the radiation Curiosity measured?", q: "After accounting for time and atmospheric pressure, do terrain models predict which of Curiosity's stops had lower dose?", n: "322 rover stops, 2017 to 2023" },
-  { id: "parking", title: "Physical model or simple rule at the eight parking spots?", q: "Which predicts the measured dose drops better: the published terrain-albedo model, sky-only shielding, or 'dose falls with blocked sky'?", n: "8 published parking periods at 5 places" },
-  { id: "disagree", title: "Where would a measurement best separate the models?", q: "Pick the stops where the two terrain models disagree most, before looking at the data. Which model was closer?", n: "Map of model disagreement, 322 stops" },
+  { id: "terrain", title: "Does the landscape explain the radiation Curiosity measured?", q: "Can a terrain model tell which of Curiosity's stops had lower dose than the stops around them in time?", n: "322 rover stops, 2017 to 2023" },
+  { id: "parking", title: "Physical model or simple rule?", q: "Eight times Curiosity parked beside a butte, hill or cliff. Which explanation predicts the dose drops it measured?", n: "8 parking periods at 5 places" },
+  { id: "disagree", title: "Where would a measurement settle it?", q: "Find the places where the two terrain models disagree most, then see which one Curiosity's measurements favour.", n: "Map of model disagreement, 322 stops" },
 ];
 
 // published-period sol windows (Guo et al. 2026 Table 1 + Butte M12) for the 'independent of published sites' subset
@@ -75,14 +75,17 @@ export function ExperimentMode({ ds, setScene, setLayer }: { ds: Dataset; setSce
 
   if (!exp || !ts) return (
     <>
-      <div className="panel-head"><p className="eyebrowless">Radiation laboratory</p><p className="sub">Test a hypothesis against NASA&apos;s historical Curiosity measurements.</p></div>
+      <div className="panel-head"><p className="kicker">Radiation laboratory</p><h1 className="panel-title">Test the models against Curiosity</h1>
+        <p className="sub">Each experiment asks one question, lets a model predict, then reveals what NASA&apos;s RAD measured.</p></div>
       <div className="panel-body">
         {!ts && <p className="err">The terrain-signal data were not exported; run the pipeline.</p>}
-        {EXPS.map((e) => (
-          <button key={e.id} className="callout" style={{ textAlign: "left", cursor: "pointer" }} onClick={() => setExp(e.id)}>
-            <b>{e.title}</b><span className="muted">{e.q}</span><span className="muted small">{e.n}</span>
-          </button>
-        ))}
+        <div className="exp-list">
+          {EXPS.map((e) => (
+            <button key={e.id} className="exp-card" onClick={() => setExp(e.id)}>
+              <b>{e.title}</b><span>{e.q}</span><small>{e.n}</small>
+            </button>
+          ))}
+        </div>
         <p className="muted">Every number is recalculated in your browser from exported NASA-derived data. Revealing the measurements is a retrospective exercise on historical RAD data, not a new measurement.</p>
       </div>
     </>
@@ -92,7 +95,7 @@ export function ExperimentMode({ ds, setScene, setLayer }: { ds: Dataset; setSce
     <>
       <div className="panel-head">
         <button className="linklike small" onClick={() => setExp(null)}>All experiments</button>
-        <p className="eyebrowless" style={{ marginTop: 6 }}>{meta.title}</p>
+        <h1 className="panel-title" style={{ marginTop: 8 }}>{meta.title}</h1>
         <p className="sub">{meta.n}</p>
       </div>
       <div className="panel-body">
@@ -154,54 +157,63 @@ function TerrainExp({ ds, revealed, setRevealed, setScene }: ExpProps) {
     data: { file: "terrain_signal.json", generated_utc: (ts as unknown as { generated_utc?: string }).generated_utc, sources: ["NASA RAD L2 (SPDF)", "NASA REMS MODRDR (PDS)", "USGS Gale DEM", "MSL waypoints"] },
   });
   const opts: [ModelId, string][] = (["M3", "M4", "M2", "M5", "M6", "M1"] as ModelId[]).map((m) => [m, MODELS[m].short]);
+  const nameA = MODELS[a].short.toLowerCase(), nameB = MODELS[b].short.toLowerCase();
+  const rob = (v: string) => (ts as unknown as { robustness?: { variant: string; rmse_reduction?: { M3: number }; dMSE_vs_M0_site_ci95_pp2?: { M3: [number, number] } }[] }).robustness?.find((r) => r.variant.startsWith(v));
+  const x5 = rob("excluding the 5 %"), x10 = rob("excluding the 10 %");
   return (<>
-    <p className="prose">Curiosity&apos;s dose rate changes with the solar cycle and seasons, so each stop is compared with the ±15 sols around it.
-      The question is whether the terrain models can predict which stops come out lower, <b>without being fitted to the measurements they are scored on</b>.</p>
-    <div className="row"><span className="muted">Test</span>
-      <select className="sel" value={a} onChange={(e) => { setA(e.target.value as ModelId); setRevealed(false); }}>{opts.map(([m, l]) => <option key={m} value={m}>{l}</option>)}</select>
-      <span className="muted">against</span>
-      <select className="sel" value={b} onChange={(e) => { setB(e.target.value as ModelId); setRevealed(false); }}>{(["M0", "M1", "M2", "M3"] as ModelId[]).filter((m) => m !== a).map((m) => <option key={m} value={m}>{MODELS[m].short}</option>)}</select></div>
-    <div className="row"><span className="muted">Stops</span>
-      <Seg label="Data subset" value={subset} onChange={(v) => { setSubset(v); setRevealed(false); }} options={[["all", "All"], ["nomgn", "No notch"], ["nopub", "Not published"], ["nostrong", "No extreme"], ["long", "≥ 2 sols"]]} /></div>
-    <More label="Advanced: validation design">
-      <Slider label="Held-out time blocks" value={k} min={4} max={12} step={1} onChange={setK} fmt={(v) => String(v)} />
-      <div className="row"><span className="muted">Bootstrap block length</span><Seg label="Block length" value={L} onChange={setL} options={[[10, "10"], [20, "20"], [40, "40"]]} /></div>
-      <p className="muted">Coefficients (pressure, rescaling) are fitted only on training blocks; stops within ±15 sols of a test block are dropped from training because they share background data.</p>
-    </More>
-    <Strip rows={rows} pred={res.cv.pred[a]} revealed={revealed} label={MODELS[a].short} />
-    {!revealed ? (
-      <button className="btn primary" onClick={() => setRevealed(true)}>Reveal Curiosity&apos;s measurements</button>
-    ) : (<>
-      <Grammar />
-      <div className="stats">
-        <div><b>{res.rmseA.toFixed(2)}</b><span>pp typical error, {MODELS[a].short.toLowerCase()}</span></div>
-        <div><b>{res.rmseB.toFixed(2)}</b><span>pp typical error, {MODELS[b].short.toLowerCase()}</span></div>
-        <div><b>{sgn(-res.rmseRed * 100, 1)} %</b><span>typical error (RMSE) change</span></div>
-      </div>
-      <div className="callout">
-        <div className="row"><Chip kind={verdict[0]}>{verdict[1]}</Chip></div>
-        <p className="prose">Mean squared error {sgn(-res.mseRed * 100, 1)} % ({sgn(res.d.mean, 2)} pp²). 95 % interval resampling whole Curiosity sites ({res.ds.nSites}): {sgn(res.ds.lo, 2)} to {sgn(res.ds.hi, 2)};
-          resampling blocks of {L} stops in time: {sgn(res.d.lo, 2)} to {sgn(res.d.hi, 2)}. Held out over {k} time blocks, {rows.length} stops.</p>
-        {top && top.share > 0 && res.mseRed > 0 && (
-          <p className={top.share > 0.4 ? "flagline" : "muted"}>Site {top.site}{top.site === MGN_SITE ? " (Maria Gordon Notch)" : ""}, {top.n} stop{top.n > 1 ? "s" : ""}, carries {(top.share * 100).toFixed(0)} % of this improvement.
-            {top.site === MGN_SITE ? " Try “No notch”." : ""}</p>)}
-      </div>
-      <div className="note">
-        <p><b>What this tests.</b> Whether terrain predicts how much a stop&apos;s dose differs from Curiosity&apos;s other stops at about the same time: a local anomaly of a few percent.
-          It does not predict absolute dose at a new place.</p>
-        <p><b>Not fully independent.</b> The terrain model was not fitted here, but its one free parameter (the albedo share) was derived by Guo et al. (2026) from RAD data at the published periods, including the notch.</p>
-      </div>
-      {res.sl && res.rc && (<>
-        <Scatter x={rows.map((q) => q[MODELS[a].fixed!] as number)} y={res.y} slope={res.sl.slope} />
-        <p className="prose">Measured anomalies are <b>{res.sl.slope.toFixed(2)}×</b> the {MODELS[a].short.toLowerCase()} prediction (95 % CI {res.sl.lo.toFixed(2)} to {res.sl.hi.toFixed(2)}; 1 = calibrated).
-          Correlation r = {res.rc.r.toFixed(2)} ({res.rc.lo.toFixed(2)} to {res.rc.hi.toFixed(2)}).</p>
-      </>)}
-      <More label="What else to know">
-        <p className="prose">Pressure: at this stop-level design, pressure differences between a stop and its neighbourhood are only a few pascals (spread {ts.predictor_spread_pp.pressure_term.toFixed(2)} pp of dose), so pressure control barely changes predictions. That does not mean pressure is unimportant: it drives the daily dose cycle (Guo et al. 2015).</p>
-        <p className="prose">Most of the terrain information comes from a few strongly shielded stops: try &ldquo;No extreme&rdquo;. Without the 10 % most strongly shielded stops the improvement is no longer distinguishable from zero (Evidence → RAD + pressure analysis).</p>
-        <p className="prose">Sol 1812 (September 2017) is hit by a solar particle event (+49 %). It inflates every model&apos;s error equally; it is kept, as pre-specified, which makes the relative improvement smaller, not larger.</p>
+    <Step n={1} title="Question">
+      <p className="lede">Curiosity&apos;s dose rate rose and fell with the Sun&apos;s cycle and the seasons. Compared with its other stops at about the same time, was a stop&apos;s dose lower where the terrain shields more?</p>
+    </Step>
+    <Step n={2} title="Prediction">
+      <p className="prose">The {nameA} predicts each stop&apos;s difference from its neighbours in time: the blue dots. It is scored on {k} blocks of time it was not fitted to.</p>
+      <Strip rows={rows} pred={res.cv.pred[a]} revealed={revealed} label={MODELS[a].short} />
+      <More label="Change the test">
+        <div className="row"><span className="muted">Test</span>
+          <select className="sel" value={a} onChange={(e) => { setA(e.target.value as ModelId); setRevealed(false); }}>{opts.map(([m, l]) => <option key={m} value={m}>{l}</option>)}</select>
+          <span className="muted">against</span>
+          <select className="sel" value={b} onChange={(e) => { setB(e.target.value as ModelId); setRevealed(false); }}>{(["M0", "M1", "M2", "M3"] as ModelId[]).filter((m) => m !== a).map((m) => <option key={m} value={m}>{MODELS[m].short}</option>)}</select></div>
+        <div className="row"><span className="muted">Stops</span>
+          <Seg label="Data subset" value={subset} onChange={(v) => { setSubset(v); setRevealed(false); }} options={[["all", "All"], ["nomgn", "No notch"], ["nopub", "Not published"], ["nostrong", "No extreme"], ["long", "≥ 2 sols"]]} /></div>
+        <Slider label="Held-out time blocks" value={k} min={4} max={12} step={1} onChange={setK} fmt={(v) => String(v)} />
+        <div className="row"><span className="muted">Bootstrap block length</span><Seg label="Block length" value={L} onChange={setL} options={[[10, "10"], [20, "20"], [40, "40"]]} /></div>
+        <p className="muted">Coefficients (pressure, rescaling) are fitted only on training blocks; stops within ±15 sols of a test block are dropped from training because they share background data.</p>
       </More>
-      <button className="btn" onClick={exportRun}>Export this experiment (JSON)</button>
+    </Step>
+    {!revealed ? (
+      <button className="btn primary reveal" onClick={() => setRevealed(true)}>Reveal Curiosity&apos;s measurements</button>
+    ) : (<>
+      <Step n={3} title="NASA observations">
+        <p className="prose">White rings: what RAD measured at each of the {rows.length} stops. Most sit within a few percent of their neighbours; a few are 10 to 20 % lower.</p>
+      </Step>
+      <Step n={4} title="Result">
+        <Chip kind={verdict[0]}>{verdict[1]}</Chip>
+        <p className="verdict-head">On a typical stop the {nameA} is off by <P>{res.rmseA.toFixed(2)}</P> points, against {res.rmseB.toFixed(2)} for {nameB}: {Math.abs(res.rmseRed * 100).toFixed(1)} % {res.rmseRed >= 0 ? "closer" : "further"} to the measurements.</p>
+        <p className="muted">{rows.length} stops; {verdict[0] === "supported" ? "the improvement holds when whole sites or blocks of time are resampled" : "within the uncertainty from resampling whole sites and blocks of time"}.</p>
+      </Step>
+      <Step n={5} title="Explanation">
+        {top && top.share > 0.4 && res.mseRed > 0 && (<>
+          <p className="prose">Most of this comes from one place: <b>{top.n} stops {top.site === MGN_SITE ? "at Maria Gordon Notch" : `at site ${top.site}`} carry {(top.share * 100).toFixed(0)} %</b> of the improvement.</p>
+          {top.site === MGN_SITE && <button className="btn" onClick={() => setSubset("nomgn")}>Test again without the notch</button>}
+        </>)}
+        {subset === "nomgn" && <p className="prose">Without the notch the {nameA} is {Math.abs(res.rmseRed * 100).toFixed(1)} % {res.rmseRed >= 0 ? "closer" : "further"}: {verdict[0] === "supported" ? "smaller, but still a real improvement" : "no longer distinguishable"}.</p>}
+        {x5?.rmse_reduction && x10?.rmse_reduction && <p className="prose">The terrain signal lives at strongly shielded places. Without the 5 % most shielded stops the terrain model is only {(x5.rmse_reduction.M3 * 100).toFixed(1)} % closer, and without the 10 % it is {(x10.rmse_reduction.M3 * 100).toFixed(1)} %, indistinguishable from zero.</p>}
+        <div className="note">
+          <p><b>What this tests.</b> Whether terrain predicts how much a stop&apos;s dose differs from Curiosity&apos;s other stops at about the same time: a local anomaly of a few percent. It does not predict absolute dose at a new place.</p>
+          <p><b>Not fully independent.</b> The terrain model was not fitted here, but its one free parameter (the albedo share) was derived by Guo et al. (2026) from RAD data at the published periods, including the notch.</p>
+        </div>
+        <More label="Uncertainty and statistics">
+          <p className="prose">Mean squared error {sgn(-res.mseRed * 100, 1)} % ({sgn(res.d.mean, 2)} pp²). 95 % interval resampling whole Curiosity sites ({res.ds.nSites}): {sgn(res.ds.lo, 2)} to {sgn(res.ds.hi, 2)};
+            resampling blocks of {L} stops in time: {sgn(res.d.lo, 2)} to {sgn(res.d.hi, 2)}. The verdict needs both intervals to exclude zero.</p>
+          {res.sl && res.rc && (<>
+            <Scatter x={rows.map((q) => q[MODELS[a].fixed!] as number)} y={res.y} slope={res.sl.slope} />
+            <p className="prose">Measured anomalies are <b>{res.sl.slope.toFixed(2)}×</b> the {nameA} prediction (95 % CI {res.sl.lo.toFixed(2)} to {res.sl.hi.toFixed(2)}; 1 = calibrated).
+              Correlation r = {res.rc.r.toFixed(2)} ({res.rc.lo.toFixed(2)} to {res.rc.hi.toFixed(2)}).</p>
+          </>)}
+          <p className="prose">Pressure: at this stop-level design, pressure differences between a stop and its neighbourhood are only a few pascals (spread {ts.predictor_spread_pp.pressure_term.toFixed(2)} pp of dose), so pressure control barely changes predictions. That does not mean pressure is unimportant: it drives the daily dose cycle (Guo et al. 2015).</p>
+          <p className="prose">Sol 1812 (September 2017) is hit by a solar particle event (+49 %). It inflates every model&apos;s error equally; it is kept, as pre-specified, which makes the relative improvement smaller, not larger.</p>
+        </More>
+        <button className="btn" onClick={exportRun}>Export this experiment (JSON)</button>
+      </Step>
     </>)}
   </>);
 }
@@ -215,34 +227,75 @@ function ParkingExp({ ds, revealed, setRevealed, setScene }: ExpProps) {
   useEffect(() => {
     setScene({ pins: rows.map((r) => ({ key: r.parking, x: r.x, y: r.y, label: r.parking, color: "#efe6d8" })), lines: [] });
   }, [rows, setScene]);
-  const name: Record<string, string> = { albedo: "Terrain-albedo model", sky: "Sky shielding only", proportional: "Proportional rule" };
+  const name: Record<string, string> = { albedo: "Physical model (sky + rock re-emission)", sky: "Sky shielding only", proportional: "Proportional rule" };
+  const best = [...v.summary].sort((p, q) => p.mae - q.mae);
   return (<>
-    <p className="prose">At eight moments Curiosity parked beside a butte, hill or cliff. The <b>proportional rule</b> says dose falls with the fraction of sky blocked.
-      The <b>terrain-albedo model</b> adds radiation re-emitted by the blocking rock (Guo et al. 2026).</p>
-    <Slider label={<>Rock re-emission (albedo share of flat-ground dose)</>} value={alpha} min={0.18} max={0.24} step={0.01} onChange={(x) => { setAlpha(x); }} fmt={(x) => `${Math.round(x * 100)} %`} />
-    <label className="check"><input type="checkbox" checked={p6alt} onChange={(e) => setP6alt(e.target.checked)} />Use the paper&apos;s Section 4 value for P6 (17 %) instead of Table 1 and NASA data (19.4 %)</label>
-    <table className="data">
-      <thead><tr><th>Period</th><th>Terrain model</th><th>Sky only</th><th>Rule</th>{revealed && <th>Measured</th>}</tr></thead>
-      <tbody>{rows.map((r) => (
-        <tr key={r.pair}><td>{r.parking} <span className="muted">{r.site}</span></td>
-          <td><P>{sgn(r.albedo * 100)}</P></td><td><P>{sgn(r.sky * 100)}</P></td><td><P>{sgn(r.proportional * 100)}</P></td>
-          {revealed && <td><M>{sgn(r.measured * 100)}</M></td>}</tr>))}</tbody>
-    </table>
-    {!revealed ? <button className="btn primary" onClick={() => setRevealed(true)}>Reveal Curiosity&apos;s measurements</button> : (<>
-      <table className="data">
-        <thead><tr><th>Model</th><th>Mean error</th><th>RMSE</th><th>Closest at</th></tr></thead>
-        <tbody>{v.summary.map((s) => <tr key={s.model}><td>{name[s.model]}</td><td>{s.mae.toFixed(2)} pp</td><td>{s.rmse.toFixed(2)} pp</td><td>{s.wins} of 8</td></tr>)}</tbody>
-      </table>
-      <div className="callout">
-        <div className="row"><Chip kind={v.verdict.startsWith("cannot") ? "inconclusive" : "supported"}>{v.verdict}</Chip></div>
-        <p className="prose">RMSE difference, terrain model minus rule: {sgn(v.dRMSE.mean, 2)} pp (95 % interval {sgn(v.dRMSE.lo, 2)} to {sgn(v.dRMSE.hi, 2)}, resampling the {v.clusters} sites, because periods at one site are not independent).</p>
-      </div>
-      <More label="Why the result is limited">
-        <p className="prose">Two periods dominate the errors: at P8 our terrain geometry blocks more sky than the published analysis, and at P6 (Maria Gordon Notch) Curiosity measured twice the drop the model predicts. With eight periods at five places, no ranking is statistically secure.</p>
+    <Step n={1} title="Question">
+      <p className="lede">Eight times, Curiosity parked beside a butte, hill or cliff, and RAD recorded the dose dropping. Which explanation predicts those drops?</p>
+    </Step>
+    <Step n={2} title="Prediction">
+      <ul className="models">
+        <li><i style={{ background: PARK_COLORS.proportional }} /><b>Proportional rule.</b> Dose falls with the share of sky blocked.</li>
+        <li><i style={{ background: PARK_COLORS.sky }} /><b>Sky only.</b> Remove the radiation from the blocked directions.</li>
+        <li><i style={{ background: PARK_COLORS.albedo }} /><b>Physical model.</b> Also add radiation re-emitted by the blocking rock (Guo et al. 2026).</li>
+      </ul>
+      <ParkingDots rows={rows} revealed={revealed} />
+      <More label="Change the assumptions">
+        <Slider label={<>Rock re-emission (albedo share of flat-ground dose)</>} value={alpha} min={0.18} max={0.24} step={0.01} onChange={(x) => { setAlpha(x); }} fmt={(x) => `${Math.round(x * 100)} %`} />
+        <label className="check"><input type="checkbox" checked={p6alt} onChange={(e) => setP6alt(e.target.checked)} />Use the paper&apos;s Section 4 value for P6 (17 %) instead of Table 1 and NASA data (19.4 %)</label>
       </More>
-      <button className="btn" onClick={() => download("marsshield-experiment-parking.json", { experiment: "parking periods", retrospective: true, alpha, p6_value: p6alt ? 0.17 : 0.194, rows, verdict: v, provenance: ex.provenance })}>Export this experiment (JSON)</button>
+    </Step>
+    {!revealed ? <button className="btn primary reveal" onClick={() => setRevealed(true)}>Reveal Curiosity&apos;s measurements</button> : (<>
+      <Step n={3} title="NASA observations">
+        <p className="prose">White rings: the drops RAD measured, from {Math.min(...rows.map((r) => -r.measured * 100)).toFixed(1)} to {Math.max(...rows.map((r) => -r.measured * 100)).toFixed(1)} %.</p>
+      </Step>
+      <Step n={4} title="Result">
+        <Chip kind={v.verdict.startsWith("cannot") ? "inconclusive" : "supported"}>{v.verdict.startsWith("cannot") ? "Cannot tell them apart" : v.verdict}</Chip>
+        <p className="verdict-head">On average the predictions miss by {best.map((q, i) => <span key={q.model}>{i ? (i === best.length - 1 ? " and " : ", ") : ""}<P>{q.mae.toFixed(1)}</P> points ({name[q.model].split(" (")[0].toLowerCase()})</span>)}.</p>
+        <p className="muted">Close averages; with eight periods at five places the differences are within the uncertainty.</p>
+      </Step>
+      <Step n={5} title="Explanation">
+        <p className="prose">The models trade places from spot to spot. At Maria Gordon Notch (P6) the physical model predicted half the measured drop; at P8 our terrain geometry blocks more sky than the published analysis. Eight periods at five places cannot rank them.</p>
+        <More label="Uncertainty and statistics">
+          <table className="data">
+            <thead><tr><th>Model</th><th>Mean error</th><th>RMSE</th><th>Closest at</th></tr></thead>
+            <tbody>{v.summary.map((q) => <tr key={q.model}><td>{name[q.model]}</td><td>{q.mae.toFixed(2)} pp</td><td>{q.rmse.toFixed(2)} pp</td><td>{q.wins} of 8</td></tr>)}</tbody>
+          </table>
+          <p className="prose">RMSE difference, physical model minus proportional rule: {sgn(v.dRMSE.mean, 2)} pp (95 % interval {sgn(v.dRMSE.lo, 2)} to {sgn(v.dRMSE.hi, 2)}, resampling the {v.clusters} sites, because periods at one site are not independent).</p>
+        </More>
+        <button className="btn" onClick={() => download("marsshield-experiment-parking.json", { experiment: "parking periods", retrospective: true, alpha, p6_value: p6alt ? 0.17 : 0.194, rows, verdict: v, provenance: ex.provenance })}>Export this experiment (JSON)</button>
+      </Step>
     </>)}
   </>);
+}
+
+const PARK_COLORS = { albedo: "#3987e5", sky: "#d95926", proportional: "#199e70" } as const;
+
+/** Predicted (filled) and measured (ring) dose change at each parking period. */
+function ParkingDots({ rows, revealed }: { rows: ReturnType<typeof parkingPredictions>; revealed: boolean }) {
+  const W = 380, rowH = 28, top = 6, pl = 96, pr = 10, lo = -30, hi = 2, H = top + rows.length * rowH + 22;
+  const x = (v: number) => pl + ((Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo)) * (W - pl - pr);
+  return (
+    <figure style={{ margin: 0 }}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="chart" role="img" aria-label="Predicted and measured dose change at each parking period">
+        <g className="grid">{[-30, -20, -10, 0].map((t) => <line key={t} x1={x(t)} x2={x(t)} y1={top} y2={H - 20} />)}</g>
+        <line x1={x(0)} x2={x(0)} y1={top} y2={H - 20} stroke="rgba(239,230,216,0.35)" />
+        {rows.map((r, i) => {
+          const cy = top + i * rowH + rowH / 2;
+          return (
+            <g key={r.pair}>
+              <text x={pl - 8} y={cy} textAnchor="end" className="lbl" style={{ fontWeight: 600 }}>{r.parking}</text>
+              <text x={pl - 8} y={cy + 11} textAnchor="end" style={{ fontSize: 9.5 }}>{r.site.replace("Maria Gordon Notch", "M. Gordon Notch")}</text>
+              {(["proportional", "sky", "albedo"] as const).map((k) => <circle key={k} cx={x(r[k] * 100)} cy={cy + 1} r={4.2} fill={PARK_COLORS[k]} stroke="#1d1814" strokeWidth={1.5} />)}
+              {revealed && <circle cx={x(r.measured * 100)} cy={cy + 1} r={6.5} fill="none" stroke="#f6f1e7" strokeWidth={2} />}
+            </g>
+          );
+        })}
+        {[-30, -20, -10, 0].map((t) => <text key={t} x={x(t)} y={H - 6} textAnchor="middle">{t} %</text>)}
+      </svg>
+      <figcaption className="muted">Change in dose rate against a nearby background position. Further left means more shielding.</figcaption>
+    </figure>
+  );
 }
 
 function DisagreeExp({ ds, revealed, setRevealed, setScene }: ExpProps) {
@@ -266,24 +319,38 @@ function DisagreeExp({ ds, revealed, setRevealed, setScene }: ExpProps) {
     return { d: (rmse(em) - rmse(eg)) * 100, lo: pct(bs, 0.025), hi: pct(bs, 0.975), stops: em.filter((e, i) => Math.abs(e) < Math.abs(eg[i])).length, sites: sites.length, perSite };
   }, [top]);
   const cal = (ts as unknown as { calibration: Record<string, { slope: number; ci95_site_cluster: [number, number] }> }).calibration;
+  const decisive = res.hi < 0 || res.lo > 0;
   return (<>
-    <p className="prose">The map shows where the two terrain models disagree about a spot compared with ordinary ground nearby: brighter means the physical model predicts relatively more dose than the blocked-sky rule. Where they agree, no measurement can tell them apart.</p>
-    <Slider label="Stops with the largest disagreement" value={n} min={10} max={60} step={5} onChange={(v) => { setN(v); setRevealed(false); }} fmt={(v) => String(v)} />
-    <p className="muted">Selected from model values only, before any measurement is shown: {res.sites} Curiosity sites, disagreement at least {(Math.abs(top[top.length - 1].m_terrain - top[top.length - 1].g_proxy) * 100).toFixed(1)} points.</p>
-    {!revealed ? <button className="btn primary" onClick={() => setRevealed(true)}>Reveal Curiosity&apos;s measurements</button> : (<>
-      <div className="stats">
-        <div><b>{res.stops} / {n}</b><span>stops where the physical model was closer</span></div>
-        <div><b>{res.perSite} / {res.sites}</b><span>sites where it was closer</span></div>
-        <div><b>{sgn(res.d, 2)}</b><span>pp RMSE, physical minus rule</span></div>
-      </div>
-      <div className="callout">
-        <div className="row"><Chip kind={res.hi < 0 ? "supported" : res.lo > 0 ? "against" : "inconclusive"}>{res.hi < 0 ? "Favours the physical model" : res.lo > 0 ? "Favours the rule" : "Cannot distinguish"}</Chip></div>
-        <p className="prose">95 % interval {sgn(res.lo, 2)} to {sgn(res.hi, 2)} pp, resampling whole Curiosity sites. Counting stops looks convincing, but stops at one site are not independent: judged by sites, the evidence {res.hi < 0 || res.lo > 0 ? "is" : "is not"} decisive.</p>
-      </div>
-      {cal && <p className="prose">Across all 322 stops (site-cluster bootstrap), measured anomalies are <M>{cal.sky_proxy.slope.toFixed(2)}×</M> the rule&apos;s prediction ({cal.sky_proxy.ci95_site_cluster[0].toFixed(2)} to {cal.sky_proxy.ci95_site_cluster[1].toFixed(2)}): the rule overstates shielding.
-        For the physical model the factor is <M>{cal.terrain_model.slope.toFixed(2)}×</M> ({cal.terrain_model.ci95_site_cluster[0].toFixed(2)} to {cal.terrain_model.ci95_site_cluster[1].toFixed(2)}), consistent with 1.</p>}
-      <p className="muted">Where to measure next: bright areas on the map with no white Curiosity markers are where a new dosimeter reading would discriminate the models best.</p>
-      <button className="btn" onClick={() => download("marsshield-experiment-disagreement.json", { experiment: "model disagreement", retrospective: true, n, result: res, calibration: cal, stops: top.map((r) => ({ rmc: r.rmc, sol: r.sol, measured: r.y_obs, physical: r.m_terrain, rule: r.g_proxy })) })}>Export this experiment (JSON)</button>
+    <Step n={1} title="Question">
+      <p className="lede">The physical model and the blocked-sky rule mostly agree. Where they disagree, a measurement can tell them apart. Did Curiosity stop at such places, and which model did its measurements favour?</p>
+    </Step>
+    <Step n={2} title="Prediction">
+      <p className="prose">The map shows where the models disagree: brighter ground means the physical model predicts relatively more dose there than the rule. The {n} Curiosity stops with the largest disagreement are marked in gold, chosen from the models alone.</p>
+      <Slider label="Stops with the largest disagreement" value={n} min={10} max={60} step={5} onChange={(q) => { setN(q); setRevealed(false); }} fmt={(q) => String(q)} />
+      <p className="muted">{res.sites} Curiosity sites; disagreement at least {(Math.abs(top[top.length - 1].m_terrain - top[top.length - 1].g_proxy) * 100).toFixed(1)} points.</p>
+    </Step>
+    {!revealed ? <button className="btn primary reveal" onClick={() => setRevealed(true)}>Reveal Curiosity&apos;s measurements</button> : (<>
+      <Step n={3} title="NASA observations">
+        <div className="stats">
+          <div><b>{res.stops} / {n}</b><span>stops where the physical model was closer</span></div>
+          <div><b>{res.perSite} / {res.sites}</b><span>places where it was closer</span></div>
+          <div><b>{sgn(res.d, 2)}</b><span>points of error, physical minus rule</span></div>
+        </div>
+      </Step>
+      <Step n={4} title="Result">
+        <Chip kind={res.hi < 0 ? "supported" : res.lo > 0 ? "against" : "inconclusive"}>{res.hi < 0 ? "Favours the physical model" : res.lo > 0 ? "Favours the rule" : "Cannot tell them apart"}</Chip>
+        <p className="verdict-head">The physical model was closer at {res.stops} of {n} stops, but they come from {res.sites} places, and place by place it was closer at {res.perSite}. {decisive ? "That is decisive." : "That is not decisive."}</p>
+      </Step>
+      <Step n={5} title="Explanation">
+        <p className="prose">Stops at one place share the same terrain and the same days, so counting stops overstates the evidence; the test resamples whole places.</p>
+        {cal && <p className="prose">Across all 322 stops, measured anomalies are <M>{cal.sky_proxy.slope.toFixed(2)}×</M> the rule&apos;s prediction: the rule overstates shielding. For the physical model the factor is <M>{cal.terrain_model.slope.toFixed(2)}×</M>, consistent with 1.</p>}
+        <p className="prose">Where to measure next: bright ground on the map with no Curiosity stop is where a new dosimeter reading would separate the models best.</p>
+        <More label="Uncertainty and statistics">
+          <p className="prose">RMSE difference, physical model minus rule: {sgn(res.d, 2)} pp; 95 % interval {sgn(res.lo, 2)} to {sgn(res.hi, 2)} pp, resampling whole Curiosity sites.</p>
+          {cal && <p className="prose">Calibration slopes with site-cluster 95 % intervals: rule {cal.sky_proxy.ci95_site_cluster[0].toFixed(2)} to {cal.sky_proxy.ci95_site_cluster[1].toFixed(2)}; physical model {cal.terrain_model.ci95_site_cluster[0].toFixed(2)} to {cal.terrain_model.ci95_site_cluster[1].toFixed(2)}.</p>}
+        </More>
+        <button className="btn" onClick={() => download("marsshield-experiment-disagreement.json", { experiment: "model disagreement", retrospective: true, n, result: res, calibration: cal, stops: top.map((r) => ({ rmc: r.rmc, sol: r.sol, measured: r.y_obs, physical: r.m_terrain, rule: r.g_proxy })) })}>Export this experiment (JSON)</button>
+      </Step>
     </>)}
   </>);
 }

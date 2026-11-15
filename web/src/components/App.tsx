@@ -8,6 +8,7 @@ import { EvidenceMode } from "./EvidenceMode";
 import type { Dataset, Stop } from "@/lib/data";
 import { BASE, loadDataset, relTotal, sampleGrid } from "@/lib/data";
 import { useEngine } from "@/lib/useEngine";
+import { NotchStory, type StoryScene } from "./Story";
 import { M, P, sgn } from "./ui";
 
 type Mode = "mission" | "experiment" | "evidence";
@@ -31,16 +32,48 @@ function NoWebGL({ ds }: { ds: Dataset }) {
   );
 }
 
-const LEGEND: Record<Layer, ReactNode> = {
-  dose: (<><div className="ramp" style={{ background: "linear-gradient(90deg, #cfdbe2, #2a5c8c)" }} /><div className="ramp-l"><span>×0.97 open ground</span><span>×0.80 sheltered</span></div>
-    <p className="muted small">Modeled cosmic-ray dose rate relative to open flat ground.</p></>),
-  disagree: (<><div className="ramp" style={{ background: "linear-gradient(90deg, #6b625a, #eba05a)" }} /><div className="ramp-l"><span>same prediction as nearby ground</span><span>differs by 10+ points</span></div>
-    <p className="muted small">How differently the terrain-albedo model and the blocked-sky rule predict a spot&apos;s dose against ordinary ground nearby. Bright spots are where a measurement could tell the models apart.</p></>),
-  image: <p className="muted small">USGS Gale orthophoto from MRO HiRISE, 25 cm averaged to 1 m.</p>,
-  terrain: <p className="muted small">USGS 1 m elevation model (MRO HiRISE/CTX stereo), shaded relief.</p>,
-  sky: (<><div className="ramp" style={{ background: "linear-gradient(90deg, #d9d9d9, #263873)" }} /><div className="ramp-l"><span>0 %</span><span>50 % of sky blocked</span></div></>),
-  slope: <p className="muted small">Amber 15–25°; hatched red over 25° (avoided by routes).</p>,
-};
+type LayerInfo = { k: Layer; name: string; desc: string; ramp?: { grad: string; lo: string; hi: string } };
+const LAYERS: LayerInfo[] = [
+  { k: "dose", name: "Radiation", desc: "Modeled cosmic-ray dose rate, relative to open flat ground", ramp: { grad: "linear-gradient(90deg, #cfdbe2, #2a5c8c)", lo: "×0.97 open", hi: "×0.80 sheltered" } },
+  { k: "image", name: "Orbital image", desc: "USGS orthophoto from MRO HiRISE, 25 cm averaged to 1 m" },
+  { k: "terrain", name: "Relief", desc: "USGS 1 m elevation model (HiRISE and CTX stereo), shaded" },
+  { k: "disagree", name: "Model disagreement", desc: "Where the physical model and the blocked-sky rule differ, against nearby ground", ramp: { grad: "linear-gradient(90deg, #6b625a, #eba05a)", lo: "agree", hi: "differ by 10+ points" } },
+  { k: "sky", name: "Sky blocked", desc: "Share of the sky hidden by terrain, from ray tracing", ramp: { grad: "linear-gradient(90deg, #d9d9d9, #263873)", lo: "0 %", hi: "50 %" } },
+  { k: "slope", name: "Slope", desc: "Amber 15–25°; hatched red over 25° (avoided by routes)" },
+];
+
+function LayerControl({ layer, setLayer, showObs, setShowObs, exag, setExag, readout }: {
+  layer: Layer; setLayer: (l: Layer) => void; showObs: boolean; setShowObs: (v: boolean) => void; exag: number; setExag: (v: number) => void;
+  readout: { z: number; slope: number; B: number; rel: number } | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const cur = LAYERS.find((l) => l.k === layer)!;
+  return (
+    <div className="layerctl">
+      {open && (
+        <div className="layer-pop" role="dialog" aria-label="Map layers">
+          <div className="layer-list" role="radiogroup" aria-label="Map layer">
+            {LAYERS.map((l) => (
+              <button key={l.k} role="radio" aria-checked={layer === l.k} onClick={() => setLayer(l.k)}>
+                <b>{l.name}</b><span>{l.desc}</span>
+              </button>))}
+          </div>
+          <label className="check"><input type="checkbox" checked={showObs} onChange={(e) => setShowObs(e.target.checked)} />Curiosity&apos;s radiation measurements (322 stops)</label>
+          {showObs && <p className="muted small"><i className="dot-m" />Ring: measured. Fill: dose <span style={{ color: "#5b9be8" }}>lower</span> or <span style={{ color: "#e07445" }}>higher</span> than on nearby days.</p>}
+          <label className="check"><input type="checkbox" checked={exag === 2} onChange={(e) => setExag(e.target.checked ? 2 : 1)} />Exaggerate relief ×2</label>
+          {readout && <p className="muted small">Under the cursor: {readout.z.toFixed(0)} m, {readout.slope.toFixed(0)}° slope, {(readout.B * 100).toFixed(0)} % of sky blocked, <P>×{readout.rel.toFixed(3)}</P> dose rate</p>}
+        </div>
+      )}
+      <div className="layer-bar">
+        <button className="layer-btn" aria-expanded={open} onClick={() => setOpen(!open)}>
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 15 5 8 8.5 1 5Z M1 8l7 3.5L15 8 M1 11l7 3.5 7-3.5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>
+          <span>{cur.name}</span>
+        </button>
+        {cur.ramp && <div className="mini-ramp"><i style={{ background: cur.ramp.grad }} /><span>{cur.ramp.lo}</span><span>{cur.ramp.hi}</span></div>}
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   const [ds, setDs] = useState<Dataset | null>(null);
@@ -48,11 +81,11 @@ export default function App() {
   const [mode, setMode] = useState<Mode>("mission");
   const [welcome, setWelcome] = useState(true);
   const [layer, setLayer] = useState<Layer>("dose");
-  const [more, setMore] = useState(false);
-  // on phones the dock would cover a third of the terrain: start compact (layer tabs + colour ramp only)
-  const [legend, setLegend] = useState(true);
-  useEffect(() => { try { if (window.matchMedia("(max-width: 860px)").matches) setLegend(false); } catch { /* no matchMedia */ } }, []);
-  const [showObs, setShowObs] = useState(true);
+  const [showObs, setShowObs] = useState(false);     // Curiosity's 322 RAD stops: in Layers, off by default
+  const [story, setStory] = useState<StoryScene | null>(null);
+  // desktop: the panel covers the right of the canvas, so centre the camera's focus in what remains
+  const [vw, setVw] = useState(1440);
+  useEffect(() => { const f = () => setVw(window.innerWidth); f(); window.addEventListener("resize", f); return () => window.removeEventListener("resize", f); }, []);
   const [exag, setExag] = useState(1);
   const [webgl, setWebgl] = useState(true);
   const [panel, setPanel] = useState(true);
@@ -75,8 +108,8 @@ export default function App() {
     if (m === "evidence") setLayer("dose");
     try { window.localStorage.setItem("marsshield-welcome", "done"); } catch { /* storage unavailable */ }
   };
-  const mgn = ds?.scienceTargets.find((t) => t.id === "mgn");
-  useEffect(() => { if (ds && welcome && mgn) focusOn(mgn.x, mgn.y, 520); }, [ds, welcome, mgn, focusOn]);
+  const setStoryScene = useCallback((s: StoryScene) => { setStory(s); focusOn(s.focus.x, s.focus.y, s.focus.dist); }, [focusOn]);
+  const replayStory = () => { setWelcome(true); setCard(null); setScene({}); setLayer("dose"); setPanel(true); };
   // median of (model - proxy) over the walk area: the reference for the local-contrast disagreement layer
   const dref = useMemo(() => {
     if (!ds) return 0;
@@ -99,13 +132,12 @@ export default function App() {
   if (err) return <div className="loading">{err}</div>;
   if (!ds) return <div className="loading">Loading Gale Crater terrain and Curiosity&apos;s measurements…</div>;
   const byId = Object.fromEntries(ds.scienceTargets.map((t) => [t.id, t]));
-  const welcomePins: ScenePin[] = ds.scienceTargets.map((t) => ({ key: t.id, x: t.x, y: t.y, label: t.name.split(",")[0], color: t.id === "mgn" ? "#d0904f" : "#a39582", selected: t.id === "mgn" }));
-  const pins = welcome ? welcomePins : mode === "evidence" ? welcomePins.map((p) => ({ ...p, selected: false, color: "#a39582" })) : scene.pins;
-  const skyId = welcome ? "mgn" : mode === "mission" ? scene.skyId : null;
-  const p6 = ds.validation.pairs.find((q: { pair: string }) => q.pair.startsWith("P6"));
+  const targetPins: ScenePin[] = ds.scienceTargets.map((t) => ({ key: t.id, x: t.x, y: t.y, label: t.name.split(",")[0], color: "#b9ab97" }));
+  const pins = welcome ? story?.pins ?? [] : mode === "evidence" ? targetPins : scene.pins;
+  const skyId = welcome ? (story?.sky ? "mgn" : null) : mode === "mission" ? scene.skyId : null;
 
   const sceneEl = (
-    <TerrainScene ds={ds} layer={layer} alpha={0.21} exaggeration={exag} disagreeErrPP={ds.breakeven["Maria Gordon Notch"].model_error.rmse_pp} disagreeRefPP={dref}
+    <TerrainScene ds={ds} layer={layer} alpha={0.21} exaggeration={exag} disagreeErrPP={ds.breakeven["Maria Gordon Notch"].model_error.rmse_pp} disagreeRefPP={dref} viewShiftPx={panel && vw > 860 ? (vw > 1180 ? 208 : 193) : 0}
       lines={welcome || mode === "evidence" ? [] : scene.lines} pins={pins} ring={!welcome && mode === "mission" ? scene.ring : null}
       sky={skyId ? ds.skiesTargets[skyId] : null} showObs={showObs} focus={focus}
       onObsClick={(s) => { setCard(s); setTip(null); }}
@@ -119,7 +151,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <div className="wordmark"><b>MarsShield</b><span>Terrain and cosmic radiation in Gale Crater</span></div>
+        <button className="wordmark" onClick={replayStory} title="Replay the Maria Gordon Notch story"><b>MarsShield</b><span>Terrain and cosmic radiation in Gale Crater</span></button>
         <nav className="modes" role="tablist" aria-label="Experience">
           {([["mission", "Mission"], ["experiment", "Experiment"], ["evidence", "Evidence"]] as [Mode, string][]).map(([k, l]) => (
             <button key={k} role="tab" aria-selected={!welcome && mode === k} onClick={() => finishWelcome(k)}>{l}</button>))}
@@ -144,48 +176,13 @@ export default function App() {
             <p className="muted small">NASA RAD Level 2, detector E; flagged records removed.</p>
           </div>
         )}
-        {webgl && (
-          <div className="mapdock">
-            <div className={`mapcard ${legend ? "" : "compact"}`}>
-              <div className="layers" role="group" aria-label="Map layer">
-                {([["dose", "Radiation"], ["image", "Orbital image"], ["disagree", "Model disagreement"], ["terrain", "Relief"]] as [Layer, string][])
-                  .concat(more ? [["sky", "Sky blocked"], ["slope", "Slope"]] : []).map(([k, l]) => <button key={k} aria-pressed={layer === k} onClick={() => setLayer(k)}>{l}</button>)}
-                <button onClick={() => setMore(!more)} aria-expanded={more}>{more ? "Fewer" : "More"}</button>
-                <button className="legend-toggle" onClick={() => setLegend(!legend)} aria-expanded={legend}>{legend ? "Hide legend" : "Legend"}</button>
-              </div>
-              {LEGEND[layer]}
-              <div className="row" style={{ marginTop: 6, gap: 14 }}>
-                <label className="check small"><input type="checkbox" checked={showObs} onChange={(e) => setShowObs(e.target.checked)} />Curiosity RAD stops</label>
-                <label className="check small"><input type="checkbox" checked={exag === 2} onChange={(e) => setExag(e.target.checked ? 2 : 1)} />Relief ×2</label>
-              </div>
-              {showObs && <div className="ramp-l" style={{ marginTop: 4 }}><span><i className="dot-m" />ring: measured, fill: lower <span style={{ color: "#3987e5" }}>blue</span> / higher <span style={{ color: "#d95926" }}>orange</span> than nearby days</span></div>}
-              {readout && <p className="muted small" style={{ marginTop: 4 }}>Cursor: {readout.z.toFixed(0)} m, {readout.slope.toFixed(0)}° slope, {(readout.B * 100).toFixed(0)} % sky blocked, <P>×{readout.rel.toFixed(3)}</P> dose rate</p>}
-            </div>
-          </div>
-        )}
+        {webgl && <LayerControl layer={layer} setLayer={setLayer} showObs={showObs} setShowObs={setShowObs} exag={exag} setExag={setExag} readout={readout} />}
         <button className="btn ghost panel-toggle" style={{ display: panel ? "none" : undefined }} onClick={() => setPanel(true)}>Show panel</button>
       </section>
 
       <aside className={`panel ${panel ? "" : "hidden"}`} aria-label="Panel">
         {welcome ? (
-          <>
-            <div className="panel-head"><button className="linklike small" style={{ float: "right" }} onClick={() => setPanel(false)}>Hide panel</button>
-              <p className="eyebrowless">MarsShield</p><p className="sub">A radiation laboratory on real Gale Crater terrain.</p></div>
-            <div className="panel-body">
-              <p className="lede">Cliffs and canyons block part of the sky, and part of the cosmic radiation that falls from it. But the rock also re-emits radiation of its own. How much does the Martian landscape really protect an astronaut?</p>
-              <div className="figure-pair">
-                <div><b><M>{sgn((p6?.measured_ours ?? -0.194) * 100)} %</M></b><span>dose rate Curiosity measured in Maria Gordon Notch, December 2021</span></div>
-                <div><b><P>{sgn((p6?.pred_albedo_019 ?? -0.098) * 100)} %</P></b><span>what the published terrain model predicts for the same comparison</span></div>
-              </div>
-              <p className="prose">The notch is on screen: the dark curtain is the sky its walls hide. Here the model underestimates the shelter; across Curiosity&apos;s traverse, a simpler &ldquo;blocked sky&rdquo; rule overstates it. You can plan a walk with these models, or test them against NASA&apos;s measurements.</p>
-              <div className="row">
-                <button className="btn primary" onClick={() => finishWelcome("mission")}>Plan a Marswalk</button>
-                <button className="btn" onClick={() => finishWelcome("experiment")}>Test the radiation models</button>
-              </div>
-              <button className="linklike small" style={{ alignSelf: "flex-start" }} onClick={() => finishWelcome("evidence")}>Or go straight to the evidence</button>
-              <p className="muted">Built on NASA data: Curiosity&apos;s radiation detector (RAD), weather station (REMS) and navigation, and terrain from the Mars Reconnaissance Orbiter. Everything you change is recalculated in this browser.</p>
-            </div>
-          </>
+          <NotchStory ds={ds} setStoryScene={setStoryScene} onDone={finishWelcome} />
         ) : mode === "mission" ? <MissionMode ds={ds} eng={eng} setScene={setSceneCb} focusOn={focusOn} />
           : mode === "experiment" ? <ExperimentMode ds={ds} setScene={setSceneCb} setLayer={setLayerCb} />
           : <EvidenceMode ds={ds} />}
