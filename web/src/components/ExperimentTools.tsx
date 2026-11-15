@@ -22,7 +22,11 @@ export function saveFile(name: string, data: BlobPart, type: string) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1500);
 }
 
-type Pkg = { observations: string; predictions: string; experiment: unknown; datapackage: unknown; readme: string };
+type Pkg = { observations: string; predictions: string; experiment: unknown; datapackage: unknown; readme: string; manifest?: string };
+/** The source-file manifest (names, sizes, SHA-256, URLs) produced by the Python pipeline; added to every package. */
+export async function inputManifest(): Promise<string | undefined> {
+  try { const r = await fetch(`${BASE}/data/input_manifest.json`); return r.ok ? await r.text() : undefined; } catch { return undefined; }
+}
 export function DownloadBar({ name, rows, csv, pkg, note }: { name: string; rows: number; csv: () => string; pkg: () => Promise<Pkg>; note?: ReactNode }) {
   const [busy, setBusy] = useState(false);
   const stamp = new Date().toISOString().slice(0, 10);
@@ -34,7 +38,7 @@ export function DownloadBar({ name, rows, csv, pkg, note }: { name: string; rows
           Data (CSV)</button>
         <button className="btn dl" disabled={busy} onClick={async () => {
           setBusy(true);
-          try { saveFile(`marsshield-${name}-package-${stamp}.zip`, packageZip(await pkg()) as BlobPart, "application/zip"); } finally { setBusy(false); }
+          try { saveFile(`marsshield-${name}-package-${stamp}.zip`, packageZip({ ...(await pkg()), manifest: await inputManifest() }) as BlobPart, "application/zip"); } finally { setBusy(false); }
         }}>
           <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2.5h7l3 3v8H3z M10 2.5v3h3 M6 8h4M6 10.5h4" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>
           {busy ? "Preparing…" : "Research package (ZIP)"}</button>

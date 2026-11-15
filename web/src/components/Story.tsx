@@ -18,6 +18,10 @@ export function NotchStory({ ds, setStoryScene, onDone }: { ds: Dataset; setStor
   const pair = ds.validation.pairs.find((q: { pair: string }) => q.pair.startsWith("P6")) as
     { measured_ours: number; pred_albedo_019: number; pred_proportional: number };
   const measured = -pair.measured_ours, model = -pair.pred_albedo_019, rule = -pair.pred_proportional;
+  // the same model with the published blocked sky and sky dose (Guo et al. 2026 Table 1); see science/marsshield/parking_audit.py
+  const a19 = 0.19 / 0.81, tot = (Ds: number, B: number, Dfs: number) => Ds + (1 + B) * a19 * Dfs;
+  const modelPub = inside.B_pub != null && mouth.B_pub != null && inside.D_sky_pub != null && mouth.D_sky_pub != null
+    ? 1 - tot(inside.D_sky_pub, inside.B_pub, inside.Dfs) / tot(mouth.D_sky_pub, mouth.B_pub, mouth.Dfs) : null;
   const apart = Math.hypot(inside.x - mouth.x, inside.y - mouth.y);
   const date = new Date(inside.utc[0]).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
 
@@ -64,17 +68,19 @@ export function NotchStory({ ds, setStoryScene, onDone }: { ds: Dataset; setStor
           <ShieldBars model={model} measured={measured} rule={rule} showMeasured={step >= 3} showRule={step >= 4} guess={guess} mouth={mouth.D_RAD_ours} inside={inside.D_RAD_ours} />
         )}
         {step === 2 && (<>
-          <p className="lede">The published physical model counts both effects and predicts the dose inside to be <P>{(model * 100).toFixed(1)} % lower</P>.</p>
+          <p className="lede">The published physical model counts both effects. Run on MarsShield&apos;s reconstruction of this terrain, it predicts the dose inside to be <P>{(model * 100).toFixed(1)} % lower</P>.</p>
           <p className="prose">It traces the sky the walls block and adds radiation re-emitted by the rock (Guo et al. 2021, 2026), using the terrain you see.</p>
-          <p className="caveat"><b>A look back, not a blind test.</b> How much radiation the rock re-emits is the model&apos;s one adjustable setting, and its authors partly derived it from Curiosity&apos;s parking measurements, including this notch.</p>
+          <p className="caveat"><b>A look back, not a blind test.</b> The terrain geometry was reconstructed after the measurement, and it is uncertain here:
+            MarsShield&apos;s ray tracing finds {(inside.B * 100).toFixed(0)} % of the sky blocked where the published analysis finds {inside.B_pub != null ? (inside.B_pub * 100).toFixed(0) : "38"} %.{modelPub != null ? <> With the published geometry the same model predicts <P>{(modelPub * 100).toFixed(1)} %</P>.</> : null}
+            {" "}The rock re-emission setting (19 %) comes from an earlier study at a different butte, not from this notch.</p>
         </>)}
         {step === 3 && (<>
-          <p className="lede">Curiosity measured <M>{inside.D_RAD_ours.toFixed(0)} µGy/day</M> inside against <M>{mouth.D_RAD_ours.toFixed(0)}</M> at the mouth: <M>{(measured * 100).toFixed(1)} % lower</M>, twice the predicted drop.</p>
+          <p className="lede">Curiosity measured <M>{inside.D_RAD_ours.toFixed(0)} µGy/day</M> inside against <M>{mouth.D_RAD_ours.toFixed(0)}</M> at the mouth: <M>{(measured * 100).toFixed(1)} % lower</M>, about twice the drop MarsShield&apos;s version of the model predicts{modelPub != null ? <> and about {(measured / modelPub).toFixed(1)}× the published-geometry prediction</> : null}.</p>
           {guess != null && <p className="prose">Your guess was {guess} %. {Math.abs(guess - measured * 100) < Math.abs(model * 100 - measured * 100) ? "Closer than the model." : "The model was closer."}</p>}
           <p className="muted">NASA RAD Level 2, detector E, {inside.n_obs} and {mouth.n_obs} records at the two spots.</p>
         </>)}
         {step === 4 && (<>
-          <p className="lede">Here, the terrain shielded about twice as much as the physical model predicts.</p>
+          <p className="lede">Here, the terrain shielded more than the physical model predicts: about twice as much with MarsShield&apos;s geometry{modelPub != null ? <>, {(measured / modelPub).toFixed(1)}× with the published geometry</> : null}.</p>
           <ul className="story-points">
             <li>A simpler rule, <i>dose falls in proportion to blocked sky</i>, predicted <P>{(rule * 100).toFixed(0)} %</P> here, much closer.</li>
             <li>But across all eight places where Curiosity parked beside terrain, neither model is reliably better.</li>
@@ -105,7 +111,7 @@ export function NotchStory({ ds, setStoryScene, onDone }: { ds: Dataset; setStor
 }
 
 /** The comparison the story is about: how much lower the dose was deep inside than at the mouth.
- *  Bars are the drop in percent (zero-based), so "twice the predicted drop" is visible as twice the length. */
+ *  Bars are the drop in percent (zero-based), so a model that predicts half the drop shows as half the length. */
 function ShieldBars({ model, measured, rule, showMeasured, showRule, guess, mouth, inside }: {
   model: number; measured: number; rule: number; showMeasured: boolean; showRule: boolean; guess: number | null; mouth: number; inside: number;
 }) {

@@ -28,6 +28,14 @@ export const SOURCES = [
     path: "https://doi.org/10.1029/2026JE009704", role: "published periods, solar modulation, albedo range (model calibration)" },
 ];
 export const REPO = "https://github.com/Snehal707/MarsShield";
+export const UNITS = {
+  log_anomaly: "ln(dose rate at stop) minus ln(background); the statistical target",
+  actual_percent: "100 * (exp(log anomaly) - 1): the relative change in dose rate shown to readers",
+  percentage_points: "difference between two actual percentages",
+  rmse_pp: "root-mean-square error of the log anomaly x 100 ('pp' in this package means this log-scale unit; close to percentage points for small changes)",
+  dMSE_pp2: "mean squared-error difference x 1e4 on the log scale",
+  rmse_reduction: "1 - RMSE(model) / RMSE(baseline): a relative change of the error, not percentage points of radiation",
+};
 export const RANDOM = { generator: "mulberry32 (32-bit state), one seeded stream per statistic", note:
   "The Python pipeline uses NumPy's generator, so bootstrap intervals agree with it within Monte Carlo error, not digit for digit. Point estimates agree exactly." };
 
@@ -72,7 +80,7 @@ export const stopColumns = (pub: (r: TSRow) => boolean): Column<TSRow>[] => [
   { name: "stop_id", type: "string", category: "identifier", description: "Curiosity rover motion counter, site_drive (NASA/JPL MMGIS waypoint)", get: (r) => r.rmc },
   { name: "nav_site", type: "integer", category: "identifier", description: "Curiosity navigation site index (first part of stop_id); used to group stops in site bootstraps", get: (r) => siteOfRmc(r.rmc) },
   { name: "sol", type: "integer", unit: "sol", category: "identifier", description: "Mars solar day of the waypoint (sol 0 = landing, 2012-08-06)", get: (r) => r.sol },
-  { name: "mid_sol", type: "number", unit: "sol", category: "derived", description: "Midpoint of the RAD records at this stop; orders stops in time and defines validation blocks", get: (r) => r.mid_sol },
+  { name: "mid_sol", type: "number", unit: "sol", category: "derived", description: "Midpoint of the rover's occupancy window at this stop (arrival to departure sol from the NASA/JPL waypoints); orders stops in time and defines validation blocks", get: (r) => r.mid_sol },
   { name: "utc_start", type: "datetime", category: "observed", description: "UTC of the first RAD record at the stop", get: (r) => r.utc_start },
   { name: "utc_end", type: "datetime", category: "observed", description: "UTC of the last RAD record at the stop", get: (r) => r.utc_end },
   { name: "duration_h", type: "number", unit: "h", category: "derived", description: "utc_end minus utc_start", get: (r) => hours(r.utc_start, r.utc_end) },
@@ -82,8 +90,11 @@ export const stopColumns = (pub: (r: TSRow) => boolean): Column<TSRow>[] => [
   { name: "rems_pressure_Pa", type: "number", unit: "Pa", category: "observed", description: "Mean REMS surface pressure matched to the RAD records at the stop", get: (r) => r.P_mean },
   { name: "rems_pressure_background_Pa", type: "number", unit: "Pa", category: "derived", description: "Median REMS pressure of RAD records at other stops within ±window sols", get: (r) => r.P_bg },
   { name: "pressure_anomaly_Pa", type: "number", unit: "Pa", category: "derived", description: "Stop pressure minus background, same detrending as the dose anomaly", get: (r) => r.x_p },
-  { name: "observed_anomaly_log", type: "number", unit: "ln ratio", category: "derived", description: "mean ln(dose rate) at the stop minus median ln(dose rate) at other stops within ±window sols; the quantity every model predicts", get: (r) => r.y_obs },
-  { name: "observed_anomaly_pct", type: "number", unit: "%", category: "derived", description: "100 * (exp(observed_anomaly_log) - 1); the app's charts show 100 * observed_anomaly_log", get: (r) => 100 * (Math.exp(r.y_obs) - 1) },
+  { name: "mean_log_dose_stop", type: "number", unit: "ln(µGy/day)", category: "derived", description: "Mean of ln(dose rate) over the RAD records at the stop", get: (r) => r.lnE_stop },
+  { name: "background_records", type: "integer", category: "derived", description: "RAD records at other walk-area stops within ±window sols (the background)", get: (r) => r.n_bg },
+  { name: "median_log_dose_background", type: "number", unit: "ln(µGy/day)", category: "derived", description: "Median of ln(dose rate) over the background records", get: (r) => r.lnE_bg },
+  { name: "observed_anomaly_log", type: "number", unit: "ln ratio", category: "derived", description: "mean_log_dose_stop minus median_log_dose_background; the quantity every model predicts (statistics are computed on this log scale)", get: (r) => r.y_obs },
+  { name: "observed_anomaly_pct", type: "number", unit: "%", category: "derived", description: "Actual relative change, 100 * (exp(observed_anomaly_log) - 1); this is what the app displays for a stop", get: (r) => 100 * (Math.exp(r.y_obs) - 1) },
   { name: "sky_blocked_fraction", type: "number", unit: "fraction of sky", category: "modeled", description: "Blocked solid-angle fraction B from ray tracing on the USGS 1 m DEM at RAD height", get: (r) => r.B },
   { name: "terrain_model_relative_dose", type: "number", unit: "ratio to open flat ground", category: "modeled", description: "Published terrain-albedo model (Guo et al. 2021, 2026), phi = 500 MV, albedo share 0.21", get: (r) => r.rel_total },
   { name: "terrain_model_anomaly_log", type: "number", unit: "ln ratio", category: "modeled", description: "ln(terrain_model_relative_dose) detrended exactly like observed_anomaly_log", get: (r) => r.m_terrain },
@@ -95,6 +106,7 @@ export const stopColumns = (pub: (r: TSRow) => boolean): Column<TSRow>[] => [
   { name: "mars_lon_east_deg", type: "number", unit: "degree east (Mars)", category: "coordinate", description: "Mars east longitude = x_eqc_m / R; not Earth longitude", get: (r) => lon(r.x) },
 ];
 
+export type ScreeningRow = { variant: string; n_stops: number; rmse_pp: { M0: number; M3: number }; "M3-M0": { rmse_reduction: number; mse_reduction: number; site_ci95_pp2: number[] } };
 export type TerrainInput = {
   rows: TSRow[]; excluded: string[]; subset: { id: string; label: string }; model: ModelId; baseline: ModelId;
   k: number; L: number; window: number; pred: Record<string, number[]>; block: number[]; edges: number[]; coefs: Record<string, number[][]>;
@@ -102,6 +114,7 @@ export type TerrainInput = {
     d: { mean: number; lo: number; hi: number }; ds: { mean: number; lo: number; hi: number; nSites: number };
     shares: { site: number; n: number; share: number }[]; slope?: { slope: number; lo: number; hi: number } | null; corr?: { r: number; lo: number; hi: number } | null; verdict: string };
   pub: (r: TSRow) => boolean;
+  screening?: ScreeningRow[];
 };
 type PredRow = { r: TSRow; i: number };
 
@@ -111,9 +124,11 @@ export function terrainPredictionColumns(t: TerrainInput): Column<PredRow>[] {
     { name: "stop_id", type: "string", category: "identifier", description: "Joins to observations.csv", get: ({ r }) => r.rmc },
     { name: "validation_block", type: "integer", category: "setting", description: `Held-out time block (0 to ${t.k - 1}) under the selected K = ${t.k}`, get: ({ i }) => t.block[i] },
     { name: "model_id", type: "string", category: "setting", description: "Selected model (see experiment.json models)", get: () => t.model },
+    { name: "model_name", type: "string", category: "setting", description: "Readable name of the selected model, as in the app", get: () => MODELS[t.model].label },
     { name: "model_prediction_log", type: "number", unit: "ln ratio", category: "modeled", description: "Held-out prediction of observed_anomaly_log by the selected model", get: ({ i }) => pa[i] },
     { name: "model_residual_log", type: "number", unit: "ln ratio", category: "derived", description: "observed_anomaly_log minus model_prediction_log", get: ({ r, i }) => r.y_obs - pa[i] },
     { name: "baseline_id", type: "string", category: "setting", description: "Selected baseline model", get: () => t.baseline },
+    { name: "baseline_name", type: "string", category: "setting", description: "Readable name of the baseline", get: () => MODELS[t.baseline].label },
     { name: "baseline_prediction_log", type: "number", unit: "ln ratio", category: "modeled", description: "Held-out prediction by the baseline", get: ({ i }) => pb[i] },
     { name: "baseline_residual_log", type: "number", unit: "ln ratio", category: "derived", description: "observed_anomaly_log minus baseline_prediction_log", get: ({ r, i }) => r.y_obs - pb[i] },
     { name: "squared_error_difference", type: "number", unit: "(ln ratio)^2", category: "derived", description: "model_residual_log^2 - baseline_residual_log^2; its mean * 1e4 is the reported dMSE in pp^2", get: ({ r, i }) => (r.y_obs - pa[i]) ** 2 - (r.y_obs - pb[i]) ** 2 },
@@ -152,13 +167,15 @@ export function terrainExperiment(t: TerrainInput, sw: Software, data: DatasetId
       verdict: t.results.verdict,
       verdict_rule: "Model better (worse) than baseline only if both the time-block and the site bootstrap 95 % intervals of dMSE lie below (above) zero.",
     },
+    sep_screening_precomputed: t.screening ? { provenance: "science/marsshield/terrain_signal.py screened_results with science/marsshield/sep_events.py windows; applies to the all-stops selection only", variants: t.screening } : null,
+    units: UNITS,
     random: RANDOM, coordinate_reference: CRS, sources: SOURCES,
     interpretation: [
       "Reconstructs each stop's local dose anomaly relative to Curiosity's other stops at about the same time; it does not test absolute dose at new places.",
       "Only partly independent: the terrain model's albedo share was derived by Guo et al. (2026) from RAD data at the published parking periods, including Maria Gordon Notch (nav_site 92).",
       "The terrain signal is concentrated at a few strongly shielded stops; check gain_share_by_site and the 'No notch' and 'No extreme' subsets.",
       "Absorbed dose in RAD's plastic detector during quiet solar conditions; not an astronaut's effective dose and not a safety assessment.",
-      "Sol 1812 lies in the September 2017 solar particle event; it is kept, as pre-specified.",
+      "Two solar particle events (10-13 Sep 2017, 28-29 Oct 2021) lie inside the stops. The reference sample keeps them (a choice made before the check; the analysis was not pre-registered); see sep_screening_precomputed.",
     ],
   };
 }
@@ -214,6 +231,12 @@ ${SOURCES.map((s) => `- ${s.title} (${s.publisher}): ${s.path}`).join("\n")}
 
 ${CATEGORY_TEXT}
 
+## Units
+- **Log anomaly** (\`*_log\` columns): ln(dose rate at the stop) minus ln(background). All statistics are computed on this scale.
+- **Actual percent** (\`*_pct\`): 100 × (exp(log anomaly) − 1), the relative change in dose rate.
+- **Percentage points**: the difference between two actual percentages.
+- **RMSE "pp"**: the root-mean-square error of the log anomaly × 100, close to percentage points for small changes. An "11.7 % lower RMSE" is a relative change of that error, not 11.7 percentage points of radiation.
+
 ${body}
 
 ## Coordinates
@@ -246,13 +269,22 @@ export function terrainPackage(t: TerrainInput, sw: Software, data: DatasetId, n
     ["observations.csv", `${t.rows.length} Curiosity stops in the selection: identifiers, times, NASA-derived measurements, detrended anomalies, terrain predictors, coordinates`],
     ["predictions.csv", `held-out predictions and residuals of ${t.model} and ${t.baseline}, validation block of each stop`],
     ["experiment.json", "selections, model definitions, method, fitted coefficients, seeds, results, sources, limitations"],
-    ["datapackage.json", "machine-readable schema of both CSV files"], ["README.md", "this file"]];
+    ["datapackage.json", "machine-readable schema of both CSV files"], ["input_manifest.json", "every NASA/USGS source file behind the processed data: name, size, SHA-256, original URL, processing parameters"], ["README.md", "this file"]];
   const body = `## Experiment
 ${exp.title}
 - Model: ${t.model} (${MODELS[t.model].label}); baseline: ${t.baseline} (${MODELS[t.baseline].label}).
 - Stops: ${t.subset.label} (${t.rows.length} included, ${t.excluded.length} excluded).
 - Validation: ${t.k} held-out time blocks, ±${t.window}-sol buffer; bootstrap block length ${t.L} stops.
-- Result: typical error ${t.results.rmseA.toFixed(3)} vs ${t.results.rmseB.toFixed(3)} pp (${(t.results.rmseRed * 100).toFixed(2)} % lower RMSE). Verdict: ${t.results.verdict}.`;
+- Result: typical error (RMSE of the log anomaly × 100) ${t.results.rmseA.toFixed(3)} vs ${t.results.rmseB.toFixed(3)}, a ${Math.abs(t.results.rmseRed * 100).toFixed(2)} % ${t.results.rmseRed >= 0 ? "lower" : "higher"} RMSE for the model (a relative change of the error, not percentage points of radiation). Verdict: ${t.results.verdict}.${t.screening ? `
+
+### Solar particle event screening (precomputed by the Python pipeline, reference selection only)
+The historical full sample above is the reference. Removing RAD records inside the detected September 2017 and October 2021 event windows is a sensitivity analysis:
+
+| Variant | Stops | RMSE time only → terrain model | RMSE reduction |
+|---|---|---|---|
+${t.screening.map((v) => `| ${v.variant} | ${v.n_stops} | ${v.rmse_pp.M0.toFixed(3)} → ${v.rmse_pp.M3.toFixed(3)} | ${(v["M3-M0"].rmse_reduction * 100).toFixed(1)} % |`).join("\n")}
+
+The absolute MSE gain barely changes; the relative figure rises because the events inflate every model's error. The remaining records are not established to be free of all solar-particle effects.` : ""}`;
   const md = readme("MarsShield research package: terrain experiment", body, sw, data, files,
     `The point results (RMSE, dMSE) follow directly from predictions.csv; the held-out predictions can be rebuilt from observations.csv:\n\n${pythonTerrain(t)}\n\nBootstrap intervals: see experiment.json (generator, seeds, resamples).`,
     exp.interpretation);
@@ -431,8 +463,9 @@ export function disagreeCSV(t: DisagreeInput) {
 }
 
 // ------------------------------------------------------------------ zip
-export function packageZip(p: { observations: string; predictions: string; experiment: unknown; datapackage: unknown; readme: string }, now = new Date()) {
+export function packageZip(p: { observations: string; predictions: string; experiment: unknown; datapackage: unknown; readme: string; manifest?: string }, now = new Date()) {
   return makeZip([
+    ...(p.manifest ? [{ name: "input_manifest.json", data: p.manifest }] : []),
     { name: "README.md", data: p.readme }, { name: "observations.csv", data: p.observations }, { name: "predictions.csv", data: p.predictions },
     { name: "experiment.json", data: JSON.stringify(p.experiment, null, 2) }, { name: "datapackage.json", data: JSON.stringify(p.datapackage, null, 2) }], now);
 }

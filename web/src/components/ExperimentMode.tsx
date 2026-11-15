@@ -5,7 +5,7 @@ import { corrCI, crossValidate, dMSE, MODELS, parkingPredictions, parkingVerdict
 import type { SceneSpec } from "./MissionMode";
 import { Chip, M, More, P, Seg, sgn, Slider, Step } from "./ui";
 import { DataTable, datasetId, DownloadBar, software } from "./ExperimentTools";
-import { disagreeCSV, disagreePackage, parkingCSV, parkingPackage, terrainCSV, terrainPackage, type TerrainInput } from "@/lib/exports";
+import { disagreeCSV, disagreePackage, parkingCSV, parkingPackage, terrainCSV, terrainPackage, type ScreeningRow, type TerrainInput } from "@/lib/exports";
 
 type Exp = "terrain" | "parking" | "disagree";
 const EXPS: { id: Exp; title: string; q: string; n: string }[] = [
@@ -24,7 +24,7 @@ function inPublished(ds: Dataset, r: TSRow) {
 function Strip({ rows, pred, revealed, label, selected, onPick }: { rows: TSRow[]; pred: number[]; revealed: boolean; label: string; selected?: string | null; onPick?: (r: TSRow) => void }) {
   const W = 380, H = 170, pl = 34, pr = 8, pt = 8, pb = 24;
   const s0 = rows[0]?.mid_sol ?? 0, s1 = rows[rows.length - 1]?.mid_sol ?? 1;
-  const vals = pred.concat(revealed ? rows.map((r) => r.y_obs) : []).map((v) => v * 100);
+  const vals = pred.concat(revealed ? rows.map((r) => r.y_obs) : []).map(pctLog);
   const lo = Math.max(-25, Math.min(-4, ...vals)), hi = Math.min(15, Math.max(4, ...vals));
   const x = (s: number) => pl + ((s - s0) / (s1 - s0 || 1)) * (W - pl - pr), y = (v: number) => H - pb - ((v - lo) / (hi - lo)) * (H - pb - pt);
   return (
@@ -33,17 +33,17 @@ function Strip({ rows, pred, revealed, label, selected, onPick }: { rows: TSRow[
       <svg viewBox={`0 0 ${W} ${H}`} className="chart" role="img" aria-label="Predicted and measured local dose anomaly at each stop, in time order">
         <g className="grid">{[-20, -10, 0, 10].filter((v) => v > lo && v < hi).map((v) => <line key={v} x1={pl} x2={W - pr} y1={y(v)} y2={y(v)} />)}</g>
         <line x1={pl} x2={W - pr} y1={y(0)} y2={y(0)} stroke="rgba(239,230,216,0.35)" />
-        {revealed && rows.map((r, i) => <circle key={`m${i}`} cx={x(r.mid_sol)} cy={y(Math.max(lo, Math.min(hi, r.y_obs * 100)))} r={2.6} fill="none" stroke="#f6f1e7" strokeOpacity={0.75} />)}
-        {rows.map((r, i) => <circle key={`p${i}`} cx={x(r.mid_sol)} cy={y(Math.max(lo, Math.min(hi, pred[i] * 100)))} r={2.2} fill="#7db3cb" />)}
+        {revealed && rows.map((r, i) => <circle key={`m${i}`} cx={x(r.mid_sol)} cy={y(Math.max(lo, Math.min(hi, pctLog(r.y_obs))))} r={2.6} fill="none" stroke="#f6f1e7" strokeOpacity={0.75} />)}
+        {rows.map((r, i) => <circle key={`p${i}`} cx={x(r.mid_sol)} cy={y(Math.max(lo, Math.min(hi, pctLog(pred[i]))))} r={2.2} fill="#7db3cb" />)}
         {[-20, -10, 0, 10].filter((v) => v > lo && v < hi).map((v) => <text key={v} x={pl - 5} y={y(v) + 4} textAnchor="end">{v}%</text>)}
         {rows.map((r, i) => r.rmc === selected && <g key="sel" pointerEvents="none">
           <line x1={x(r.mid_sol)} x2={x(r.mid_sol)} y1={pt} y2={H - pb} stroke="#e7b37d" strokeWidth={1} strokeDasharray="2 3" />
-          <circle cx={x(r.mid_sol)} cy={y(Math.max(lo, Math.min(hi, (revealed ? r.y_obs : pred[i]) * 100)))} r={6} fill="none" stroke="#e7b37d" strokeWidth={2} /></g>)}
-        {onPick && rows.map((r, i) => <circle key={`h${i}`} cx={x(r.mid_sol)} cy={y(Math.max(lo, Math.min(hi, (revealed ? r.y_obs : pred[i]) * 100)))} r={5}
+          <circle cx={x(r.mid_sol)} cy={y(Math.max(lo, Math.min(hi, pctLog(revealed ? r.y_obs : pred[i]))))} r={6} fill="none" stroke="#e7b37d" strokeWidth={2} /></g>)}
+        {onPick && rows.map((r, i) => <circle key={`h${i}`} cx={x(r.mid_sol)} cy={y(Math.max(lo, Math.min(hi, pctLog(revealed ? r.y_obs : pred[i]))))} r={5}
           fill="transparent" style={{ cursor: "pointer" }} onClick={() => onPick(r)}><title>{`Stop ${r.rmc}, sol ${r.sol}`}</title></circle>)}
         <text x={pl} y={H - 6}>sol {Math.round(s0)}</text><text x={W - pr} y={H - 6} textAnchor="end">sol {Math.round(s1)}</text>
       </svg>
-      <figcaption className="muted">Each dot is one rover stop: its dose against the surrounding ±15 sols, in percent. Values beyond the axis are drawn at its edge.{onPick ? " Click a dot to find the stop on the terrain." : ""}</figcaption>
+      <figcaption className="muted">Each dot is one rover stop: how much its dose rate differed from Curiosity&apos;s other stops within ±15 sols, as an actual percentage change. Values beyond the axis are drawn at its edge.{onPick ? " Click a dot to find the stop on the terrain." : ""}</figcaption>
     </figure>
   );
 }
@@ -51,7 +51,7 @@ function Strip({ rows, pred, revealed, label, selected, onPick }: { rows: TSRow[
 function Scatter({ x, y, slope }: { x: number[]; y: number[]; slope?: number }) {
   const W = 380, H = 230, pl = 36, pb = 28, pt = 8, pr = 8, lo = -16, hi = 10;
   const sx = (v: number) => pl + ((v - lo) / (hi - lo)) * (W - pl - pr), sy = (v: number) => H - pb - ((v - lo) / (hi - lo)) * (H - pb - pt);
-  const c = (v: number) => Math.max(lo, Math.min(hi, v * 100));
+  const c = (v: number) => Math.max(lo, Math.min(hi, pctLog(v)));
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="chart" role="img" aria-label="Measured against predicted anomaly">
       <g className="grid">{[-15, -10, -5, 0, 5].map((v) => <g key={v}><line x1={sx(v)} x2={sx(v)} y1={pt} y2={H - pb} /><line x1={pl} x2={W - pr} y1={sy(v)} y2={sy(v)} /></g>)}</g>
@@ -60,8 +60,8 @@ function Scatter({ x, y, slope }: { x: number[]; y: number[]; slope?: number }) 
       {x.map((v, i) => <circle key={i} cx={sx(c(v))} cy={sy(c(y[i]))} r={2.6} fill="none" stroke="#f6f1e7" strokeOpacity={0.7} />)}
       {[-15, -10, -5, 0, 5].map((v) => <text key={`a${v}`} x={sx(v)} y={H - pb + 13} textAnchor="middle">{v}</text>)}
       {[-15, -10, -5, 0, 5].map((v) => <text key={`b${v}`} x={pl - 5} y={sy(v) + 4} textAnchor="end">{v}</text>)}
-      <text x={(pl + W) / 2} y={H - 2} textAnchor="middle" className="lbl">predicted, %</text>
-      <text x={10} y={(pt + H - pb) / 2} textAnchor="middle" className="lbl" transform={`rotate(-90 10 ${(pt + H - pb) / 2})`}>measured, %</text>
+      <text x={(pl + W) / 2} y={H - 2} textAnchor="middle" className="lbl">predicted change, %</text>
+      <text x={10} y={(pt + H - pb) / 2} textAnchor="middle" className="lbl" transform={`rotate(-90 10 ${(pt + H - pb) / 2})`}>measured change, %</text>
     </svg>
   );
 }
@@ -118,7 +118,12 @@ export function ExperimentMode({ ds, setScene, setLayer, focusOn, initial = null
 type ExpProps = { ds: Dataset; revealed: boolean; setRevealed: (v: boolean) => void; setScene: (s: SceneSpec) => void; focusOn: (x: number, y: number, dist?: number) => void };
 const SUBSETS: Record<string, string> = { all: "All 322 stops", nomgn: "Without Maria Gordon Notch (site 92)", nopub: "Without the published Guo et al. periods",
   nostrong: "Without the 5 % strongest modeled terrain anomalies", long: "Stops with at least 2 sols of RAD data" };
-const pc = (v: number) => sgn(v * 100, 1);
+// Units: anomalies are natural-log ratios y (the statistical target); the public view shows the actual change 100*(e^y - 1).
+// Differences between two actual percentages are percentage points. RMSE/MSE stay on the log scale (x100) they are computed on.
+const pctLog = (y: number) => (Math.exp(y) - 1) * 100;
+const pcL = (y: number) => sgn(pctLog(y), 1);
+const pcF = (f: number) => sgn(f * 100, 1);
+const ppD = (a: number, b: number) => sgn(pctLog(a) - pctLog(b), 1);
 
 function TerrainExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps) {
   const ts = ds.terrainSignal!;
@@ -159,7 +164,8 @@ function TerrainExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps) 
   const input = (): TerrainInput => ({ rows, excluded: ts.rows.filter((q) => !rows.includes(q)).map((q) => q.rmc), subset: { id: subset, label: SUBSETS[subset] },
     model: a, baseline: b, k, L, window: ts.window_sols, pred: res.cv.pred, block: res.cv.block, edges: res.cv.edges, coefs: res.cv.coefs, pub: (q) => inPublished(ds, q),
     results: { rmseA: res.rmseA, rmseB: res.rmseB, rmseRed: res.rmseRed, mseRed: res.mseRed, skillA: res.skillA, skillB: res.skillB, d: res.d, ds: res.ds,
-      shares: res.shares, slope: res.sl, corr: res.rc, verdict: verdict[1] } });
+      shares: res.shares, slope: res.sl, corr: res.rc, verdict: verdict[1] },
+    screening: subset === "all" && a === "M3" && b === "M0" && k === 8 ? (ts as unknown as { sep_screening?: { variants: ScreeningRow[] } }).sep_screening?.variants : undefined });
   // linked selection: a chart dot or table row puts the stop on the terrain
   const selRow = rows.find((q) => q.rmc === sel) ?? null, selI = selRow ? rows.indexOf(selRow) : -1;
   const pick = (q: TSRow) => { setSel(q.rmc); focusOn(q.x, q.y, 700); };
@@ -182,7 +188,7 @@ function TerrainExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps) 
       <p className="lede">Curiosity&apos;s dose rate rose and fell with the Sun&apos;s cycle and the seasons. Compared with its other stops at about the same time, was a stop&apos;s dose lower where the terrain shields more?</p>
     </Step>
     <Step n={2} title="Prediction">
-      <p className="prose">The {nameA} predicts each stop&apos;s difference from its neighbours in time: the blue dots. It is scored on {k} blocks of time it was not fitted to.</p>
+      <p className="prose">The {nameA} predicts each stop&apos;s difference from its neighbours in time: the blue dots. {MODELS[a].fit.length ? <>Its coefficients are fitted on other blocks of time and it is scored on the {k} blocks it was not fitted to.</> : <>It has no fitted parameters: it uses only the terrain, so the time blocks matter only for models with fitted coefficients (pressure, rescaled terrain).</>}</p>
       <Strip rows={rows} pred={res.cv.pred[a]} revealed={revealed} label={MODELS[a].short} selected={sel} onPick={pick} />
       <More label="Change the test">
         <div className="row"><span className="muted">Test</span>
@@ -204,7 +210,8 @@ function TerrainExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps) 
       </Step>
       <Step n={4} title="Result">
         <Chip kind={verdict[0]}>{verdict[1]}</Chip>
-        <p className="verdict-head">On a typical stop the {nameA} is off by <P>{res.rmseA.toFixed(2)}</P> points, against {res.rmseB.toFixed(2)} for {nameB}: {Math.abs(res.rmseRed * 100).toFixed(1)} % {res.rmseRed >= 0 ? "closer to" : "further from"} the measurements.</p>
+        <p className="verdict-head">The {nameA}&apos;s typical error is <P>{res.rmseA.toFixed(2)}</P> against {res.rmseB.toFixed(2)} for {nameB}: {Math.abs(res.rmseRed * 100).toFixed(1)} % {res.rmseRed >= 0 ? "smaller" : "larger"}.</p>
+        <p className="muted">Typical error is the RMSE of the log anomaly × 100, which at these sizes is close to percentage points of dose-rate change. The {Math.abs(res.rmseRed * 100).toFixed(1)} % is a relative reduction of that error, not {Math.abs(res.rmseRed * 100).toFixed(1)} percentage points of radiation.</p>
         <p className="muted">{rows.length} stops; {verdict[0] === "supported" ? "the improvement holds when whole sites or blocks of time are resampled" : "within the uncertainty from resampling whole sites and blocks of time"}.</p>
       </Step>
       <Step n={5} title="Explanation">
@@ -212,8 +219,8 @@ function TerrainExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps) 
           <p className="prose">Most of this comes from one place: <b>{top.n} stops {top.site === MGN_SITE ? "at Maria Gordon Notch" : `at site ${top.site}`} carry {(top.share * 100).toFixed(0)} %</b> of the improvement.</p>
           {top.site === MGN_SITE && <button className="btn" onClick={() => setSubset("nomgn")}>Test again without the notch</button>}
         </>)}
-        {subset === "nomgn" && <p className="prose">Without the notch the {nameA} is {Math.abs(res.rmseRed * 100).toFixed(1)} % {res.rmseRed >= 0 ? "closer" : "further"}: {verdict[0] === "supported" ? "smaller, but still a real improvement" : "no longer distinguishable"}.</p>}
-        {x5?.rmse_reduction && x10?.rmse_reduction && <p className="prose">The terrain signal lives at strongly shielded places. Without the 5 % most shielded stops the terrain model is only {(x5.rmse_reduction.M3 * 100).toFixed(1)} % closer, and without the 10 % it is {(x10.rmse_reduction.M3 * 100).toFixed(1)} %, indistinguishable from zero.</p>}
+        {subset === "nomgn" && <p className="prose">Without the notch the {nameA}&apos;s typical error is {Math.abs(res.rmseRed * 100).toFixed(1)} % {res.rmseRed >= 0 ? "smaller" : "larger"}: {verdict[0] === "supported" ? "smaller, but still a real improvement" : "no longer distinguishable"}.</p>}
+        {x5?.rmse_reduction && x10?.rmse_reduction && <p className="prose">The terrain signal lives at strongly shielded places. Without the 5 % most shielded stops the terrain model&apos;s error is only {(x5.rmse_reduction.M3 * 100).toFixed(1)} % smaller, and without the 10 % it is {(x10.rmse_reduction.M3 * 100).toFixed(1)} % smaller, indistinguishable from zero.</p>}
         <div className="note">
           <p><b>What this tests.</b> Whether terrain predicts how much a stop&apos;s dose differs from Curiosity&apos;s other stops at about the same time: a local anomaly of a few percent. It does not predict absolute dose at a new place.</p>
           <p><b>Not fully independent.</b> The terrain model was not fitted here, but its one free parameter (the albedo share) was derived by Guo et al. (2026) from RAD data at the published periods, including the notch.</p>
@@ -227,7 +234,8 @@ function TerrainExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps) 
               Correlation r = {res.rc.r.toFixed(2)} ({res.rc.lo.toFixed(2)} to {res.rc.hi.toFixed(2)}).</p>
           </>)}
           <p className="prose">Pressure: at this stop-level design, pressure differences between a stop and its neighbourhood are only a few pascals (spread {ts.predictor_spread_pp.pressure_term.toFixed(2)} pp of dose), so pressure control barely changes predictions. That does not mean pressure is unimportant: it drives the daily dose cycle (Guo et al. 2015).</p>
-          <p className="prose">Sol 1812 (September 2017) is hit by a solar particle event (+49 %). It inflates every model&apos;s error equally; it is kept, as pre-specified, which makes the relative improvement smaller, not larger.</p>
+          <p className="prose">Two solar particle events fall inside the stops: 10–13 September 2017 and 28–29 October 2021 (detected in the RAD records).
+            The reference result keeps every record, a choice made before this check (the analysis was not pre-registered). Removing the event records is a sensitivity analysis in Evidence → RAD + pressure analysis.</p>
         </More>
       </Step>
       <section className="dataset" aria-label="The data behind this result">
@@ -237,7 +245,7 @@ function TerrainExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps) 
           <div className="sel-card" aria-live="polite">
             <b>Stop {selRow.rmc}, sol {selRow.sol}</b>
             <span>{selRow.utc_start.slice(0, 10)}, {selRow.n_obs} RAD records, <M>{selRow.E_mean.toFixed(0)} µGy/day</M>, <M>{selRow.P_mean.toFixed(0)} Pa</M></span>
-            <span>Measured <M>{pc(selRow.y_obs)} %</M> against its neighbours; {MODELS[a].short.toLowerCase()} <P>{pc(res.cv.pred[a][selI])} %</P>; {(selRow.B * 100).toFixed(0)} % of the sky blocked (modeled).</span>
+            <span>Measured <M>{pcL(selRow.y_obs)} %</M> against its neighbours; {MODELS[a].short.toLowerCase()} <P>{pcL(res.cv.pred[a][selI])} %</P>; {(selRow.B * 100).toFixed(0)} % of the sky blocked (modeled).</span>
           </div>)}
         <DataTable rows={order.map((i) => i)} id={(i) => rows[i].rmc} selected={sel} onSelect={(i) => pick(rows[i])}
           caption={`${rows.length} stops in the selection; select a row to find it on the terrain`}
@@ -247,12 +255,12 @@ function TerrainExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps) 
             { key: "dose", label: "µGy/day", title: "RAD measured dose rate", num: true, wide: true, render: (i) => <M>{rows[i].E_mean.toFixed(0)}</M> },
             { key: "p", label: "Pa", title: "REMS pressure", num: true, wide: true, render: (i) => <M>{rows[i].P_mean.toFixed(0)}</M> },
             { key: "B", label: "Sky blocked", title: "Modeled blocked fraction", num: true, wide: true, render: (i) => <P>{(rows[i].B * 100).toFixed(0)} %</P> },
-            { key: "obs", label: "Measured", title: "Measured anomaly against neighbours, %", num: true, render: (i) => <M>{pc(rows[i].y_obs)}</M> },
-            { key: "pred", label: MODELS[a].short, title: "Held-out prediction, %", num: true, render: (i) => <P>{pc(res.cv.pred[a][i])}</P> },
-            { key: "res", label: "Error", title: "Measured minus predicted, percentage points", num: true, render: (i) => pc(rows[i].y_obs - res.cv.pred[a][i]) },
+            { key: "obs", label: "Measured", title: "Measured change against neighbours, actual %", num: true, render: (i) => <M>{pcL(rows[i].y_obs)}</M> },
+            { key: "pred", label: MODELS[a].short, title: "Predicted change, actual %", num: true, render: (i) => <P>{pcL(res.cv.pred[a][i])}</P> },
+            { key: "res", label: "Error", title: "Measured minus predicted change, percentage points", num: true, render: (i) => ppD(rows[i].y_obs, res.cv.pred[a][i]) },
             { key: "blk", label: "Block", title: "Held-out time block", num: true, wide: true, render: (i) => res.cv.block[i] },
           ]} />
-        <p className="muted">Anomalies in percent are 100 × the natural-log ratio used in the calculation. Measured values are NASA RAD and REMS data aggregated by MarsShield; the downloads add every column and its definition.</p>
+        <p className="muted">Percentages are actual changes, 100 × (e<sup>y</sup> − 1), of the log anomaly y used in the calculation; errors are percentage-point differences. Measured values are NASA RAD and REMS data aggregated by MarsShield; the downloads add every column and its definition.</p>
       </section>
     </>)}
   </>);
@@ -313,11 +321,11 @@ function ParkingExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps) 
           cols={[
             { key: "p", label: "Period", render: (r) => r.parking },
             { key: "site", label: "Site", render: (r) => r.site },
-            { key: "m", label: "Measured", num: true, render: (r) => <M>{pc(r.measured)}</M> },
-            { key: "a", label: "Physical", num: true, render: (r) => <P>{pc(r.albedo)}</P> },
-            { key: "s", label: "Sky only", num: true, wide: true, render: (r) => <P>{pc(r.sky)}</P> },
-            { key: "r", label: "Rule", num: true, render: (r) => <P>{pc(r.proportional)}</P> },
-            { key: "dB", label: "Δ sky blocked", num: true, wide: true, render: (r) => <P>{pc(r.dB)}</P> },
+            { key: "m", label: "Measured", num: true, render: (r) => <M>{pcF(r.measured)}</M> },
+            { key: "a", label: "Physical", num: true, render: (r) => <P>{pcF(r.albedo)}</P> },
+            { key: "s", label: "Sky only", num: true, wide: true, render: (r) => <P>{pcF(r.sky)}</P> },
+            { key: "r", label: "Rule", num: true, render: (r) => <P>{pcF(r.proportional)}</P> },
+            { key: "dB", label: "Δ sky blocked (pts)", num: true, wide: true, render: (r) => <P>{pcF(r.dB)}</P> },
           ]} />
       </Step>
     </>)}
@@ -417,9 +425,9 @@ function DisagreeExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps)
             { key: "rank", label: "#", num: true, render: (r) => top.indexOf(r) + 1 },
             { key: "stop", label: "Stop", render: (r) => r.rmc },
             { key: "sol", label: "Sol", num: true, wide: true, render: (r) => r.sol },
-            { key: "obs", label: "Measured", num: true, render: (r) => <M>{pc(r.y_obs)}</M> },
-            { key: "m", label: "Physical", num: true, render: (r) => <P>{pc(r.m_terrain)}</P> },
-            { key: "g", label: "Rule", num: true, render: (r) => <P>{pc(r.g_proxy)}</P> },
+            { key: "obs", label: "Measured", num: true, render: (r) => <M>{pcL(r.y_obs)}</M> },
+            { key: "m", label: "Physical", num: true, render: (r) => <P>{pcL(r.m_terrain)}</P> },
+            { key: "g", label: "Rule", num: true, render: (r) => <P>{pcL(r.g_proxy)}</P> },
             { key: "c", label: "Closer", render: (r) => (Math.abs(r.y_obs - r.m_terrain) < Math.abs(r.y_obs - r.g_proxy) ? "physical" : "rule") },
           ]} />
       </Step>

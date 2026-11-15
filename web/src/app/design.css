@@ -209,3 +209,9 @@ table.dt tbody tr:focus-visible { outline: 2px solid var(--dust-2); outline-offs
   html, body { overflow: hidden; }
   .app { overflow: clip; }
 }
+
+/* audit tables with wrapping text cells, figure blocks */
+table.dt.wrap th, table.dt.wrap td { white-space: normal; vertical-align: top; min-width: 120px; line-height: 1.45; }
+table.dt.wrap td:first-child { font-weight: 600; color: var(--ink); }
+.fig-block { display: grid; gap: 6px; }
+.fig-h { margin: 6px 0 0; font-size: 14px; font-weight: 650; }

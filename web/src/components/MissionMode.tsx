@@ -227,7 +227,7 @@ export function MissionMode({ ds, eng, setScene, focusOn }: { ds: Dataset; eng: 
             <dl className="facts">
               <div><dt>Work time</dt><dd><A>{h(D.duration_h[1])}</A></dd></div>
               <div><dt>Work area</dt><dd><A>{D.work_radius_m} m</A> radius</dd></div>
-              {D.measured_rad && <div><dt>Curiosity measured</dt><dd><M>{D.measured_rad.E_mean_uGy_d.toFixed(0)} µGy/day</M></dd></div>}
+              {D.measured_rad && <div><dt>Curiosity measured (sol {D.measured_rad.sol})</dt><dd><M>{D.measured_rad.E_mean_uGy_d.toFixed(0)} µGy/day</M></dd></div>}
             </dl>
             <More label="Geology, Curiosity's findings and sources">
               <p className="prose"><b>Look for:</b> {D.look_for}</p>
@@ -355,14 +355,23 @@ export function MissionMode({ ds, eng, setScene, focusOn }: { ds: Dataset; eng: 
             {(() => {
               const near = ds.terrainSignal?.rows.filter((r) => Math.hypot(r.x - D.x, r.y - D.y) < 40) ?? [];
               if (!near.length) return null;
-              const avg = (k: "y_obs" | "m_terrain" | "g_proxy") => (near.reduce((q, r) => q + r[k], 0) / near.length) * 100;
+              // mean of the actual percentage changes 100*(e^y - 1) (the log anomalies are averaged only inside the statistics)
+              const avg = (k: "y_obs" | "m_terrain" | "g_proxy") => near.reduce((q, r) => q + (Math.exp(r[k]) - 1) * 100, 0) / near.length;
               return <div className="cmp"><b><M>{sgn(avg("y_obs"))} %</M></b>
                 <span><strong>Average of Curiosity&apos;s {near.length} stop{near.length > 1 ? "s" : ""} within 40 m</strong>, same ±15-sol reference; these stops have {(Math.min(...near.map((r) => r.B)) * 100).toFixed(0)} to {(Math.max(...near.map((r) => r.B)) * 100).toFixed(0)} % of the sky blocked, so the average mixes sheltered and open ground. Terrain model <P>{sgn(avg("m_terrain"))} %</P>, blocked-sky rule <P>{sgn(avg("g_proxy"))} %</P>. This is the comparison used across all 322 stops.</span></div>;
             })()}
             {ds.parking.pairs.filter((q) => { const pp = ds.parking.periods[q.parking]; return pp && Math.hypot(pp.x - D.x, pp.y - D.y) < 60; }).map((q) => {
               const pp = ds.parking.periods[q.parking], bg = ds.parking.periods[q.background];
+              const story = dest === "mgn" && q.parking === "P6";
+              const day = (u: string) => u.slice(0, 10);
+              const gapH = Math.max(0, (Math.max(Date.parse(bg.utc[0]), Date.parse(pp.utc[0])) - Math.min(Date.parse(bg.utc[1]), Date.parse(pp.utc[1]))) / 3.6e6);
+              const mod = (pp.Dfs / bg.Dfs - 1) * 100;   // change expected from the different solar modulation alone (flat-ground model)
               return <div className="cmp" key={q.parking}><b><M>{sgn((pp.D_RAD_ours / bg.D_RAD_ours - 1) * 100)} %</M></b>
-                <span><strong>Published parking pair {q.parking} against {q.background}</strong>: deep inside against the notch mouth {Math.hypot(pp.x - bg.x, pp.y - bg.y).toFixed(0)} m away, on consecutive days (Guo et al. 2026). This is the comparison in the opening story.</span></div>;
+                <span><strong>Published parking pair {q.parking} against {q.background}</strong> at {pp.site}: {story ? "deep inside the notch against its mouth" : "the parking position against its background position"}{" "}
+                  {Math.hypot(pp.x - bg.x, pp.y - bg.y).toFixed(0)} m away ({q.parking}: {day(pp.utc[0])} to {day(pp.utc[1])}; {q.background}: {day(bg.utc[0])} to {day(bg.utc[1])}{gapH >= 24 ? `, ${(gapH / 24).toFixed(0)} days apart` : ""}; Guo et al. 2026).
+                  {" "}Sky blocked: <P>{(pp.B * 100).toFixed(0)} %</P> and <P>{(bg.B * 100).toFixed(0)} %</P> (modeled).
+                  {Math.abs(mod) >= 0.5 && <> About <P>{sgn(mod)}</P> points of this change are expected from the different solar activity in the two periods alone.</>}
+                  {story && " This is the comparison in the opening story."}</span></div>;
             })}
           </div>
           {ds.skiesTargets[dest] && (<>

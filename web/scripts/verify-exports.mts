@@ -18,7 +18,17 @@ const out = process.argv[2];
 let fails = 0;
 const ok = (name: string, cond: boolean, extra = "") => { if (!cond) fails++; console.log(`${cond ? "ok  " : "FAIL"} ${name}${extra ? `  (${extra})` : ""}`); };
 const near = (a: number, b: number, tol = 1e-9) => Math.abs(a - b) <= tol * Math.max(1, Math.abs(b));
-const parseCSV = (s: string) => { const [h, ...r] = s.trim().split("\r\n"); const cols = h.split(","); return r.map((l) => Object.fromEntries(l.split(",").map((v, i) => [cols[i], v]))); };
+// RFC 4180 fields (quoted fields may contain commas and doubled quotes)
+const splitCSV = (l: string) => {
+  const out: string[] = []; let cur = "", q = false;
+  for (let i = 0; i < l.length; i++) {
+    const ch = l[i];
+    if (q) { if (ch === '"' && l[i + 1] === '"') { cur += '"'; i++; } else if (ch === '"') q = false; else cur += ch; }
+    else if (ch === '"') q = true; else if (ch === ",") { out.push(cur); cur = ""; } else cur += ch;
+  }
+  out.push(cur); return out;
+};
+const parseCSV = (s: string) => { const [h, ...r] = s.trim().split("\r\n"); const cols = splitCSV(h); return r.map((l) => Object.fromEntries(splitCSV(l).map((v, i) => [cols[i], v]))); };
 const pub = (r: { mid_sol: number }) => Object.values(ex.periods).some((p: any) => r.mid_sol >= p.sols[0] - 1 && r.mid_sol <= p.sols[1] + 1);
 
 function terrain(model: ModelId, baseline: ModelId, subset: "all" | "nomgn" | "nopub", k: number, L: number): TerrainInput {
@@ -64,6 +74,13 @@ const data = (f: string) => ({ file: `data/${f}`, sha256: sha(f), generated_utc:
   const z = readZip(packageZip(p, NOW));
   ok("ZIP: five files, CRCs valid", z.map((f) => f.name).sort().join(",") === "README.md,datapackage.json,experiment.json,observations.csv,predictions.csv" && z.every((f) => f.crcOk));
   ok("ZIP: contents identical to the package", z.find((f) => f.name === "observations.csv")!.text === p.observations && JSON.parse(z.find((f) => f.name === "experiment.json")!.text).results.rmse_model_pp === e.results.rmse_model_pp);
+  ok("background quantities: observed_anomaly_log = mean_log_dose_stop - median_log_dose_background", obs.every((o) => near(+o.mean_log_dose_stop - +o.median_log_dose_background, +o.observed_anomaly_log, 1e-9)));
+  ok("mid_sol described as the occupancy-window midpoint", (p.datapackage as any).resources[0].schema.fields.find((f: any) => f.name === "mid_sol").description.includes("occupancy window"));
+  ok("readable model names exported", pr.every((r) => r.model_name === "Published terrain model" && r.baseline_name.startsWith("Time only")));
+  ok("experiment.json carries a units glossary", !!(p.experiment as any).units?.rmse_reduction);
+  const zm = readZip(packageZip({ ...p, manifest: raw("input_manifest.json").toString("utf8") }, NOW));
+  const man = JSON.parse(zm.find((f) => f.name === "input_manifest.json")!.text);
+  ok("ZIP includes the input manifest with RAD files, hashes and URLs", man.rad_l2.files.length > 1000 && /^[0-9a-f]{64}$/.test(man.rad_l2.files[0].sha256) && man.rad_l2.files[0].url.startsWith("https://spdf.gsfc.nasa.gov/"));
   const one = parseCSV(terrainCSV(t));
   ok("single CSV: 322 rows with observations and predictions joined", one.length === 322 && "rad_dose_rate_uGy_per_day" in one[0] && "model_prediction_log" in one[0]);
   if (out) { mkdirSync(`${out}/terrain_default`, { recursive: true }); for (const f of z) writeFileSync(`${out}/terrain_default/${f.name}`, f.text); }
@@ -87,6 +104,7 @@ const data = (f: string) => ({ file: `data/${f}`, sha256: sha(f), generated_utc:
   const rm = Math.sqrt(pr.reduce((s, r) => s + (+r.model_residual_log) ** 2, 0) / pr.length) * 100;
   ok("switch: RMSE from CSV = in-app statistic", near(rm, t.results.rmseA, 1e-12));
   ok("switch: bootstrap block length recorded", (p.experiment as any).selections.bootstrap_block_length_stops === 40);
+  ok("worse model worded as higher RMSE, not negative lower", t.results.rmseRed < 0 && p.readme.includes("% higher RMSE") && !/\(-\d/.test(p.readme));
   const t1 = terrain("M4", "M1", "all", 8, 20), p1 = terrainPackage(t1, sw, data("terrain_signal.json"), NOW);
   const py = ts.performance.M4.rmse_pp, rm1 = Math.sqrt(parseCSV(p1.predictions).reduce((s, r) => s + (+r.model_residual_log) ** 2, 0) / 322) * 100;
   ok("fitted model M4: RMSE from CSV = Python", near(rm1, py, 1e-9), `${rm1} vs ${py}`);

@@ -4,9 +4,10 @@ import { useState } from "react";
 import type { Dataset } from "@/lib/data";
 import { HorizonCompare, PairDotPlot, ScatterXY, SensitivityBars } from "./Charts";
 import { Grammar, M, More, P, sgn } from "./ui";
+import { AuditSection } from "./AuditSection";
 
-type Sec = "overview" | "signal" | "validation" | "limits" | "data";
-const SECS: [Sec, string][] = [["overview", "Overview"], ["signal", "RAD + pressure analysis"], ["validation", "Validation"], ["limits", "Limitations"], ["data", "Data & reproducibility"]];
+type Sec = "overview" | "signal" | "validation" | "audit" | "limits" | "data";
+const SECS: [Sec, string][] = [["overview", "Overview"], ["signal", "RAD + pressure analysis"], ["validation", "Validation"], ["audit", "Audit & corrections"], ["limits", "Limitations"], ["data", "Data & reproducibility"]];
 
 export function EvidenceMode({ ds }: { ds: Dataset }) {
   const [sec, setSec] = useState<Sec>("overview");
@@ -25,8 +26,8 @@ export function EvidenceMode({ ds }: { ds: Dataset }) {
         {sec === "overview" && (<>
           <h2 className="q">Findings</h2>
           <ol className="prose" style={{ paddingLeft: 18, margin: 0, display: "grid", gap: 8 }}>
-            <li><b>Terrain measurably lowers cosmic-ray dose.</b> Beside cliffs and buttes, Curiosity&apos;s RAD recorded drops of <M>2.1 to 19.4 %</M> (8 published parking periods, reproduced from NASA RAD data).</li>
-            {t && <li><b>Across 322 stops, terrain helps reconstruct where dose was locally lower, mostly at one notch.</b> On held-out time blocks the terrain model lowers the typical error against time alone by <P>{(t.rmse_reduction_vs_M0.M3 * 100).toFixed(1)} %</P> (mean squared error by {(t.performance.M3.skill_vs_M0 * 100).toFixed(0)} %).
+            <li><b>Terrain measurably lowers cosmic-ray dose.</b> Beside cliffs and buttes, Curiosity&apos;s RAD recorded drops of <M>2.1 to 19.4 %</M> (8 published parking periods, reproduced from NASA RAD data). These raw drops include changes in solar activity between periods; at P5 that change accounts for almost all of the drop (Audit & corrections).</li>
+            {t && <li><b>Across 322 stops, terrain helps reconstruct where dose was locally lower, mostly at one notch.</b> The terrain model lowers the typical error (RMSE of the log anomaly) against time alone by <P>{(t.rmse_reduction_vs_M0.M3 * 100).toFixed(1)} %</P> (mean squared error by {(t.performance.M3.skill_vs_M0 * 100).toFixed(0)} %).
               {" "}{(t.influence.mgn_site.share * 100).toFixed(0)} % of that gain comes from {t.influence.mgn_site.n} stops at Maria Gordon Notch, a site also used to calibrate the model. Without them the gain is smaller but still clear; without the 10 % most shielded stops it is not distinguishable from zero.</li>}
             {t && <li><b>Pressure control does not change this.</b> After whole-sol averaging, pressure differences between nearby stops are a few pascals: a {t.predictor_spread_pp.pressure_term.toFixed(2)}-point effect.</li>}
             {t && <li><b>Blocking sky overstates shielding.</b> Measured anomalies are <M>{t.calibration.sky_proxy.slope.toFixed(2)}×</M> the blocked-sky prediction (95 % CI {t.calibration.sky_proxy.ci95_site_cluster.map((x: number) => x.toFixed(2)).join(" to ")}), while the terrain-albedo model is consistent with the data (<M>{t.calibration.terrain_model.slope.toFixed(2)}×</M>, {t.calibration.terrain_model.ci95_site_cluster.map((x: number) => x.toFixed(2)).join(" to ")}).</li>}
@@ -58,7 +59,7 @@ export function EvidenceMode({ ds }: { ds: Dataset }) {
             <tbody>{t.influence.site_shares_M3_vs_M0.slice(0, 4).map((r: any) => (
               <tr key={r.site}><td>{r.site}{r.site === 92 ? ", Maria Gordon Notch" : ""}</td><td>{r.n}</td><td>{(r.share * 100).toFixed(0)} %</td></tr>))}</tbody>
           </table>
-          <p className="prose">Two notch stops (sols 3322 and 3324, measured −17 % and −21 %) carry {((t.influence.top_stops[0].share + t.influence.top_stops[1].share) * 100).toFixed(0)} % on their own.
+          <p className="prose">Two notch stops (sols 3322 and 3324, measured {sgn((Math.exp(t.rows.find((r: any) => r.rmc === "92_0")?.y_obs ?? 0) - 1) * 100)} % and {sgn((Math.exp(t.rows.find((r: any) => r.rmc === "92_84")?.y_obs ?? 0) - 1) * 100)} % against their neighbours) carry {((t.influence.top_stops[0].share + t.influence.top_stops[1].share) * 100).toFixed(0)} % on their own.
             Dropping one site at a time and rerunning the test, the terrain model&apos;s MSE gain ranges from {(t.influence.leave_one_site_out.min.skill_M3 * 100).toFixed(0)} % (without site {t.influence.leave_one_site_out.min.site}) to {(t.influence.leave_one_site_out.max.skill_M3 * 100).toFixed(0)} % (without site {t.influence.leave_one_site_out.max.site}, which contains a solar particle event).</p>
           <More label="Dependence-aware intervals (moving-block bootstrap, 20 stops)">
             <table className="data">
@@ -83,9 +84,10 @@ export function EvidenceMode({ ds }: { ds: Dataset }) {
             {" "}{t.evaluation_overlap.n_in_published_periods} of the {t.rows.length} stops fall inside those periods, and the stop the day before P6 is at the same notch. The model-error threshold used for stop recommendations comes from the same eight periods.
             Our own design choices (15-sol window, 8 blocks) were reused from the earlier analysis rather than tuned here, but the analysis was not pre-registered.</p>
           <h2 className="q">Dependence between stops</h2>
-          <p className="prose">The residual lag-1 autocorrelation is {t.correlations.terrain_model.lag1_autocorr.observed.toFixed(2)} (effective n ≈ {Math.round(t.correlations.terrain_model.n_eff)} of {t.rows.length}).
+          <p className="prose">Stops at one navigation site share terrain and days, so the evidence comes from {t.influence?.n_sites ?? 35} sites rather than {t.rows.length} independent stops; the intervals above resample whole sites.
             The terrain correlation is r = {t.correlations.terrain_model.r.toFixed(2)} (block bootstrap {t.correlations.terrain_model.block20_ci95.map((x: number) => x.toFixed(2)).join(" to ")}; rank correlation {t.spearman_terrain.toFixed(2)}).
-            The earlier r = 0.36 used a less consistent comparison; this replaces it.</p>
+            The earlier r = 0.36 used a less consistent comparison; this replaces it. An earlier &ldquo;effective n ≈ 294&rdquo; was removed: that formula applies to a correlation, not to the error difference tested here, and ignores site clustering.</p>
+          <p className="muted">The Experiment workspace recomputes these intervals in your browser with a different random-number generator, so its endpoints differ from the ones here by Monte Carlo error (for example −8.25 against −8.42).</p>
           <h2 className="q">Pressure</h2>
           <p className="prose">Fitted pressure coefficient {(t.pressure_coefficient.fitted_uGy_d_per_pa).toFixed(3)} µGy/day/Pa, against {t.pressure_coefficient.literature.value} ± {t.pressure_coefficient.literature.err} from diurnal variations (Guo et al. 2015).
             The stop-level design has little pressure leverage, so this coefficient is poorly constrained and pressure control gives no measurable gain. {(t.meta.frac_obs_with_pressure * 100).toFixed(0)} % of RAD observations have a REMS pressure within an hour.</p>
@@ -115,6 +117,8 @@ export function EvidenceMode({ ds }: { ds: Dataset }) {
             <p className="prose">{au.A1_table1_transcription.cells_checked} Table 1 cells checked, {au.A1_table1_transcription.mismatches} mismatches. The paper states two drops for Maria Gordon Notch (19.4 % in Table 1, 17 % in Section 4); NASA data reproduce 19.4 %.</p>
           </More>
         </>)}
+
+        {sec === "audit" && <AuditSection ts={t} />}
 
         {sec === "limits" && (
           <ul className="prose" style={{ paddingLeft: 18, margin: 0, display: "grid", gap: 8 }}>
