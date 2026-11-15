@@ -1,0 +1,234 @@
+{
+ "generated_utc": "2026-11-15T14:21:33+00:00",
+ "status_definitions": {
+  "validated": "An authentic data product, or a direct geometric derivative of one (slope, profile) at a scale the data resolve, with a published accuracy assessment.",
+  "exploratory": "Computed by MarsShield with a model that has not been tested against measurements in this region.",
+  "unavailable": "Not offered here; the reason is stated."
+ },
+ "raw_inputs": [
+  {
+   "file": "data/raw/regions/mars/megt90n000cb.img",
+   "bytes": 2073600,
+   "sha256": "25f16fb7aaf857898dcf98bc4f841341a24f8b9f7e98453ca083bc45d897ca2c",
+   "url": "https://pds-geosciences.wustl.edu/mgs/mgs-m-mola-5-megdr-l3-v1/mgsl_300x/meg004/megt90n000cb.img"
+  },
+  {
+   "file": "data/raw/regions/jezero/JEZ_ctx_B_soc_008_DTM_20m.tif",
+   "bytes": 9662387,
+   "sha256": "16a1aa66c3f48c1bca252795827db7b417876217aff0f5e1aff18027fab2327b",
+   "url": "https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/mars2020_trn/CTX/JEZ_ctx_B_soc_008_DTM_MOLAtopography_DeltaGeoid_20m_Eqc_latTs0_lon0.tif"
+  },
+  {
+   "file": "data/raw/regions/jezero/M20_waypoints.json",
+   "bytes": 603126,
+   "sha256": "bd143ee69241229926abd373e6305b8bbb326d6b5a7b4a8d6935262696f93dc4",
+   "url": "https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20_waypoints.json"
+  },
+  {
+   "file": "data/raw/regions/olympus/sim3470_gis_files.zip",
+   "bytes": 257109288,
+   "sha256": "165a4a62806bdba974bb41186f07253a017c83d3cae3220dd082e72476e116ad",
+   "url": "https://pubs.usgs.gov/sim/3470/sim3470_gis_files.zip"
+  },
+  {
+   "file": "(window reads)",
+   "url": "https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/HRSC_MOLA_Blend/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif",
+   "note": "Olympus Mons caldera window at native resolution and a 1/8 overview of the volcano, read by HTTP range requests"
+  }
+ ],
+ "regions": [
+  {
+   "id": "gale",
+   "name": "Gale Crater",
+   "kind": "gale",
+   "summary": "Curiosity's radiation measurements and the terrain around Mount Sharp.",
+   "frame": {
+    "type": "lonlat_box",
+    "lon": [
+     137.3368,
+     137.4347
+    ],
+    "lat": [
+     -4.7778,
+     -4.6782
+    ]
+   },
+   "capabilities": [
+    {
+     "name": "Elevation, 3D terrain",
+     "status": "validated",
+     "detail": "USGS MSL Gale merged DEM, 1 m."
+    },
+    {
+     "name": "Radiation measurements",
+     "status": "validated",
+     "detail": "Curiosity RAD Level 2 dose rates (NASA PDS/SPDF) at 322 stops."
+    },
+    {
+     "name": "Sky blocked by terrain",
+     "status": "exploratory",
+     "detail": "Ray traced on the 1 m DEM; compared with Guo et al. (2026) at the parking positions, and differs at P6 (0.33 against 0.38)."
+    },
+    {
+     "name": "Radiation dose model",
+     "status": "exploratory",
+     "detail": "Tested retrospectively against RAD (322 stops, 8 parking periods). Its albedo share was derived from the same data, so this is not independent validation."
+    },
+    {
+     "name": "Routes and where to stand",
+     "status": "exploratory",
+     "detail": "Planning illustration from the dose model; not validated for astronaut dose and not for operational use."
+    }
+   ]
+  },
+  {
+   "id": "mars",
+   "name": "Mars",
+   "kind": "global",
+   "summary": "Global elevation from the Mars Global Surveyor laser altimeter.",
+   "frame": {
+    "type": "lonlat",
+    "lon": [
+     -180,
+     180
+    ],
+    "lat": [
+     -90,
+     90
+    ]
+   },
+   "capabilities": [
+    {
+     "name": "Global elevation",
+     "status": "validated",
+     "detail": "MOLA gridded elevations at about 15 km per pixel; finer features are not resolved."
+    },
+    {
+     "name": "Region outlines",
+     "status": "validated",
+     "detail": "Bounds of each regional dataset, from the regional manifests."
+    },
+    {
+     "name": "Radiation",
+     "status": "unavailable",
+     "detail": "No global radiation map is offered; MarsShield's radiation analysis is local to Gale Crater."
+    }
+   ],
+   "manifest": "regions/mars/manifest.json",
+   "bytes": 685048
+  },
+  {
+   "id": "jezero",
+   "name": "Jezero Crater",
+   "kind": "regional",
+   "summary": "Perseverance's landing site and traverse on the USGS Mars 2020 CTX elevation model.",
+   "frame": {
+    "type": "local",
+    "lon_c": 77.4297203127592,
+    "lat_c": 18.4661109364181,
+    "lon": [
+     77.16046545922367,
+     77.69897516629472
+    ],
+    "lat": [
+     18.211027390963398,
+     18.721194481872804
+    ],
+    "note": "x = R cos(lat_c) dlon, y = R dlat on the 3,396,190 m sphere; east-west scale error within +/-0.3 % across the region"
+   },
+   "capabilities": [
+    {
+     "name": "Elevation, 3D terrain",
+     "status": "validated",
+     "detail": "USGS CTX DTM, 20 m posts over 30 \u00d7 30 km."
+    },
+    {
+     "name": "Slope",
+     "status": "validated",
+     "detail": "Over 20 m. Steps, boulders and scarps narrower than about 40 m are not resolved, so this cannot judge traversability."
+    },
+    {
+     "name": "Elevation profiles",
+     "status": "validated",
+     "detail": "Sampled from the 60 m grid."
+    },
+    {
+     "name": "Perseverance traverse",
+     "status": "validated",
+     "detail": "708 localized waypoints, sols 13\u20132022; DTM minus rover elevation median -1.1 m."
+    },
+    {
+     "name": "Sky blocked by terrain",
+     "status": "exploratory",
+     "detail": "Same definition as Gale, computed on the 60 m grid. Not tested against any measurement here; misses walls narrower than about 100 m."
+    },
+    {
+     "name": "Radiation dose",
+     "status": "unavailable",
+     "detail": "Perseverance carries no cosmic-ray dosimeter, so no local measurement exists to test a model. Gale's RAD results are not transferred."
+    },
+    {
+     "name": "Walking routes",
+     "status": "unavailable",
+     "detail": "The 20 m DTM cannot represent hazards at walking scale."
+    }
+   ],
+   "manifest": "regions/jezero/manifest.json",
+   "bytes": 1801918
+  },
+  {
+   "id": "olympus",
+   "name": "Olympus Mons caldera",
+   "kind": "regional",
+   "summary": "The summit caldera of the largest volcano on Mars, with the USGS geologic map of its six paterae.",
+   "frame": {
+    "type": "local",
+    "lon_c": -133.1014075145054,
+    "lat_c": 18.100859219870934,
+    "lon": [
+     -134.10183434079048,
+     -132.10098068822037
+    ],
+    "lat": [
+     17.000895829081966,
+     19.2008226106599
+    ],
+    "note": "x = R cos(lat_c) dlon, y = R dlat on the 3,396,190 m sphere; east-west scale error within +/-0.6 % across the map"
+   },
+   "capabilities": [
+    {
+     "name": "Elevation, 3D caldera",
+     "status": "validated",
+     "detail": "HRSC/MOLA blend at 200 m posts over the 1:200,000 map area."
+    },
+    {
+     "name": "Slope",
+     "status": "validated",
+     "detail": "Over 200 m only. Caldera walls that are 1\u20133 km high are steeper over shorter distances than this shows."
+    },
+    {
+     "name": "Elevation profiles",
+     "status": "validated",
+     "detail": "Sampled from the 200 m grid."
+    },
+    {
+     "name": "Geologic units",
+     "status": "validated",
+     "detail": "USGS SIM 3470 polygons (Mouginis-Mark, 2021), 1:200,000."
+    },
+    {
+     "name": "Radiation dose",
+     "status": "unavailable",
+     "detail": "No surface radiation measurement exists here. Curiosity's RAD data belong to Gale and are not transferred; no model is offered."
+    },
+    {
+     "name": "Sky blocked, routes",
+     "status": "unavailable",
+     "detail": "A 200 m grid cannot represent shielding or hazards at the scale of a person."
+    }
+   ],
+   "manifest": "regions/olympus/manifest.json",
+   "bytes": 2239084
+  }
+ ]
+}

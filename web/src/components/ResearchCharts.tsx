@@ -201,3 +201,45 @@ export function useScrollRowIntoView(container: React.RefObject<HTMLElement | nu
     if (top < c.scrollTop + 30 || bottom > c.scrollTop + c.clientHeight) c.scrollTop = Math.max(0, top - c.clientHeight / 2);
   }, [container, key]);
 }
+
+/** Elevation profile: a line from the elevation model plus optional points (for example rover-reported elevations). */
+export function ProfileChart({ d, z, points, label, pointLabel, onHover }: {
+  d: number[]; z: number[]; points?: { d: number; z: number }[]; label: string; pointLabel?: string; onHover?: (i: number | null) => void;
+}) {
+  const [ref, { w, h }] = useSize<HTMLDivElement>();
+  const [hi, setHi] = useState<number | null>(null);
+  const pl = 58, pr = 14, pt = 10, pb = 30;
+  const zs = z.filter(Number.isFinite).concat((points ?? []).map((p) => p.z));
+  const z0 = Math.min(...zs), z1 = Math.max(...zs), pad = (z1 - z0) * 0.06 || 10;
+  const lo = z0 - pad, top = z1 + pad, D = d[d.length - 1] || 1;
+  const sx = (v: number) => pl + (v / D) * (w - pl - pr), sy = (v: number) => pt + (1 - (v - lo) / (top - lo)) * (h - pt - pb);
+  const path = d.map((v, i) => (Number.isFinite(z[i]) ? `${i && Number.isFinite(z[i - 1]) ? "L" : "M"}${sx(v).toFixed(1)},${sy(z[i]).toFixed(1)}` : "")).join("");
+  const km = D >= 2000;
+  const fmtD = (v: number) => (km ? `${(v / 1000).toFixed(v < 10000 ? 1 : 0)} km` : `${Math.round(v)} m`);
+  const move = (e: React.MouseEvent) => {
+    const b = (e.currentTarget as SVGElement).getBoundingClientRect(), x = e.clientX - b.left;
+    const t = Math.max(0, Math.min(1, (x - pl) / (w - pl - pr))) * D;
+    let i = 0; while (i < d.length - 1 && d[i] < t) i++;
+    setHi(i); onHover?.(i);
+  };
+  return (
+    <div className="rc-wrap">
+      <div className="rc-tools">
+        <LegendRow items={[{ shape: "circle", color: "#7db3cb", label }, ...(points?.length ? [{ shape: "ring" as Shape, color: "#f6f1e7", label: pointLabel ?? "points" }] : [])]} />
+        {hi != null && Number.isFinite(z[hi]) && <span className="muted small">{fmtD(d[hi])}: {Math.round(z[hi]).toLocaleString("en")} m</span>}
+      </div>
+      <div className="rc-area" ref={ref}>
+        <svg width={w} height={h} role="img" aria-label={`Elevation profile, ${fmtD(D)} long, ${Math.round(z0).toLocaleString("en")} to ${Math.round(z1).toLocaleString("en")} m`}
+          onMouseMove={move} onMouseLeave={() => { setHi(null); onHover?.(null); }}>
+          <g className="rc-grid">{niceTicks(lo, top, 5).map((v) => <g key={v}><line x1={pl} x2={w - pr} y1={sy(v)} y2={sy(v)} /><text x={pl - 6} y={sy(v) + 4} textAnchor="end">{v.toLocaleString("en")}</text></g>)}</g>
+          {niceTicks(0, D, Math.max(3, Math.floor(w / 120))).map((v) => <text key={v} x={sx(v)} y={h - 10} textAnchor="middle" className="rc-axis">{fmtD(v)}</text>)}
+          <text x={14} y={pt + (h - pt - pb) / 2} transform={`rotate(-90 14 ${pt + (h - pt - pb) / 2})`} textAnchor="middle" className="rc-axis">elevation, m</text>
+          <path d={`${path}`} fill="none" stroke="#7db3cb" strokeWidth={2} />
+          {(points ?? []).map((p, i) => <circle key={i} cx={sx(p.d)} cy={sy(p.z)} r={2.6} fill="none" stroke="#f6f1e7" strokeOpacity={0.8} />)}
+          {hi != null && Number.isFinite(z[hi]) && <g pointerEvents="none"><line x1={sx(d[hi])} x2={sx(d[hi])} y1={pt} y2={h - pb} className="rc-sel-line" />
+            <circle cx={sx(d[hi])} cy={sy(z[hi])} r={5} fill="none" stroke="#e7b37d" strokeWidth={2} /></g>}
+        </svg>
+      </div>
+    </div>
+  );
+}

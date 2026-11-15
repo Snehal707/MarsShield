@@ -24,6 +24,17 @@ The site opens with a five-step guided story on the real terrain:
 
 The comparison is drawn as bars of the drop itself, so the gap between prediction and measurement is visible at a glance. Every number is read from the exported RAD reduction and audit files. Clicking the wordmark replays the story. Corrections and their earlier values are listed in [docs/SCIENCE_AUDIT.md](docs/SCIENCE_AUDIT.md); the research layout and accessibility changes in [docs/RESEARCH_WORKSPACE.md](docs/RESEARCH_WORKSPACE.md).
 
+## Beyond Gale: Mars overview, Jezero and Olympus Mons
+
+The region menu in the top bar also opens a **Mars overview** (MOLA global elevation), **Jezero Crater** (USGS Mars 2020 CTX DTM, 20 m, with Perseverance's 708 localized waypoints) and the **Olympus Mons caldera** (HRSC/MOLA blend, 200 m, with the USGS SIM 3470 geologic map).
+
+- **Terrain only.** These regions offer 3D terrain, slope, elevation profiles, landmarks and, for Olympus Mons, the geologic units.
+- **Capability matrix.** Each region lists every capability as *Validated*, *Exploratory model* or *Unavailable*, with the reason.
+- **No radiation.** Radiation dose is unavailable outside Gale: no local measurement exists there, and Curiosity's RAD data are not transferred.
+- **Loading.** Each region is a small manifest-described file set (0.7–2.2 MB), loaded only when it is opened.
+
+Details: [docs/REGIONS.md](docs/REGIONS.md).
+
 ## Three ways in
 
 | Mode | Question it answers | What you can change in the browser |

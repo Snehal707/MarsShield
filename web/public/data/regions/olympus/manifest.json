@@ -1,0 +1,438 @@
+{
+ "id": "olympus",
+ "name": "Olympus Mons caldera",
+ "kind": "regional",
+ "summary": "The summit caldera of the largest volcano on Mars, with the USGS geologic map of its six paterae.",
+ "frame": {
+  "type": "local",
+  "lon_c": -133.1014075145054,
+  "lat_c": 18.100859219870934,
+  "lon": [
+   -134.10183434079048,
+   -132.10098068822037
+  ],
+  "lat": [
+   17.000895829081966,
+   19.2008226106599
+  ],
+  "note": "x = R cos(lat_c) dlon, y = R dlat on the 3,396,190 m sphere; east-west scale error within +/-0.6 % across the map"
+ },
+ "grid": {
+  "file": "elev.i16",
+  "w": 593,
+  "h": 652,
+  "dtype": "int16le",
+  "scale": 1.0,
+  "offset": 0.0,
+  "nodata": -32768,
+  "bytes": 773272,
+  "x0": -56365.3,
+  "y0": 65200.0,
+  "dx": 190.1,
+  "dy": 200.0,
+  "source_res_m": 200.0,
+  "note": "HRSC/MOLA blended DEM at its native 0.0034 degree (about 200 m) posts"
+ },
+ "aux": {
+  "slope": {
+   "file": "slope.u8",
+   "w": 593,
+   "h": 652,
+   "dtype": "uint8",
+   "scale": 0.5,
+   "nodata": 255,
+   "bytes": 386636,
+   "unit": "deg",
+   "note": "slope over one 200 m post"
+  },
+  "units": {
+   "file": "units.u8",
+   "w": 593,
+   "h": 652,
+   "dtype": "uint8",
+   "codes": [
+    "Aoc1",
+    "Aoc2",
+    "Aoc3",
+    "Aoc4",
+    "Aoc5",
+    "Aos1",
+    "Aos2",
+    "Aw",
+    "Ap1",
+    "Ap2"
+   ]
+  }
+ },
+ "layers": [
+  {
+   "id": "relief",
+   "name": "Relief",
+   "kind": "drape",
+   "file": "relief.jpg",
+   "px": [
+    593,
+    652
+   ],
+   "bytes": 51560,
+   "note": "HRSC/MOLA blend 200 m, hillshade (3x) over elevation colour"
+  },
+  {
+   "id": "slope",
+   "name": "Slope",
+   "kind": "drape",
+   "file": "slope.jpg",
+   "px": [
+    593,
+    652
+   ],
+   "bytes": 71611,
+   "ramp": {
+    "lo": "0\u00b0",
+    "hi": "30\u00b0+",
+    "stops": [
+     [
+      44,
+      36,
+      30
+     ],
+     [
+      96,
+      112,
+      92
+     ],
+     [
+      201,
+      168,
+      74
+     ],
+     [
+      214,
+      120,
+      52
+     ],
+     [
+      190,
+      50,
+      40
+     ]
+    ]
+   },
+   "note": "Slope over 200 m; caldera walls are steeper over shorter distances than this grid can show"
+  },
+  {
+   "id": "units",
+   "name": "Geologic units (USGS SIM 3470)",
+   "kind": "drape",
+   "file": "units.jpg",
+   "px": [
+    1779,
+    1956
+   ],
+   "bytes": 536404,
+   "note": "Unit polygons from the 1:200,000 map; dark lines are mapped faults, pale lines ridge crests",
+   "legend": [
+    {
+     "id": "Aoc1",
+     "name": "Zeus Patera floor",
+     "desc": "Caldera floor; highest near the east wall, lowest in the centre",
+     "color": [
+      196,
+      120,
+      92
+     ],
+     "polygons": 1
+    },
+    {
+     "id": "Aoc2",
+     "name": "Hera Patera floor",
+     "desc": "Caldera floor; formed after Zeus Patera",
+     "color": [
+      214,
+      150,
+      104
+     ],
+     "polygons": 1
+    },
+    {
+     "id": "Aoc3",
+     "name": "Hermes and Dionysus Paterae floor",
+     "desc": "Two connected depressions west of Zeus Patera; radial ridges",
+     "color": [
+      178,
+      98,
+      82
+     ],
+     "polygons": 1
+    },
+    {
+     "id": "Aoc4",
+     "name": "Athena Patera floor",
+     "desc": "Near-circular 20 \u00d7 22 km pit at the northeast of the caldera",
+     "color": [
+      226,
+      176,
+      128
+     ],
+     "polygons": 1
+    },
+    {
+     "id": "Aoc5",
+     "name": "Apollo Patera floor",
+     "desc": "12 \u00d7 16 km pit at the southwest end; the deepest wall (about 2.9 km)",
+     "color": [
+      160,
+      84,
+      74
+     ],
+     "polygons": 1
+    },
+    {
+     "id": "Aos1",
+     "name": "Undifferentiated summit lava flows",
+     "desc": "Oldest surface unit, covering most of the summit",
+     "color": [
+      128,
+      140,
+      104
+     ],
+     "polygons": 4
+    },
+    {
+     "id": "Aos2",
+     "name": "Differentiated lava flows",
+     "desc": "A few hundred flows with mappable lobate margins radiating from the caldera",
+     "color": [
+      150,
+      168,
+      120
+     ],
+     "polygons": 260
+    },
+    {
+     "id": "Aw",
+     "name": "Caldera wall material",
+     "desc": "Layered rock exposed in the caldera walls (unit Aow in the pamphlet)",
+     "color": [
+      110,
+      92,
+      120
+     ],
+     "polygons": 1
+    },
+    {
+     "id": "Ap1",
+     "name": "Pangboche crater floor",
+     "desc": "Hummocky floor with blocks up to about 150 m",
+     "color": [
+      98,
+      128,
+      160
+     ],
+     "polygons": 1
+    },
+    {
+     "id": "Ap2",
+     "name": "Pangboche crater wall and rim",
+     "desc": "Layered upper walls; ejecta blocks up to about 70 m on the rim",
+     "color": [
+      128,
+      156,
+      186
+     ],
+     "polygons": 1
+    }
+   ]
+  }
+ ],
+ "context": {
+  "file": "context.jpg",
+  "px": [
+   481,
+   481
+  ],
+  "bytes": 23194,
+  "lon": [
+   -140.0,
+   -127.0
+  ],
+  "lat": [
+   12.0,
+   25.0
+  ],
+  "note": "Whole volcano, HRSC/MOLA blend overview at about 1.6 km per pixel; the box is the caldera map"
+ },
+ "elevation_range_m": [
+  17626,
+  21226
+ ],
+ "landmarks": [
+  {
+   "name": "Highest DEM cell",
+   "kind": "terrain",
+   "x": -18820.1,
+   "y": -44500.0,
+   "note": "21,226 m in the 200 m blend (SIM 3470 gives 21,290 m from MOLA for the volcano's high point, south of the caldera)"
+  },
+  {
+   "name": "Zeus Patera",
+   "kind": "unit",
+   "unit": "Aoc1",
+   "x": 7601.9,
+   "y": 16078.6,
+   "note": "Floor 17,784 to 19,866 m in the blend; centre of the mapped unit"
+  },
+  {
+   "name": "Hera Patera",
+   "kind": "unit",
+   "unit": "Aoc2",
+   "x": -35931.1,
+   "y": 20413.6,
+   "note": "Floor 18,106 to 19,095 m in the blend; centre of the mapped unit"
+  },
+  {
+   "name": "Hermes and Dionysus Paterae",
+   "kind": "unit",
+   "unit": "Aoc3",
+   "x": -17325.7,
+   "y": 8286.3,
+   "note": "Floor 17,754 to 18,984 m in the blend; centre of the mapped unit"
+  },
+  {
+   "name": "Athena Patera",
+   "kind": "unit",
+   "unit": "Aoc4",
+   "x": 16190.7,
+   "y": 36901.0,
+   "note": "Floor 17,626 to 18,209 m in the blend; centre of the mapped unit"
+  },
+  {
+   "name": "Apollo Patera",
+   "kind": "unit",
+   "unit": "Aoc5",
+   "x": -24604.4,
+   "y": -10553.4,
+   "note": "Floor 17,735 to 18,447 m in the blend; centre of the mapped unit"
+  }
+ ],
+ "profiles": [
+  {
+   "name": "West to east through the caldera",
+   "a": [
+    -55985.1,
+    12009.5
+   ],
+   "b": [
+    55795.0,
+    12009.5
+   ]
+  },
+  {
+   "name": "North to south through the caldera",
+   "a": [
+    -4746.7,
+    64800.0
+   ],
+   "b": [
+    -4746.7,
+    -64600.0
+   ]
+  }
+ ],
+ "checks": [
+  {
+   "name": "Highest point against the published MOLA value",
+   "value_m": 21226,
+   "reference_m": 21290,
+   "note": "SIM 3470 (MOLA): the volcano's highest point is 21,290 m and lies outside the caldera; this compares the blend with that value, it does not validate either."
+  },
+  {
+   "name": "Caldera floor elevations by patera",
+   "rows": [
+    {
+     "unit": "Aoc1",
+     "name": "Zeus Patera floor",
+     "min_m": 17784,
+     "max_m": 19866,
+     "cells": 43360
+    },
+    {
+     "unit": "Aoc2",
+     "name": "Hera Patera floor",
+     "min_m": 18106,
+     "max_m": 19095,
+     "cells": 2271
+    },
+    {
+     "unit": "Aoc3",
+     "name": "Hermes and Dionysus Paterae floor",
+     "min_m": 17754,
+     "max_m": 18984,
+     "cells": 32323
+    },
+    {
+     "unit": "Aoc4",
+     "name": "Athena Patera floor",
+     "min_m": 17626,
+     "max_m": 18209,
+     "cells": 5728
+    },
+    {
+     "unit": "Aoc5",
+     "name": "Apollo Patera floor",
+     "min_m": 17735,
+     "max_m": 18447,
+     "cells": 6513
+    }
+   ],
+   "note": "From the blend within each mapped unit; SIM 3470 describes Zeus Patera's floor as about 18,000 m at its centre and 19,500 m near the east wall."
+  }
+ ],
+ "sources": [
+  {
+   "name": "Mars HRSC MOLA Blended DEM Global 200 m v2",
+   "url": "https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/HRSC_MOLA_Blend/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif",
+   "producer": "USGS Astrogeology (Fergason et al., 2018), from Mars Express HRSC and MGS MOLA",
+   "role": "Elevation"
+  },
+  {
+   "name": "Geologic map of Olympus Mons caldera (SIM 3470)",
+   "url": "https://doi.org/10.3133/sim3470",
+   "producer": "Mouginis-Mark, P.J., 2021, Geologic map of Olympus Mons caldera, Mars: U.S. Geological Survey Scientific Investigations Map 3470, scale 1:200,000, https://doi.org/10.3133/sim3470",
+   "role": "Geologic units, faults and ridges"
+  }
+ ],
+ "capabilities": [
+  {
+   "name": "Elevation, 3D caldera",
+   "status": "validated",
+   "detail": "HRSC/MOLA blend at 200 m posts over the 1:200,000 map area."
+  },
+  {
+   "name": "Slope",
+   "status": "validated",
+   "detail": "Over 200 m only. Caldera walls that are 1\u20133 km high are steeper over shorter distances than this shows."
+  },
+  {
+   "name": "Elevation profiles",
+   "status": "validated",
+   "detail": "Sampled from the 200 m grid."
+  },
+  {
+   "name": "Geologic units",
+   "status": "validated",
+   "detail": "USGS SIM 3470 polygons (Mouginis-Mark, 2021), 1:200,000."
+  },
+  {
+   "name": "Radiation dose",
+   "status": "unavailable",
+   "detail": "No surface radiation measurement exists here. Curiosity's RAD data belong to Gale and are not transferred; no model is offered."
+  },
+  {
+   "name": "Sky blocked, routes",
+   "status": "unavailable",
+   "detail": "A 200 m grid cannot represent shielding or hazards at the scale of a person."
+  }
+ ],
+ "generated_utc": "2026-11-15T14:21:32+00:00"
+}

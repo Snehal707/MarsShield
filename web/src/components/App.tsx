@@ -11,6 +11,8 @@ import { useEngine, type CalcStatus } from "@/lib/useEngine";
 import { NotchStory, type StoryScene } from "./Story";
 import { M, P, sgn, Tabs } from "./ui";
 import { DockCtx, DockShell, type DockSize } from "./Dock";
+import { loadIndex, type RegionIndex } from "@/lib/regions";
+import { MarsOverview, RegionalView } from "./RegionView";
 
 type Mode = "mission" | "experiment" | "evidence";
 
@@ -148,6 +150,19 @@ export default function App() {
   const [tip, setTip] = useState<{ cx: number; cy: number; body: ReactNode } | null>(null);
   const [card, setCard] = useState<Stop | null>(null);
   const [calc, setCalc] = useState<CalcStatus>({ running: 0, last: null });
+  // regions: Gale is the full experience; other regions are terrain views described by manifests, loaded on demand
+  const [region, setRegion] = useState("gale");
+  const [rindex, setRindex] = useState<RegionIndex | null>(null);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("region");
+    if (q && q !== "gale") { setRegion(q); setWelcome(false); }
+    loadIndex().then(setRindex).catch(() => setRindex(null));
+  }, []);
+  const openRegion = useCallback((id: string) => {
+    setRegion(id); setCard(null); setTip(null);
+    try { const u = new URL(window.location.href); if (id === "gale") u.searchParams.delete("region"); else u.searchParams.set("region", id); window.history.replaceState(null, "", u); } catch { /* ignore */ }
+    window.scrollTo({ top: 0 });
+  }, []);
   const eng = useEngine(ds, setCalc);
   // research dock
   const [dockTitle, setDockTitle] = useState<string | null>(null);
@@ -184,7 +199,7 @@ export default function App() {
   const setLayerCb = useCallback((l: "dose" | "disagree" | "image") => setLayer(l), []);
   const setSceneCb = useCallback((s: SceneSpec) => setScene(s), []);
   const setObsPick = useCallback((f: ((s: Stop) => void) | null) => { obsPick.current = f; if (f) setShowObs(true); }, []);
-  const dockActive = !welcome && mode === "experiment" && !!dockTitle;
+  const dockActive = !!dockTitle && (region !== "gale" || (!welcome && mode === "experiment"));
   useLabelLayout(stageRef, !!ds && webgl);
 
   const readout = useMemo(() => {
@@ -195,6 +210,30 @@ export default function App() {
     return { z, slope: sampleGrid(ds.meta, ds.grids.slope, hover.x, hover.y), B, rel: relTotal(sampleGrid(ds.meta, ds.grids.relSky, hover.x, hover.y), B, 0.21) };
   }, [ds, hover]);
 
+  const regionPick = rindex && (
+    <label className="region-pick"><span className="sr-only">Region</span>
+      <select value={region} onChange={(e) => openRegion(e.target.value)}>
+        {rindex.regions.map((r) => <option key={r.id} value={r.id}>{r.id === "mars" ? "Mars overview" : r.name}</option>)}
+      </select></label>);
+  if (region !== "gale" && rindex && rindex.regions.some((r) => r.id === region)) {
+    const desk = vw > 860, pw = vw > 1180 ? 400 : 370, dmax = Math.max(260, vh - 56 - 16 - 150);
+    return (
+      <DockCtx.Provider value={{ head: dockHead, body: dockBody, setTitle: setDockTitle, mobile: !desk }}>
+      <div className="app region-app">
+        <a className="skip-link" href="#panel">Skip to the panel</a>
+        {dockActive && <a className="skip-link" href="#analysis">Skip to the analysis</a>}
+        <header className="topbar">
+          <button className="wordmark" onClick={() => openRegion("gale")} title="Back to Gale Crater"><b>MarsShield</b><span>Terrain and cosmic radiation on Mars</span></button>
+          {regionPick}
+          <span className="runmode region-note">Terrain only here: radiation tools are in Gale Crater</span>
+        </header>
+        {region === "mars" ? <MarsOverview index={rindex} onOpen={openRegion} /> : <RegionalView id={region} index={rindex} onOpen={openRegion} desktop={desk} />}
+        <DockShell title={dockActive ? dockTitle : null} size={dockSize} setSize={setDockSize} height={Math.min(dockH, dmax)} setHeight={setDockH} maxH={dmax}
+          desktop={desk} right={pw + 32} setHead={setDockHead} setBody={setDockBody} />
+      </div>
+      </DockCtx.Provider>
+    );
+  }
   if (err) return <div className="loading">{err}</div>;
   if (!ds) return <div className="loading">Loading Gale Crater terrain and Curiosity&apos;s measurements…</div>;
   const byId = Object.fromEntries(ds.scienceTargets.map((t) => [t.id, t]));
@@ -228,6 +267,7 @@ export default function App() {
       {dockActive && <a className="skip-link" href="#analysis">Skip to the analysis</a>}
       <header className="topbar">
         <button className="wordmark" onClick={replayStory} title="Replay the Maria Gordon Notch story"><b>MarsShield</b><span>Terrain and cosmic radiation in Gale Crater</span></button>
+        {regionPick}
         <nav aria-label="Modes" className="modes-nav">
           <Tabs className="modes" label="Experience" manual tabs={[["mission", "Mission"], ["experiment", "Experiment"], ["evidence", "Evidence"]]}
             value={welcome ? null : mode} onChange={(k: Mode) => finishWelcome(k)} />

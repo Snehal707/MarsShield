@@ -1,0 +1,73 @@
+{
+ "id": "mars",
+ "name": "Mars",
+ "kind": "global",
+ "summary": "Global elevation from the Mars Global Surveyor laser altimeter.",
+ "frame": {
+  "type": "lonlat",
+  "lon": [
+   -180,
+   180
+  ],
+  "lat": [
+   -90,
+   90
+  ]
+ },
+ "grid": {
+  "file": "elev.i16",
+  "w": 720,
+  "h": 360,
+  "dtype": "int16le",
+  "scale": 1.0,
+  "offset": 0.0,
+  "nodata": -32768,
+  "bytes": 518400,
+  "cell_deg": 0.5,
+  "note": "MOLA 4 pixels/degree averaged to 0.5 degree for the cursor readout"
+ },
+ "layers": [
+  {
+   "id": "relief",
+   "name": "Relief",
+   "kind": "image",
+   "file": "relief.jpg",
+   "px": [
+    1440,
+    720
+   ],
+   "bytes": 164924,
+   "note": "Hillshade with 12x vertical exaggeration over hypsometric colour"
+  }
+ ],
+ "elevation_range_m": [
+  -8068,
+  21134
+ ],
+ "sources": [
+  {
+   "name": "MGS MOLA Mission Experiment Gridded Data Record (MEGDR), 4 pixels per degree",
+   "url": "https://pds-geosciences.wustl.edu/mgs/mgs-m-mola-5-megdr-l3-v1/mgsl_300x/meg004/megt90n000cb.img",
+   "producer": "NASA PDS Geosciences Node (Smith et al., 2003)",
+   "role": "Elevation relative to the areoid"
+  }
+ ],
+ "capabilities": [
+  {
+   "name": "Global elevation",
+   "status": "validated",
+   "detail": "MOLA gridded elevations at about 15 km per pixel; finer features are not resolved."
+  },
+  {
+   "name": "Region outlines",
+   "status": "validated",
+   "detail": "Bounds of each regional dataset, from the regional manifests."
+  },
+  {
+   "name": "Radiation",
+   "status": "unavailable",
+   "detail": "No global radiation map is offered; MarsShield's radiation analysis is local to Gale Crater."
+  }
+ ],
+ "generated_utc": "2026-11-15T14:21:32+00:00"
+}
