@@ -218,7 +218,7 @@ function SkyCurtain({ ds, sky, exag }: { ds: Dataset; sky: Sky; exag: number }) 
 function labelLift(pins: ScenePin[], i: number) {
   let n = 0;
   for (let j = 0; j < i; j++) if (pins[j].label && pins[i].label && Math.hypot(pins[j].x - pins[i].x, pins[j].y - pins[i].y) < 160) n++;
-  return n * 18;
+  return n;            // 1st neighbour: label below the marker; 2nd: stacked above, and so on
 }
 
 function Pin({ ds, pin, exag, onHover, lift = 0 }: { ds: Dataset; pin: ScenePin; exag: number; onHover?: Props["onPinHover"]; lift?: number }) {
@@ -237,7 +237,7 @@ function Pin({ ds, pin, exag, onHover, lift = 0 }: { ds: Dataset; pin: ScenePin;
       {pin.onClick && <mesh position={[0, h, 0]}><sphereGeometry args={[size, 16, 16]} /><meshBasicMaterial color={pin.color} /></mesh>}
       <mesh position={[0, h / 2, 0]}><cylinderGeometry args={[0.6, 0.6, h, 6]} /><meshBasicMaterial color={pin.color} /></mesh>
       {pin.label && (
-        <Html position={[0, h + 9, 0]} center zIndexRange={[2, 0]} style={{ pointerEvents: "none", whiteSpace: "nowrap", marginTop: -lift, fontSize: pin.selected ? 13 : 12, fontWeight: pin.selected ? 700 : 600,
+        <Html position={[0, lift % 2 ? 0 : h + 9, 0]} center zIndexRange={[2, 0]} style={{ pointerEvents: "none", whiteSpace: "nowrap", marginTop: lift % 2 ? 12 : -(lift / 2) * 18, fontSize: pin.selected ? 13 : 12, fontWeight: pin.selected ? 700 : 600,
           color: pin.selected ? "#e7b37d" : "#efe6d8", textShadow: "0 1px 3px #000, 0 0 8px rgba(0,0,0,.6)" }}>{pin.label}</Html>
       )}
     </group>

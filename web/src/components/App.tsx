@@ -49,6 +49,9 @@ export default function App() {
   const [welcome, setWelcome] = useState(true);
   const [layer, setLayer] = useState<Layer>("dose");
   const [more, setMore] = useState(false);
+  // on phones the dock would cover a third of the terrain: start compact (layer tabs + colour ramp only)
+  const [legend, setLegend] = useState(true);
+  useEffect(() => { try { if (window.matchMedia("(max-width: 860px)").matches) setLegend(false); } catch { /* no matchMedia */ } }, []);
   const [showObs, setShowObs] = useState(true);
   const [exag, setExag] = useState(1);
   const [webgl, setWebgl] = useState(true);
@@ -67,7 +70,7 @@ export default function App() {
   }, []);
   const focusOn = useCallback((x: number, y: number, dist?: number) => setFocus((f) => ({ x, y, dist, n: (f?.n ?? 0) + 1 })), []);
   const finishWelcome = (m: Mode) => {
-    setWelcome(false); setMode(m); setCard(null);
+    setWelcome(false); setMode(m); setCard(null); setScene({});   // each mode draws only its own lines
     if (m !== "mission") overview();
     if (m === "evidence") setLayer("dose");
     try { window.localStorage.setItem("marsshield-welcome", "done"); } catch { /* storage unavailable */ }
@@ -143,11 +146,12 @@ export default function App() {
         )}
         {webgl && (
           <div className="mapdock">
-            <div className="mapcard">
+            <div className={`mapcard ${legend ? "" : "compact"}`}>
               <div className="layers" role="group" aria-label="Map layer">
                 {([["dose", "Radiation"], ["image", "Orbital image"], ["disagree", "Model disagreement"], ["terrain", "Relief"]] as [Layer, string][])
                   .concat(more ? [["sky", "Sky blocked"], ["slope", "Slope"]] : []).map(([k, l]) => <button key={k} aria-pressed={layer === k} onClick={() => setLayer(k)}>{l}</button>)}
                 <button onClick={() => setMore(!more)} aria-expanded={more}>{more ? "Fewer" : "More"}</button>
+                <button className="legend-toggle" onClick={() => setLegend(!legend)} aria-expanded={legend}>{legend ? "Hide legend" : "Legend"}</button>
               </div>
               {LEGEND[layer]}
               <div className="row" style={{ marginTop: 6, gap: 14 }}>

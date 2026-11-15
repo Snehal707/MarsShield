@@ -92,6 +92,30 @@ export function dMSE(y: number[], pa: number[], pb: number[], L: number, B = 200
   return { mean: mean(d) * 1e4, lo: pct(bs, 0.025) * 1e4, hi: pct(bs, 0.975) * 1e4, pImproves: bs.filter((v) => v < 0).length / B };
 }
 
+export const siteOf = (r: TSRow) => Number(r.rmc.split("_")[0]);
+
+/** 95 % interval of the MSE difference resampling whole Curiosity navigation sites (stops at one site share terrain and time). */
+export function siteDMSE(rows: TSRow[], y: number[], pa: number[], pb: number[], B = 2000, seed = 29) {
+  const d = y.map((v, i) => (v - pa[i]) ** 2 - (v - pb[i]) ** 2);
+  const bySite = new Map<number, number[]>();
+  rows.forEach((r, i) => { const s = siteOf(r); if (!bySite.has(s)) bySite.set(s, []); bySite.get(s)!.push(i); });
+  const groups = [...bySite.values()], r = rng(seed), bs: number[] = [];
+  for (let b = 0; b < B; b++) {
+    let s = 0, n = 0;
+    for (let j = 0; j < groups.length; j++) for (const i of groups[Math.floor(r() * groups.length)]) { s += d[i]; n++; }
+    bs.push(s / n);
+  }
+  return { mean: mean(d) * 1e4, lo: pct(bs, 0.025) * 1e4, hi: pct(bs, 0.975) * 1e4, nSites: groups.length };
+}
+
+/** Share of the squared-error reduction (baseline -> model) carried by each site, largest first. */
+export function siteShares(rows: TSRow[], y: number[], pModel: number[], pBase: number[]) {
+  const c = y.map((v, i) => (v - pBase[i]) ** 2 - (v - pModel[i]) ** 2), tot = c.reduce((s, v) => s + v, 0);
+  const by = new Map<number, { site: number; n: number; gain: number }>();
+  rows.forEach((r, i) => { const s = siteOf(r); const e = by.get(s) ?? { site: s, n: 0, gain: 0 }; e.n++; e.gain += c[i]; by.set(s, e); });
+  return [...by.values()].map((e) => ({ ...e, share: e.gain / tot })).sort((a, b) => b.share - a.share);
+}
+
 export function corrCI(x: number[], y: number[], L: number, B = 2000, seed = 3) {
   const r = rng(seed), bs: number[] = [];
   for (let b = 0; b < B; b++) { const idx = mbbIndices(x.length, L, r); bs.push(corr(idx.map((i) => x[i]), idx.map((i) => y[i]))); }

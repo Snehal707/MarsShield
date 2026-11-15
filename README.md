@@ -39,7 +39,7 @@ Audiences and the question each can answer: [docs/AUDIENCES.md](docs/AUDIENCES.m
 | ![Trade-off](docs/img/3-mission-tradeoff.png) Mission: where to stand, judged against model error | ![Experiment](docs/img/4-experiment-terrain.png) Experiment: predict 322 stops, then reveal RAD |
 | ![Disagreement](docs/img/5-experiment-disagreement.png) Where the two models disagree; verdict resampled by site | ![Evidence](docs/img/6-evidence-rad-pressure.png) Evidence: the RAD + REMS pressure analysis |
 
-Phone layout: [docs/img/7-phone.png](docs/img/7-phone.png). No-WebGL fallback: [docs/img/8-no-webgl.png](docs/img/8-no-webgl.png). Screens of the previous interface are in `docs/img/before/`.
+Phone layout: [docs/img/7-phone.png](docs/img/7-phone.png). No-WebGL fallback: [docs/img/8-no-webgl.png](docs/img/8-no-webgl.png). Screens of the previous interface, including the mission summary before the plan-consistency fix, are in `docs/img/before/`.
 
 ## What is verified and what is modeled
 
@@ -53,7 +53,7 @@ Phone layout: [docs/img/7-phone.png](docs/img/7-phone.png). No-WebGL fallback: [
 | Break-even near Maria Gordon Notch | 0.36 h, **resolved** (0.25–0.60 h within model error); the stop is steep and below cliffs, and rockfall is not modeled |
 | Break-even at Mt Mercou | **Unresolved**: below model error, so no recommendation |
 | Audit of Guo et al. (2026) | 136 Table 1 cells, 0 transcription errors. The paper gives two P6 drops (19.4 % and 17 %); NASA data reproduce 19.4 % |
-| Terrain beyond pressure and time, 322 rover stops (RAD + REMS) | Held-out skill **+22 %** vs time only (ΔMSE −3.44 pp², 95 % block bootstrap −8.2 to −0.8); concentrated in a few strongly shielded stops. **Pressure: no measurable gain** at stop level. **Terrain model vs blocked-sky rule: cannot distinguish** (site-level test) |
+| Terrain beyond pressure and time, 322 rover stops (RAD + REMS) | Reconstructs *local* dose anomalies along Curiosity's past traverse (not absolute dose at new places). Held-out **RMSE −11.7 %** vs time only (MSE −22 %; site-resampled interval excludes zero). **59 % of the gain comes from 6 stops at Maria Gordon Notch**, a site also used to calibrate the model's albedo parameter, so this is only partly independent. Without the notch the RMSE change is −5.5 % (interval still excludes zero); without the 10 % most shielded stops it is not distinguishable from zero. **Pressure: no measurable gain** at stop level. **Terrain model vs blocked-sky rule: cannot distinguish** |
 | Route doses, walking times, activity durations | **Modeled or assumed only**: quiet-time GCR absorbed dose in a plastic detector, Earth-derived walking speeds |
 
 **Further documentation:**

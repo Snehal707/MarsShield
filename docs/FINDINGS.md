@@ -70,7 +70,7 @@ A break-even time is reported as usable only when the stationary-rate gap betwee
   - At the notch's own work radius (30 m, a planning assumption) the best alternative differs from working at the target by 0.9 points.
   - That is unresolved, so the plan keeps the astronaut at the target. The stop choice changes the 82.6 µGy total by 0.00 µGy.
 
-**6. Across 322 rover stops, terrain adds out-of-sample information beyond pressure and time, but the two terrain models cannot be told apart. [Measured vs Modeled]**
+**6. Across 322 rover stops, terrain helps reconstruct where Curiosity's dose was locally lower, but the gain is concentrated at one notch, the test is only partly independent, and the two terrain models cannot be told apart. [Measured vs Modeled]**
 
 This is a new analysis combining RAD with REMS surface pressure (`science/marsshield/terrain_signal.py`; full tables in `docs/VALIDATION.md`, section V8).
 - **Design.**
@@ -81,10 +81,28 @@ This is a new analysis combining RAD with REMS surface pressure (`science/marssh
   - Adding pressure changes the held-out skill by −0.1 %.
   - After whole-stop averaging and detrending, pressure differences are a few pascals, worth 0.04 pp of dose rate against an observed spread of 3.95 pp.
   - The fitted coefficient (−0.035 µGy/day/Pa) is poorly constrained and does not test Guo et al. (2015)'s −0.13 ± 0.02. This is a limit of the design, not evidence against the pressure effect.
+- **What is tested.** Each stop's *local anomaly*: how much its dose differs from Curiosity's other stops at about the same time (a few percent). This reconstructs past anomalies along the traverse. It does not test absolute dose predictions at new locations.
 - **Terrain: real, but concentrated.**
-  - The published terrain model lowers held-out mean squared error by 3.44 pp² against time only, a skill of +22 % (95 % block-bootstrap interval −8.2 to −0.8 pp²).
-  - The interval excludes zero in every robustness variant: windows of 10 and 30 sols, ≥ 2 sols of data, and excluding the published Guo et al. periods.
-  - Most of the signal comes from a few strongly shielded stops. Without the 5 % largest modeled anomalies, the skill falls to +2.9 % (interval −0.72 to −0.02 pp²).
+  - Against time only, the published terrain model lowers held-out **RMSE by 11.7 %** (3.95 → 3.49 pp). Equivalently, mean squared error falls by 22 % (−3.44 pp²).
+  - 95 % intervals of the MSE change: −8.4 to −0.9 pp² resampling whole sites, and −8.2 to −0.8 pp² resampling time blocks.
+  - **Six stops at Maria Gordon Notch (site 92) carry 59 % of the improvement.** Two of them (sols 3322 and 3324) carry 58 %.
+  - Robustness, as RMSE change with site-resampled interval:
+
+    | Excluding | RMSE change | Site-resampled interval |
+    |---|---|---|
+    | Site 92 | −5.5 % | −2.1 to −0.8 pp² |
+    | Site 92 and the published periods | −3.2 % | −1.5 to −0.3 pp² |
+    | The 5 % strongest modeled anomalies | −1.5 % | −0.70 to −0.05 pp² |
+    | **The 10 % strongest modeled anomalies** | **−1.1 %** | **−0.66 to +0.08 pp² (includes zero)** |
+
+  - The signal survives removing the notch, but not removing the most strongly shielded tenth of stops.
+  - Stop 66_0 (sol 1812, +48.8 %) falls in the September 2017 solar particle event and inflates every model's error. Excluding it would *raise* the relative improvement (RMSE −24 %). The pre-specified baseline keeps it, and we do not headline the larger number.
+- **Only partly independent.**
+  - The terrain model is not fitted in this cross-validation.
+  - However, its one free parameter, the flat-terrain albedo share (18–24 %), was derived by Guo et al. (2026, Eq. 5) from RAD measurements at P1–P8 and BG1–BG8, which include the notch.
+  - 27 of the 322 stops lie inside those periods, and stop 92_0 is the day before P6 at the same notch.
+  - The model-error threshold behind "model cannot tell" comes from the same eight periods.
+  - Our analysis settings were reused from the earlier analysis rather than tuned, but the analysis was not pre-registered.
 - **Terrain model vs blocked-sky proxy: cannot distinguish.**
   - Head to head, the difference is −0.53 pp² [−2.27, +0.64].
   - At the stops where the two models disagree most, selected before looking at RAD, the terrain model is closer at 14 of 20 stops, but at only 6 of 11 sites. The site-resampled interval is −3.44 to +1.42 pp.

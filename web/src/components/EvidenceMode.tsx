@@ -26,7 +26,8 @@ export function EvidenceMode({ ds }: { ds: Dataset }) {
           <h2 className="q">Findings</h2>
           <ol className="prose" style={{ paddingLeft: 18, margin: 0, display: "grid", gap: 8 }}>
             <li><b>Terrain measurably lowers cosmic-ray dose.</b> Beside cliffs and buttes, Curiosity&apos;s RAD recorded drops of <M>2.1 to 19.4 %</M> (8 published parking periods, reproduced from NASA RAD data).</li>
-            {t && <li><b>Across all 322 stops, terrain predicts where dose was lower.</b> Without any fitting, the terrain model explains <P>{(t.performance.M3.skill_vs_M0 * 100).toFixed(0)} %</P> of stop-to-stop variation beyond time on held-out time blocks (interval excludes zero), mostly from a few strongly shielded stops.</li>}
+            {t && <li><b>Across 322 stops, terrain helps reconstruct where dose was locally lower, mostly at one notch.</b> On held-out time blocks the terrain model lowers the typical error against time alone by <P>{(t.rmse_reduction_vs_M0.M3 * 100).toFixed(1)} %</P> (mean squared error by {(t.performance.M3.skill_vs_M0 * 100).toFixed(0)} %).
+              {" "}{(t.influence.mgn_site.share * 100).toFixed(0)} % of that gain comes from {t.influence.mgn_site.n} stops at Maria Gordon Notch, a site also used to calibrate the model. Without them the gain is smaller but still clear; without the 10 % most shielded stops it is not distinguishable from zero.</li>}
             {t && <li><b>Pressure control does not change this.</b> After whole-sol averaging, pressure differences between nearby stops are a few pascals: a {t.predictor_spread_pp.pressure_term.toFixed(2)}-point effect.</li>}
             {t && <li><b>Blocking sky overstates shielding.</b> Measured anomalies are <M>{t.calibration.sky_proxy.slope.toFixed(2)}×</M> the blocked-sky prediction (95 % CI {t.calibration.sky_proxy.ci95_site_cluster.map((x: number) => x.toFixed(2)).join(" to ")}), while the terrain-albedo model is consistent with the data (<M>{t.calibration.terrain_model.slope.toFixed(2)}×</M>, {t.calibration.terrain_model.ci95_site_cluster.map((x: number) => x.toFixed(2)).join(" to ")}).</li>}
             <li><b>But head-to-head, the two models are not distinguishable.</b> Neither at the 8 parking periods (MAE {A8.pred_albedo_019.mae_pp.toFixed(2)} vs {A8.pred_proportional.mae_pp.toFixed(2)} pp) nor where they disagree most, once stops are grouped by site.</li>
@@ -42,11 +43,23 @@ export function EvidenceMode({ ds }: { ds: Dataset }) {
         {sec === "signal" && t && (<>
           <h2 className="q">Does terrain add information beyond pressure and time?</h2>
           <p className="prose">Each of {t.rows.length} stops is compared with all RAD data within ±{t.window_sols} sols, and the same detrending is applied to every predictor. Models are scored on held-out time blocks ({t.k_blocks} blocks, ±15-sol buffer).</p>
+          <div className="note">
+            <p><b>What this tests.</b> Whether terrain predicts a stop&apos;s <i>local anomaly</i>: how much its dose differs from Curiosity&apos;s other stops at about the same time (typically a few percent). It reconstructs past anomalies along Curiosity&apos;s traverse; it does not predict absolute dose at new locations.</p>
+          </div>
           <table className="data">
-            <thead><tr><th>Model</th><th>Error (pp)</th><th>Beyond time</th></tr></thead>
+            <thead><tr><th>Model</th><th>RMSE (pp)</th><th>RMSE change</th><th>MSE change</th></tr></thead>
             <tbody>{Object.entries(t.performance).map(([k, r]: [string, any]) => (
-              <tr key={k}><td>{r.label}</td><td>{r.rmse_pp.toFixed(2)}</td><td>{sgn(r.skill_vs_M0 * 100, 1)} %</td></tr>))}</tbody>
+              <tr key={k}><td>{r.label}</td><td>{r.rmse_pp.toFixed(2)}</td><td>{sgn(-t.rmse_reduction_vs_M0[k] * 100, 1)} %</td><td>{sgn(-r.skill_vs_M0 * 100, 1)} %</td></tr>))}</tbody>
           </table>
+          <p className="muted">Changes are against time only. Terrain model vs time only, 95 % interval of ΔMSE resampling whole sites: {t.site_ci95_dMSE_vs_M0_pp2.M3.map((x: number) => sgn(x, 2)).join(" to ")} pp² (blocked-sky proxy: {t.site_ci95_dMSE_vs_M0_pp2.M2.map((x: number) => sgn(x, 2)).join(" to ")}).</p>
+          <h2 className="q">Where the gain comes from</h2>
+          <table className="data">
+            <thead><tr><th>Curiosity site</th><th>Stops</th><th>Share of the gain</th></tr></thead>
+            <tbody>{t.influence.site_shares_M3_vs_M0.slice(0, 4).map((r: any) => (
+              <tr key={r.site}><td>{r.site}{r.site === 92 ? ", Maria Gordon Notch" : ""}</td><td>{r.n}</td><td>{(r.share * 100).toFixed(0)} %</td></tr>))}</tbody>
+          </table>
+          <p className="prose">Two notch stops (sols 3322 and 3324, measured −17 % and −21 %) carry {((t.influence.top_stops[0].share + t.influence.top_stops[1].share) * 100).toFixed(0)} % on their own.
+            Dropping one site at a time and rerunning the test, the terrain model&apos;s MSE gain ranges from {(t.influence.leave_one_site_out.min.skill_M3 * 100).toFixed(0)} % (without site {t.influence.leave_one_site_out.min.site}) to {(t.influence.leave_one_site_out.max.skill_M3 * 100).toFixed(0)} % (without site {t.influence.leave_one_site_out.max.site}, which contains a solar particle event).</p>
           <More label="Dependence-aware intervals (moving-block bootstrap, 20 stops)">
             <table className="data">
               <thead><tr><th>Comparison</th><th>ΔMSE (pp²)</th><th>95 % interval</th></tr></thead>
@@ -57,13 +70,19 @@ export function EvidenceMode({ ds }: { ds: Dataset }) {
           <h2 className="q">Robustness</h2>
           <table className="data">
             <thead><tr><th>Variant</th><th>n</th><th>Terrain</th><th>Proxy</th></tr></thead>
-            <tbody>{t.robustness.map((r: any) => (
-              <tr key={r.variant}><td>{r.variant}</td><td>{r.n}</td>
-                <td className={r.dMSE_vs_M0_ci95_pp2.M3[1] < 0 ? "good" : ""}>{sgn(r.skill.M3 * 100, 0)} %</td>
-                <td className={r.dMSE_vs_M0_ci95_pp2.M2[1] < 0 ? "good" : ""}>{sgn(r.skill.M2 * 100, 0)} %</td></tr>))}</tbody>
+            <tbody>{t.robustness.map((r: any) => {
+              const ok = (m: "M2" | "M3") => r.dMSE_vs_M0_ci95_pp2[m][1] < 0 && (!r.dMSE_vs_M0_site_ci95_pp2 || r.dMSE_vs_M0_site_ci95_pp2[m][1] < 0);
+              const v = (m: "M2" | "M3") => (r.rmse_reduction ? sgn(-r.rmse_reduction[m] * 100, 1) : sgn(-r.skill[m] * 100, 0));
+              return <tr key={r.variant}><td>{r.variant}</td><td>{r.n}</td><td className={ok("M3") ? "good" : ""}>{v("M3")} %</td><td className={ok("M2") ? "good" : ""}>{v("M2")} %</td></tr>;
+            })}</tbody>
           </table>
-          <p className="muted">Green: improvement over time-only whose 95 % interval excludes zero.</p>
-          <h2 className="q">Independence</h2>
+          <p className="muted">RMSE change against time only. Green: the 95 % interval excludes zero both when resampling time blocks and when resampling whole sites.
+            Excluding the solar particle event would raise the relative numbers only because it lowers the baseline error; the pre-specified baseline keeps it.</p>
+          <h2 className="q">Is this independent validation?</h2>
+          <p className="prose">Partly. The terrain model is not fitted in this cross-validation, but its one free parameter, the albedo share (18–24 %), was derived by Guo et al. (2026) from RAD measurements at the eight parking periods and their backgrounds, including the notch (P6).
+            {" "}{t.evaluation_overlap.n_in_published_periods} of the {t.rows.length} stops fall inside those periods, and the stop the day before P6 is at the same notch. The model-error threshold used for stop recommendations comes from the same eight periods.
+            Our own design choices (15-sol window, 8 blocks) were reused from the earlier analysis rather than tuned here, but the analysis was not pre-registered.</p>
+          <h2 className="q">Dependence between stops</h2>
           <p className="prose">The residual lag-1 autocorrelation is {t.correlations.terrain_model.lag1_autocorr.observed.toFixed(2)} (effective n ≈ {Math.round(t.correlations.terrain_model.n_eff)} of {t.rows.length}).
             The terrain correlation is r = {t.correlations.terrain_model.r.toFixed(2)} (block bootstrap {t.correlations.terrain_model.block20_ci95.map((x: number) => x.toFixed(2)).join(" to ")}; rank correlation {t.spearman_terrain.toFixed(2)}).
             The earlier r = 0.36 used a less consistent comparison; this replaces it.</p>
@@ -101,7 +120,9 @@ export function EvidenceMode({ ds }: { ds: Dataset }) {
           <ul className="prose" style={{ paddingLeft: 18, margin: 0, display: "grid", gap: 8 }}>
             <li>Over the eight parking periods the physical model is not demonstrably better than the simple proportional rule.</li>
             <li>Terrain geometry is not reproduced at P6 and P8; a 3 m position error moves blocked sky by about ±4 points in narrow canyons.</li>
-            <li>The terrain signal across 322 stops is concentrated at a few strongly shielded sites; typical stops differ by less than the measurement noise.</li>
+            <li>The terrain signal across 322 stops is concentrated at a few strongly shielded sites: about 59 % of the terrain model&apos;s gain comes from 6 stops at Maria Gordon Notch. Without the 10 % most shielded stops it is not distinguishable from zero.</li>
+            <li>The 322-stop test reconstructs local anomalies along Curiosity&apos;s past traverse; it does not validate absolute dose predictions at new locations.</li>
+            <li>The test is not fully independent: the model&apos;s albedo parameter was calibrated by Guo et al. (2026) on RAD data that include the notch stops.</li>
             <li>Model-error thresholds for stop recommendations are screening heuristics from eight periods, not calibrated guarantees.</li>
             <li>Doses are absorbed dose in RAD&apos;s plastic detector, not human effective dose. Terrain shielding does not establish astronaut safety.</li>
             <li>Not modeled: solar particle events, rockfall and slope stability, footing, suit or vehicle shielding, life support.</li>

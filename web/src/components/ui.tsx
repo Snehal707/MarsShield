@@ -41,7 +41,7 @@ export function Seg<T extends string | number>({ options, value, onChange, label
   );
 }
 
-export const h = (v: number) => { const hh = Math.floor(v), mm = Math.round((v - hh) * 60); return hh ? `${hh} h ${String(mm).padStart(2, "0")}` : `${mm} min`; };
+export const h = (v: number) => { const t = Math.round(v * 60), hh = Math.floor(t / 60), mm = t - hh * 60; return hh ? `${hh} h ${String(mm).padStart(2, "0")}` : `${mm} min`; };
 export const km = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${m.toFixed(0)} m`);
 export const sgn = (v: number, d = 1) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(d)}`;
 

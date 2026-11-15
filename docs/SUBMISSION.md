@@ -29,7 +29,9 @@ The result is a clear rule: rerouting a walk to hug cliffs almost never lowers d
 2. **Built a terrain horizon engine.** It uses the USGS 1 m DEM and is verified on analytic shapes and against the RAD team's own horizon mask (0.91° RMSE).
 3. **Built a route engine and a break-even analysis.** The route engine compares five strategies against a shortest-distance baseline over 150 random walks. The break-even analysis is computed exactly for every candidate stop location. Each recommendation is classified as resolved, marginal or unresolved against validated model error, and flagged for steep or cliff-base terrain (rockfall is not modeled).
 4. **Tested terrain against pressure and time at 322 rover stops (RAD + REMS).**
-   - Terrain adds out-of-sample information: +22 % skill over time alone on held-out time blocks, with a block-bootstrap interval that excludes zero.
+   - Terrain helps reconstruct where Curiosity's dose was locally lower. On held-out time blocks, RMSE is 11.7 % lower than with time alone (MSE 22 %), with an interval that excludes zero when resampling whole sites.
+   - The gain is concentrated: 59 % comes from six stops at Maria Gordon Notch, a site also used to calibrate the model. Without the notch, the improvement is −5.5 % RMSE and still clear. Without the 10 % most shielded stops, it is not distinguishable from zero.
+   - This is a reconstruction of past local anomalies, not a test of absolute dose predictions at new places.
    - Pressure control adds no measurable gain at stop level.
    - At the level of independent sites, the physical model and a blocked-sky rule cannot be distinguished. We report this as found.
 5. **Built an interactive 3D app** that works as a static public demo, on phones, and without WebGL. Measured data, model outputs and planning assumptions are labelled differently everywhere.

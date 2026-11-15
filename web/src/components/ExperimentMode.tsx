@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import type { Dataset, TSRow } from "@/lib/data";
-import { corrCI, crossValidate, dMSE, MODELS, parkingPredictions, parkingVerdict, pct, rng, rmse, type ModelId } from "@/lib/stats";
+import { corrCI, crossValidate, dMSE, MODELS, parkingPredictions, parkingVerdict, pct, rng, rmse, siteDMSE, siteOf, siteShares, type ModelId } from "@/lib/stats";
 import type { SceneSpec } from "./MissionMode";
 import { Chip, download, Grammar, M, More, P, Seg, sgn, Slider } from "./ui";
 
@@ -13,6 +13,8 @@ const EXPS: { id: Exp; title: string; q: string; n: string }[] = [
 ];
 
 // published-period sol windows (Guo et al. 2026 Table 1 + Butte M12) for the 'independent of published sites' subset
+const MGN_SITE = 92;   // Maria Gordon Notch navigation site (Guo et al. period P6)
+
 function inPublished(ds: Dataset, r: TSRow) {
   return Object.values(ds.parking.periods).some((p) => r.mid_sol >= p.sols[0] - 1 && r.mid_sol <= p.sols[1] + 1);
 }
@@ -108,13 +110,14 @@ function TerrainExp({ ds, revealed, setRevealed, setScene }: ExpProps) {
   const ts = ds.terrainSignal!;
   const [a, setA] = useState<ModelId>("M3");
   const [b, setB] = useState<ModelId>("M0");
-  const [subset, setSubset] = useState<"all" | "nopub" | "nostrong" | "long">("all");
+  const [subset, setSubset] = useState<"all" | "nomgn" | "nopub" | "nostrong" | "long">("all");
   const [k, setK] = useState(8);
   const [L, setL] = useState(20);
   useEffect(() => { setScene({ pins: [], lines: [] }); }, [setScene]);
   const rows = useMemo(() => {
     let r = ts.rows;
     if (subset === "nopub") r = r.filter((q) => !inPublished(ds, q));
+    if (subset === "nomgn") r = r.filter((q) => siteOf(q) !== MGN_SITE);
     if (subset === "long") r = r.filter((q) => q.data_sols >= 2);
     if (subset === "nostrong") { const cut = pct(r.map((q) => Math.abs(q.m_terrain)), 0.95); r = r.filter((q) => Math.abs(q.m_terrain) <= cut); }
     return r;
@@ -128,15 +131,25 @@ function TerrainExp({ ds, revealed, setRevealed, setScene }: ExpProps) {
     const fixed = MODELS[a].fixed;
     const sl = fixed ? slopeCI(rows.map((q) => q[fixed] as number), y) : null;
     const rc = fixed ? corrCI(rows.map((q) => q[fixed] as number), y, L) : null;
-    return { cv, y, d, skillA: skill(a), skillB: skill(b), rmseA: rmse(y.map((v, i) => v - cv.pred[a][i])) * 100, rmseB: rmse(y.map((v, i) => v - cv.pred[b][i])) * 100, sl, rc,
-      coefs: cv.coefs[a] };
+    const ds_ = siteDMSE(rows, y, cv.pred[a], cv.pred[b]);
+    const rmseA = rmse(y.map((v, i) => v - cv.pred[a][i])) * 100, rmseB = rmse(y.map((v, i) => v - cv.pred[b][i])) * 100;
+    return { cv, y, d, ds: ds_, skillA: skill(a), skillB: skill(b), rmseA, rmseB, sl, rc, coefs: cv.coefs[a],
+      mseRed: 1 - (rmseA / rmseB) ** 2, rmseRed: 1 - rmseA / rmseB, shares: siteShares(rows, y, cv.pred[a], cv.pred[b]) };
   }, [rows, a, b, k, L, ts.window_sols]);
-  const verdict = res.d.hi < 0 ? ["supported", `${MODELS[a].short} predicts better than ${MODELS[b].short.toLowerCase()}`] : res.d.lo > 0 ? ["against", `${MODELS[a].short} predicts worse than ${MODELS[b].short.toLowerCase()}`] : ["inconclusive", "The data cannot distinguish them"];
+  // conservative verdict: both the time-block and the whole-site interval must exclude zero
+  const better = res.d.hi < 0 && res.ds.hi < 0, worse = res.d.lo > 0 && res.ds.lo > 0;
+  const verdict = better ? ["supported", `${MODELS[a].short} predicts better than ${MODELS[b].short.toLowerCase()}`]
+    : worse ? ["against", `${MODELS[a].short} predicts worse than ${MODELS[b].short.toLowerCase()}`] : ["inconclusive", "The data cannot distinguish them"];
+  const top = res.shares[0];
   const exportRun = () => download("marsshield-experiment-terrain-signal.json", {
     experiment: "Does terrain explain RAD dose variation after controlling for time and pressure?", retrospective: "historical NASA RAD L2 + REMS data; not a new measurement",
     choices: { model: a, baseline: b, subset, k_time_blocks: k, bootstrap_block_length: L, detrending_window_sols: ts.window_sols },
-    results: { n_stops: rows.length, rmse_model_pp: res.rmseA, rmse_baseline_pp: res.rmseB, skill_model_vs_time_only: res.skillA, skill_baseline_vs_time_only: res.skillB,
-      dMSE_pp2: res.d, calibration_slope: res.sl, correlation: res.rc, verdict: verdict[1] },
+    results: { n_stops: rows.length, n_sites: res.ds.nSites, rmse_model_pp: res.rmseA, rmse_baseline_pp: res.rmseB, rmse_reduction: res.rmseRed, mse_reduction: res.mseRed,
+      skill_model_vs_time_only: res.skillA, skill_baseline_vs_time_only: res.skillB,
+      dMSE_pp2_time_block_bootstrap: res.d, dMSE_pp2_site_bootstrap: res.ds, gain_share_by_site: res.shares.slice(0, 5),
+      calibration_slope: res.sl, correlation: res.rc, verdict: verdict[1] },
+    interpretation: "Reconstructs each stop's local dose anomaly against nearby stops in time (a few percent); does not predict absolute dose at new locations.",
+    independence: ts.evaluation_overlap?.status,
     method: "leave-one-time-block-out CV with a ±15-sol buffer; moving-block bootstrap; computed in the browser (point estimates verified against science/marsshield/terrain_signal.py)",
     data: { file: "terrain_signal.json", generated_utc: (ts as unknown as { generated_utc?: string }).generated_utc, sources: ["NASA RAD L2 (SPDF)", "NASA REMS MODRDR (PDS)", "USGS Gale DEM", "MSL waypoints"] },
   });
@@ -149,7 +162,7 @@ function TerrainExp({ ds, revealed, setRevealed, setScene }: ExpProps) {
       <span className="muted">against</span>
       <select className="sel" value={b} onChange={(e) => { setB(e.target.value as ModelId); setRevealed(false); }}>{(["M0", "M1", "M2", "M3"] as ModelId[]).filter((m) => m !== a).map((m) => <option key={m} value={m}>{MODELS[m].short}</option>)}</select></div>
     <div className="row"><span className="muted">Stops</span>
-      <Seg label="Data subset" value={subset} onChange={(v) => { setSubset(v); setRevealed(false); }} options={[["all", "All"], ["nopub", "Not published sites"], ["nostrong", "No extreme"], ["long", "≥ 2 sols"]]} /></div>
+      <Seg label="Data subset" value={subset} onChange={(v) => { setSubset(v); setRevealed(false); }} options={[["all", "All"], ["nomgn", "No notch"], ["nopub", "Not published"], ["nostrong", "No extreme"], ["long", "≥ 2 sols"]]} /></div>
     <More label="Advanced: validation design">
       <Slider label="Held-out time blocks" value={k} min={4} max={12} step={1} onChange={setK} fmt={(v) => String(v)} />
       <div className="row"><span className="muted">Bootstrap block length</span><Seg label="Block length" value={L} onChange={setL} options={[[10, "10"], [20, "20"], [40, "40"]]} /></div>
@@ -161,13 +174,22 @@ function TerrainExp({ ds, revealed, setRevealed, setScene }: ExpProps) {
     ) : (<>
       <Grammar />
       <div className="stats">
-        <div><b>{res.rmseA.toFixed(2)}</b><span>pp error, {MODELS[a].short.toLowerCase()}</span></div>
-        <div><b>{res.rmseB.toFixed(2)}</b><span>pp error, {MODELS[b].short.toLowerCase()}</span></div>
-        <div><b>{(res.skillA * 100).toFixed(0)} %</b><span>variance explained beyond time</span></div>
+        <div><b>{res.rmseA.toFixed(2)}</b><span>pp typical error, {MODELS[a].short.toLowerCase()}</span></div>
+        <div><b>{res.rmseB.toFixed(2)}</b><span>pp typical error, {MODELS[b].short.toLowerCase()}</span></div>
+        <div><b>{sgn(-res.rmseRed * 100, 1)} %</b><span>typical error (RMSE) change</span></div>
       </div>
       <div className="callout">
         <div className="row"><Chip kind={verdict[0]}>{verdict[1]}</Chip></div>
-        <p className="prose">Difference in mean squared error {sgn(res.d.mean, 2)} pp² (95 % block-bootstrap interval {sgn(res.d.lo, 2)} to {sgn(res.d.hi, 2)}). Held-out over {k} time blocks, {rows.length} stops.</p>
+        <p className="prose">Mean squared error {sgn(-res.mseRed * 100, 1)} % ({sgn(res.d.mean, 2)} pp²). 95 % interval resampling whole Curiosity sites ({res.ds.nSites}): {sgn(res.ds.lo, 2)} to {sgn(res.ds.hi, 2)};
+          resampling blocks of {L} stops in time: {sgn(res.d.lo, 2)} to {sgn(res.d.hi, 2)}. Held out over {k} time blocks, {rows.length} stops.</p>
+        {top && top.share > 0 && res.mseRed > 0 && (
+          <p className={top.share > 0.4 ? "flagline" : "muted"}>Site {top.site}{top.site === MGN_SITE ? " (Maria Gordon Notch)" : ""}, {top.n} stop{top.n > 1 ? "s" : ""}, carries {(top.share * 100).toFixed(0)} % of this improvement.
+            {top.site === MGN_SITE ? " Try “No notch”." : ""}</p>)}
+      </div>
+      <div className="note">
+        <p><b>What this tests.</b> Whether terrain predicts how much a stop&apos;s dose differs from Curiosity&apos;s other stops at about the same time: a local anomaly of a few percent.
+          It does not predict absolute dose at a new place.</p>
+        <p><b>Not fully independent.</b> The terrain model was not fitted here, but its one free parameter (the albedo share) was derived by Guo et al. (2026) from RAD data at the published periods, including the notch.</p>
       </div>
       {res.sl && res.rc && (<>
         <Scatter x={rows.map((q) => q[MODELS[a].fixed!] as number)} y={res.y} slope={res.sl.slope} />
@@ -176,7 +198,8 @@ function TerrainExp({ ds, revealed, setRevealed, setScene }: ExpProps) {
       </>)}
       <More label="What else to know">
         <p className="prose">Pressure: at this stop-level design, pressure differences between a stop and its neighbourhood are only a few pascals (spread {ts.predictor_spread_pp.pressure_term.toFixed(2)} pp of dose), so pressure control barely changes predictions. That does not mean pressure is unimportant: it drives the daily dose cycle (Guo et al. 2015).</p>
-        <p className="prose">Most of the terrain information comes from a few strongly shielded stops: try &ldquo;No extreme&rdquo;.</p>
+        <p className="prose">Most of the terrain information comes from a few strongly shielded stops: try &ldquo;No extreme&rdquo;. Without the 10 % most strongly shielded stops the improvement is no longer distinguishable from zero (Evidence → RAD + pressure analysis).</p>
+        <p className="prose">Sol 1812 (September 2017) is hit by a solar particle event (+49 %). It inflates every model&apos;s error equally; it is kept, as pre-specified, which makes the relative improvement smaller, not larger.</p>
       </More>
       <button className="btn" onClick={exportRun}>Export this experiment (JSON)</button>
     </>)}

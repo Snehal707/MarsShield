@@ -202,7 +202,7 @@ def _terrain_signal(t, w):
       f"{pc['literature']['err']} in {pc['literature']['cite']}. After whole-stop averaging and detrending the pressure term spreads the "
       f"prediction by only {sp['pressure_term']:.2f} pp (observed spread {sp['y_obs']:.2f} pp), so this design cannot measure it. "
       "**No measurable gain from pressure control at stop level.**")
-    w(f"* Terrain: the published terrain model reduces out-of-sample error against time only (skill {P['M3']['skill_vs_M0'] * 100:+.1f} %, "
+    w(f"* Terrain: the published terrain model reduces out-of-sample error against time only (MSE {P['M3']['skill_vs_M0'] * 100:.1f} % lower, RMSE {(1 - P['M3']['rmse_pp'] / P['M0']['rmse_pp']) * 100:.1f} % lower; "
       f"interval excludes zero at every block length). **Terrain model vs blocked-sky proxy head to head: not distinguishable** "
       f"(M3−M2 interval {_ci(D['M3-M2']['L20']['ci95_pp2'])} pp²). The proxy alone does not reliably beat time only (M2−M0 interval {_ci(D['M2-M0']['L20']['ci95_pp2'])} pp²).")
     w("\nCorrelations of observed anomaly with each predictor (the previously reported 324-stop r = 0.36 used a different detrending "
@@ -218,8 +218,51 @@ def _terrain_signal(t, w):
         c = r["dMSE_vs_M0_ci95_pp2"]
         w(f"| {r['variant']} | {r['n']} | {r['skill']['M2'] * 100:+.1f} % | {r['skill']['M3'] * 100:+.1f} % | {_ci(c['M2'])} | "
           f"{_ci(c['M3'])} | {r['r_terrain']:.2f} |")
-    w("\nThe terrain signal is concentrated in a few strongly shielded stops: without the 5 % largest modeled anomalies the "
-      "skill falls to a few percent.\n")
+    if "rmse_reduction_vs_M0" in t:
+        rr, sc = t["rmse_reduction_vs_M0"], t["site_ci95_dMSE_vs_M0_pp2"]
+        w(f"\n**Headline in both units.** Against time only, the terrain model lowers RMSE by {rr['M3'] * 100:.1f} % and MSE by "
+          f"{P['M3']['skill_vs_M0'] * 100:.1f} % (the blocked-sky proxy: {rr['M2'] * 100:.1f} % and {P['M2']['skill_vs_M0'] * 100:.1f} %). "
+          f"Resampling whole sites, the terrain model's ΔMSE interval is {_ci(sc['M3'])} pp²; the proxy's is {_ci(sc['M2'])} pp².\n")
+        w("Same variants with RMSE and site-resampled intervals (ΔMSE vs time only, pp²):\n")
+        w("| Variant | n | Sites | Terrain RMSE change | Terrain site 95 % | Proxy RMSE change | Proxy site 95 % | Largest site share |\n|---|---|---|---|---|---|---|---|")
+        for r in t["robustness"]:
+            if "rmse_reduction" not in r:
+                continue
+            s_ = r["dMSE_vs_M0_site_ci95_pp2"]
+            w(f"| {r['variant']} | {r['n']} | {r['n_sites']} | {-r['rmse_reduction']['M3'] * 100:+.1f} % | {_ci(s_['M3'])} | "
+              f"{-r['rmse_reduction']['M2'] * 100:+.1f} % | {_ci(s_['M2'])} | site {r['largest_site_share_M3']['site']}: {r['largest_site_share_M3']['share'] * 100:.0f} % |")
+    if "influence" in t:
+        inf = t["influence"]
+        w(f"\n**Where the gain comes from.** Share of the terrain model's squared-error reduction against time only, by Curiosity site "
+          f"({inf['n_sites']} sites):\n")
+        w("| Site | Stops | Share |\n|---|---|---|")
+        for r in inf["site_shares_M3_vs_M0"]:
+            w(f"| {r['site']}{' (Maria Gordon Notch)' if r['site'] == inf['mgn_site']['site'] else ''} | {r['n']} | {r['share'] * 100:.1f} % |")
+        w("\nLargest single-stop contributions:\n")
+        w("| Stop (RMC) | Sol | Measured | Terrain model | Proxy | Share | In a published period |\n|---|---|---|---|---|---|---|")
+        for s_ in inf["top_stops"]:
+            w(f"| {s_['rmc']} | {s_['sol']} | {s_['y_obs_pct']:+.1f} % | {s_['m_terrain_pct']:+.1f} % | {s_['g_proxy_pct']:+.1f} % | "
+              f"{s_['share'] * 100:.1f} % | {'yes' if s_['in_published_period'] else 'no'} |")
+        lo = inf["leave_one_site_out"]
+        w(f"\nLeave one site out (cross-validation rerun without it): terrain-model MSE skill ranges from {lo['min']['skill_M3'] * 100:.1f} % "
+          f"(without site {lo['min']['site']}) to {lo['max']['skill_M3'] * 100:.1f} % (without site {lo['max']['site']}). Site 66 contains sol 1812, "
+          "inside the September 2017 solar particle event (+48.8 % anomaly, unexplained by any model); it is kept, as pre-specified, "
+          "and lowers every model's relative skill.\n")
+        w("**Interpretation.** The test reconstructs each stop's *local* anomaly against Curiosity's other stops at about the same time "
+          "(a few percent). It does not test absolute dose predictions at new locations. The terrain signal is real but concentrated: "
+          "without site 92 the terrain model still improves on time only (interval excludes zero), and without the 10 % most shielded "
+          "stops it does not.\n")
+    if "evaluation_overlap" in t:
+        e = t["evaluation_overlap"]
+        w(f"**Independence.** {e['status'][0].upper() + e['status'][1:].rstrip('.')}.\n")
+        w(f"* {e['albedo_parameter']}")
+        w(f"* {e['n_in_published_periods']} of {e['n_stops']} stops fall inside the published periods (sites "
+          f"{', '.join(map(str, e['sites_in_published_periods']))}); stop 92_0 (sol 3322) is the day before P6 at the same notch.")
+        w(f"* {e['model_error_threshold']}")
+        w(f"* {e['own_choices']}\n")
+    if "influence" not in t:
+        w("\nThe terrain signal is concentrated in a few strongly shielded stops: without the 5 % largest modeled anomalies the "
+          "skill falls to a few percent.\n")
     dt_ = t["disagreement_test"]
     w(f"Disagreement test: stops selected by |terrain model − proxy| from model values only, before comparison with RAD; "
       f"intervals resample whole sites ({dt_['cluster']}).\n")

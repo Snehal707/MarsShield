@@ -102,13 +102,17 @@ export class Engine {
     return t * (1 + g * g);
   }
 
-  /** Single-source Dijkstra. reverse=true computes cost from every node TO the source. */
-  dijkstra(src: number, obj: Objective, reverse = false, target = -1): { dist: Float64Array; pred: Int32Array } {
+  /** Single-source Dijkstra. reverse=true computes cost from every node TO the source.
+   *  track=true also accumulates walking dose (time x modeled rate) and time along the objective-optimal tree, so a
+   *  non-dose objective (fastest, shortest, ...) still reports the dose of the path it actually chose. */
+  dijkstra(src: number, obj: Objective, reverse = false, target = -1, track = false): { dist: Float64Array; pred: Int32Array; dose?: Float64Array; time?: Float64Array } {
     const N = this.ny * this.nx, nx = this.nx, ny = this.ny;
     const dist = new Float64Array(N).fill(Infinity);
     const pred = new Int32Array(N).fill(-1);
     const done = new Uint8Array(N);
     const heap = new MinHeap(1 << 16);
+    const dose = track ? new Float64Array(N).fill(Infinity) : undefined, time = track ? new Float64Array(N).fill(Infinity) : undefined;
+    if (dose && time) { dose[src] = 0; time[src] = 0; }
     dist[src] = 0; heap.push(0, src);
     const hs = OFFSETS.map(([dy, dx]) => this.res * Math.hypot(dy, dx));
     while (heap.n) {
@@ -125,10 +129,17 @@ export class Engine {
         const w = reverse ? this.weight(v, u, hs[k], obj) : this.weight(u, v, hs[k], obj);
         if (!(w >= 0)) continue;
         const nd = d + w;
-        if (nd < dist[v]) { dist[v] = nd; pred[v] = u; heap.push(nd, v); }
+        if (nd < dist[v]) {
+          dist[v] = nd; pred[v] = u; heap.push(nd, v);
+          if (dose && time) {
+            const [a, b] = reverse ? [v, u] : [u, v];
+            dose[v] = dose[u] + (obj === "low_dose" ? w : this.weight(a, b, hs[k], "low_dose"));
+            time[v] = time[u] + (obj === "fastest" ? w : this.weight(a, b, hs[k], "fastest"));
+          }
+        }
       }
     }
-    return { dist, pred };
+    return { dist, pred, dose, time };
   }
 
   path(a: [number, number], b: [number, number], obj: Objective): Int32Array | null {
@@ -178,19 +189,23 @@ export class Engine {
 
 // ------------------------------------------------------------------ break-even (port of breakeven.py core)
 export type BreakEvenResult = ReturnType<typeof breakEven>;
-export function breakEven(eng: Engine, start: [number, number], end: [number, number], target: [number, number],
-  radius: number, Dflat: number, err: { mae_pp: number; rmse_pp: number }, stopMaxSlope = STOP_MAX_SLOPE_DEG) {
-  const s = eng.toRC(...start), e = eng.toRC(...end), t = eng.toRC(...target);
-  const fwd = eng.dijkstra(s[0] * eng.nx + s[1], "low_dose");
-  const bwd = eng.dijkstra(e[0] * eng.nx + e[1], "low_dose", true);
+/** Walking dose W(c) = start -> c -> end along the paths the chosen route strategy takes (default: lowest dose, as in
+ *  breakeven.py). end = null means no return leg. Each named option carries its actual outbound / return path metrics,
+ *  so a mission plan built from an option describes exactly the journey that was compared. */
+export function breakEven(eng: Engine, start: [number, number], end: [number, number] | null, target: [number, number],
+  radius: number, Dflat: number, err: { mae_pp: number; rmse_pp: number }, stopMaxSlope = STOP_MAX_SLOPE_DEG, objective: Objective = "low_dose") {
+  const s = eng.toRC(...start), t = eng.toRC(...target);
+  const e = end ? eng.toRC(...end) : null;
+  const fwd = eng.dijkstra(s[0] * eng.nx + s[1], objective, false, -1, true);
+  const bwd = e ? eng.dijkstra(e[0] * eng.nx + e[1], objective, true, -1, true) : null;
   const k = Math.ceil(radius / eng.res);
   const cand: { i: number; d: number; W: number; r: number }[] = [];
   for (let r = Math.max(0, t[0] - k); r < Math.min(eng.ny, t[0] + k + 1); r++)
     for (let c = Math.max(0, t[1] - k); c < Math.min(eng.nx, t[1] + k + 1); c++) {
       const d = Math.hypot(r - t[0], c - t[1]) * eng.res, i = r * eng.nx + c;
       if (d > radius || !(eng.slope[i] <= stopMaxSlope)) continue;
-      const F = fwd.dist[i] + bwd.dist[i];
-      if (!Number.isFinite(F)) continue;
+      if (!Number.isFinite(fwd.dist[i]) || (bwd && !Number.isFinite(bwd.dist[i]))) continue;
+      const F = fwd.dose![i] + (bwd ? bwd.dose![i] : 0);
       cand.push({ i, d, W: (F * Dflat) / 24, r: (eng.rate[i] * Dflat) / 24 });
     }
   if (!cand.length) throw new Error("No workable, reachable stop within the work radius.");
@@ -198,13 +213,19 @@ export function breakEven(eng: Engine, start: [number, number], end: [number, nu
   const Bo = cand.reduce((a, q) => (q.d < a.d ? q : a));
   const Co = cand.reduce((a, q) => (q.r < a.r ? q : a));
   const named: [string, string, typeof A][] = [["A", "Least walking", A], ["B", "At the science target", Bo], ["C", "Most sheltered in reach", Co]];
-  const opts: { keys: string[]; labels: string[]; i: number; x: number; y: number; dist_from_target_m: number; W: number; r: number; rel: number; slope: number }[] = [];
+  type Leg = ReturnType<Engine["metrics"]>;
+  const tree = (pred: Int32Array, from: number, rev: boolean) => {          // follow the Dijkstra tree back to its source
+    const out = [from]; while (pred[out[out.length - 1]] >= 0) out.push(pred[out[out.length - 1]]);
+    return Int32Array.from(rev ? out : out.reverse());
+  };
+  const opts: { keys: string[]; labels: string[]; i: number; x: number; y: number; dist_from_target_m: number; W: number; r: number; rel: number; slope: number; out: Leg; back: Leg | null }[] = [];
   for (const [key, label, q] of named) {
     const ex = opts.find((o) => o.i === q.i);
     if (ex) { ex.keys.push(key); ex.labels.push(label); continue; }
     const rr = (q.i / eng.nx) | 0, cc = q.i - rr * eng.nx;
     const [x, y] = eng.toXY(rr, cc);
-    opts.push({ keys: [key], labels: [label], i: q.i, x, y, dist_from_target_m: q.d, W: q.W, r: q.r, rel: eng.rate[q.i], slope: eng.slope[q.i] });
+    opts.push({ keys: [key], labels: [label], i: q.i, x, y, dist_from_target_m: q.d, W: q.W, r: q.r, rel: eng.rate[q.i], slope: eng.slope[q.i],
+      out: eng.metrics(tree(fwd.pred, q.i, false), Dflat), back: bwd ? eng.metrics(tree(bwd.pred, q.i, true), Dflat) : null });
   }
   const classify = (dpp: number) => (dpp >= err.rmse_pp ? "resolved" : dpp >= err.mae_pp ? "marginal" : "unresolved") as "resolved" | "marginal" | "unresolved";
   const breaks: { less: string; more: string; t_h: number; dpp: number; status: ReturnType<typeof classify>; band: [number, number | null]; extraW: number }[] = [];
@@ -218,5 +239,5 @@ export function breakEven(eng: Engine, start: [number, number], end: [number, nu
   // exact optimum envelope over all candidates for a grid of dwell times
   const T = Array.from({ length: 49 }, (_, j) => j * 0.25);
   const envelope = T.map((tt) => cand.reduce((m, q) => Math.min(m, q.W + tt * q.r), Infinity));
-  return { options: opts, breaks, nCandidates: cand.length, T, envelope, classify };
+  return { options: opts, breaks, nCandidates: cand.length, T, envelope, classify, objective };
 }

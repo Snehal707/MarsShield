@@ -70,19 +70,22 @@ export function useEngine(ds: Dataset | null) {
           }
           return out;
         }),
-      breakEven: (p: { start: [number, number]; end: [number, number]; target: [number, number]; radius: number; Dflat: number;
-        err: { mae_pp: number; rmse_pp: number }; alpha: number; suit: number; stopMaxSlope: number }) =>
+      breakEven: (p: { start: [number, number]; end: [number, number] | null; target: [number, number]; radius: number; Dflat: number;
+        err: { mae_pp: number; rmse_pp: number }; alpha: number; suit: number; stopMaxSlope: number; objective: Objective }) =>
         call<BEJs>({ kind: "breakeven", ...p }, () => {
           const e = local(p.alpha, p.suit);
-          const r = breakEven(e, p.start, p.end, p.target, p.radius, p.Dflat, p.err, p.stopMaxSlope);
-          return { ...r, options: r.options.map((o) => ({ ...o, xy: [] as [number, number][] })) } as unknown as BEJs;
+          const r = breakEven(e, p.start, p.end, p.target, p.radius, p.Dflat, p.err, p.stopMaxSlope, p.objective);
+          return { ...r, options: r.options.map((o) => ({ ...o, xy: [...o.out.xy, ...(o.back ? o.back.xy.slice(1) : [])] })) } as unknown as BEJs;
         }),
     };
   }, [ready, ds]);
 }
 
+export type BELeg = { distance_m: number; time_h: number; dose_uGy: number };
 export type BEJs = {
-  options: { keys: string[]; labels: string[]; i: number; x: number; y: number; dist_from_target_m: number; W: number; r: number; rel: number; slope: number; xy: [number, number][] }[];
+  options: { keys: string[]; labels: string[]; i: number; x: number; y: number; dist_from_target_m: number; W: number; r: number; rel: number; slope: number;
+    out: BELeg; back: BELeg | null; xy: [number, number][] }[];
+  objective: Objective;
   breaks: { less: string; more: string; t_h: number; dpp: number; status: "resolved" | "marginal" | "unresolved"; band: [number, number | null]; extraW: number }[];
   nCandidates: number; T: number[]; envelope: number[];
 };

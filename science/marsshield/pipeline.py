@@ -96,6 +96,10 @@ def export_experiments(out):
     tg = TG.build()
     (out / "skies_targets.json").write_text(json.dumps({t["id"]: sky_at(t["x"], t["y"]) for t in tg}))
     # terrain-signal analysis rows (if built): observed/predictor anomalies per stop for browser cross-validation
+    export_terrain_signal(out)
+
+
+def export_terrain_signal(out):
     ts = C.PROC / "terrain_signal.json"
     if ts.exists():
         d = json.loads(ts.read_text())
@@ -106,7 +110,11 @@ def export_experiments(out):
             performance=d["performance"], mse_differences=d["mse_differences"], correlations=d["correlations"],
             pressure_coefficient=d["pressure_coefficient"], meta=d["meta"], predictor_spread_pp=d["predictor_spread_pp"],
             robustness=d["robustness"], disagreement_test=d["disagreement_test"], calibration=d["calibration"],
-            spearman_terrain=d["spearman_terrain"], generated_utc=d["generated_utc"])))
+            spearman_terrain=d["spearman_terrain"], generated_utc=d["generated_utc"],
+            rmse_reduction_vs_M0=d["rmse_reduction_vs_M0"], site_ci95_dMSE_vs_M0_pp2=d["site_ci95_dMSE_vs_M0_pp2"],
+            influence={k: v for k, v in d["influence"].items() if k != "leave_one_site_out"} | dict(
+                leave_one_site_out={k: d["influence"]["leave_one_site_out"][k] for k in ("min", "max")}),
+            evaluation_overlap=d["evaluation_overlap"])))
 
 
 def export_web():

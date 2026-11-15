@@ -184,7 +184,7 @@ Targets nontron, mgn, canaima (positions from NASA waypoints at the documented s
 
 ## V8 Does terrain explain RAD variation beyond pressure and time? (RAD + REMS, 322 stops)
 
-Generated 2026-11-15T00:56:01+00:00. 322 walk-area rover stops, sols 1722–3896; 143020 of 149021 RAD records (96.8 %) matched to a REMS pressure (372568 REMS samples). Target: stop mean ln E minus the median ln E at other stops within ±15 sols; every predictor is detrended identically. Scores are out of sample: leave-one-time-block-out, 8 blocks, training excludes stops within ±15 sols of the test block.
+Generated 2026-11-15T02:12:21+00:00. 322 walk-area rover stops, sols 1722–3896; 143020 of 149021 RAD records (96.8 %) matched to a REMS pressure (372568 REMS samples). Target: stop mean ln E minus the median ln E at other stops within ±15 sols; every predictor is detrended identically. Scores are out of sample: leave-one-time-block-out, 8 blocks, training excludes stops within ±15 sols of the test block.
 
 | Model | RMSE (pp) | MAE (pp) | Skill vs time only |
 |---|---|---|---|
@@ -210,7 +210,7 @@ MSE differences with moving-block bootstrap 95 % intervals (pp², blocks of 10 /
 | M3-M2 | -0.53 | [-2.16, +0.76] | [-2.27, +0.64] | [-1.89, +0.51] |
 
 * Pressure: fitted coefficient -0.035 µGy/day/Pa against -0.13 ± 0.02 in Guo et al. (2015) ApJ 810, 24 (first Martian year, diurnal fit). After whole-stop averaging and detrending the pressure term spreads the prediction by only 0.04 pp (observed spread 3.95 pp), so this design cannot measure it. **No measurable gain from pressure control at stop level.**
-* Terrain: the published terrain model reduces out-of-sample error against time only (skill +22.0 %, interval excludes zero at every block length). **Terrain model vs blocked-sky proxy head to head: not distinguishable** (M3−M2 interval [-2.27, +0.64] pp²). The proxy alone does not reliably beat time only (M2−M0 interval [-8.27, +0.32] pp²).
+* Terrain: the published terrain model reduces out-of-sample error against time only (MSE 22.0 % lower, RMSE 11.7 % lower; interval excludes zero at every block length). **Terrain model vs blocked-sky proxy head to head: not distinguishable** (M3−M2 interval [-2.27, +0.64] pp²). The proxy alone does not reliably beat time only (M2−M0 interval [-8.27, +0.32] pp²).
 
 Correlations of observed anomaly with each predictor (the previously reported 324-stop r = 0.36 used a different detrending for observations and model and is superseded):
 
@@ -229,12 +229,64 @@ Robustness (skill vs time only, and 95 % block-bootstrap interval of ΔMSE vs ti
 |---|---|---|---|---|---|---|
 | baseline (window 15 sols, >= 1 sol of data) | 322 | +18.7 % | +22.0 % | [-8.43, +0.28] | [-8.07, -0.75] | 0.48 |
 | excluding stops inside the published Guo et al. periods | 295 | +11.2 % | +12.5 % | [-4.38, +0.05] | [-4.36, -0.36] | 0.37 |
+| excluding site 92 (Maria Gordon Notch) | 316 | +4.9 % | +10.7 % | [-1.80, +0.57] | [-2.45, -0.64] | 0.33 |
+| excluding site 92 and the published periods | 292 | +5.1 % | +6.4 % | [-1.75, +0.11] | [-1.56, -0.32] | 0.26 |
 | excluding the 5 % of stops with the largest modeled anomaly | 305 | +1.0 % | +2.9 % | [-0.85, +0.59] | [-0.72, -0.02] | 0.17 |
+| excluding the 10 % of stops with the largest modeled anomaly | 289 | +1.5 % | +2.3 % | [-0.99, +0.59] | [-0.67, +0.09] | 0.15 |
+| excluding the September 2017 solar particle event | 319 | +33.8 % | +42.4 % | [-8.21, +0.46] | [-8.02, -0.70] | 0.66 |
 | stops with >= 2 sols of data | 181 | -8.4 % | +13.6 % | [-1.18, +2.12] | [-2.14, -0.19] | 0.38 |
 | detrending window 10 sols | 309 | +18.1 % | +21.9 % | [-7.60, -0.06] | [-7.88, -0.74] | 0.48 |
 | detrending window 30 sols | 326 | +19.7 % | +28.3 % | [-8.62, +0.08] | [-10.01, -1.05] | 0.54 |
 
-The terrain signal is concentrated in a few strongly shielded stops: without the 5 % largest modeled anomalies the skill falls to a few percent.
+**Headline in both units.** Against time only, the terrain model lowers RMSE by 11.7 % and MSE by 22.0 % (the blocked-sky proxy: 9.8 % and 18.7 %). Resampling whole sites, the terrain model's ΔMSE interval is [-8.42, -0.93] pp²; the proxy's is [-8.60, +0.24] pp².
+
+Same variants with RMSE and site-resampled intervals (ΔMSE vs time only, pp²):
+
+| Variant | n | Sites | Terrain RMSE change | Terrain site 95 % | Proxy RMSE change | Proxy site 95 % | Largest site share |
+|---|---|---|---|---|---|---|---|
+| baseline (window 15 sols, >= 1 sol of data) | 322 | 35 | -11.7 % | [-8.42, -0.93] | -9.8 % | [-8.60, +0.24] | site 92: 59 % |
+| excluding stops inside the published Guo et al. periods | 295 | 35 | -6.5 % | [-4.32, -0.44] | -5.8 % | [-4.17, -0.03] | site 92: 53 % |
+| excluding site 92 (Maria Gordon Notch) | 316 | 34 | -5.5 % | [-2.11, -0.78] | -2.5 % | [-1.82, +0.65] | site 89: 15 % |
+| excluding site 92 and the published periods | 292 | 34 | -3.2 % | [-1.48, -0.28] | -2.6 % | [-1.65, +0.23] | site 89: 28 % |
+| excluding the 5 % of stops with the largest modeled anomaly | 305 | 35 | -1.5 % | [-0.70, -0.05] | -0.5 % | [-0.90, +0.58] | site 66: 37 % |
+| excluding the 10 % of stops with the largest modeled anomaly | 289 | 35 | -1.1 % | [-0.66, +0.08] | -0.7 % | [-0.98, +0.55] | site 66: 48 % |
+| excluding the September 2017 solar particle event | 319 | 35 | -24.1 % | [-8.34, -0.85] | -18.7 % | [-8.43, +0.43] | site 92: 61 % |
+| stops with >= 2 sols of data | 181 | 35 | -7.0 % | [-1.89, -0.11] | +4.1 % | [-1.05, +2.50] | site 91: 33 % |
+| detrending window 10 sols | 309 | 35 | -11.6 % | [-7.90, -1.06] | -9.5 % | [-7.91, -0.02] | site 92: 54 % |
+| detrending window 30 sols | 326 | 35 | -15.3 % | [-9.89, -1.48] | -10.4 % | [-8.98, +0.15] | site 92: 45 % |
+
+**Where the gain comes from.** Share of the terrain model's squared-error reduction against time only, by Curiosity site (35 sites):
+
+| Site | Stops | Share |
+|---|---|---|
+| 92 (Maria Gordon Notch) | 6 | 59.0 % |
+| 89 | 11 | 6.4 % |
+| 97 | 17 | 5.2 % |
+| 91 | 9 | 5.0 % |
+| 96 | 12 | 4.6 % |
+| 66 | 16 | 3.7 % |
+
+Largest single-stop contributions:
+
+| Stop (RMC) | Sol | Measured | Terrain model | Proxy | Share | In a published period |
+|---|---|---|---|---|---|---|
+| 92_84 | 3324 | -21.5 % | -11.6 % | -21.1 % | 32.9 % | yes |
+| 92_0 | 3322 | -17.4 % | -12.4 % | -22.7 % | 25.1 % | no |
+| 91_3204 | 3319 | -10.4 % | -3.8 % | -5.9 % | 5.9 % | no |
+| 89_2638 | 3188 | -8.2 % | -4.7 % | -8.7 % | 5.0 % | no |
+| 66_0 | 1812 | +48.8 % | +0.6 % | +1.2 % | 4.8 % | no |
+| 96_3150 | 3565 | -6.5 % | -5.3 % | -10.3 % | 3.7 % | yes |
+
+Leave one site out (cross-validation rerun without it): terrain-model MSE skill ranges from 10.7 % (without site 92) to 42.8 % (without site 66). Site 66 contains sol 1812, inside the September 2017 solar particle event (+48.8 % anomaly, unexplained by any model); it is kept, as pre-specified, and lowers every model's relative skill.
+
+**Interpretation.** The test reconstructs each stop's *local* anomaly against Curiosity's other stops at about the same time (a few percent). It does not test absolute dose predictions at new locations. The terrain signal is real but concentrated: without site 92 the terrain model still improves on time only (interval excludes zero), and without the 10 % most shielded stops it does not.
+
+**Independence.** Partly independent: the terrain model was not fitted in this cross-validation, but its albedo parameter was calibrated on RAD data that overlap the stops that carry most of its measured gain.
+
+* The terrain model's only free parameter, the flat-terrain albedo share (18-24 %, default 0.21), was derived by Guo et al. (2026, Eq. 5 and Table 1) from RAD measurements at parking periods P1-P8 and backgrounds BG1-BG8, which include the Maria Gordon Notch stops (P6).
+* 27 of 322 stops fall inside the published periods (sites 78, 79, 80, 81, 87, 92, 96, 97); stop 92_0 (sol 3322) is the day before P6 at the same notch.
+* The validated model error used for 'model cannot tell' (MAE 3.37 / RMSE 5.24 pp) comes from the same eight parking periods.
+* The detrending window (15 sols), block count (8) and minimum data (1 sol) were reused from the earlier observation analysis, not tuned on these results; the analysis was not pre-registered. Robustness variants vary them.
 
 Disagreement test: stops selected by |terrain model − proxy| from model values only, before comparison with RAD; intervals resample whole sites (Curiosity navigation site (RMC site index)).
 

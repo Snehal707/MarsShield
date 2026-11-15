@@ -34,7 +34,13 @@ Three intended audiences, each with one concrete question MarsShield can answer 
 - Evidence → **RAD + pressure analysis**: seven models scored on held-out time blocks, with block-bootstrap intervals and robustness variants.
 - Experiment 3 adds a site-level disagreement test.
 
-The answer is yes for terrain (+22 % skill, interval excludes zero). The two models cannot be distinguished, and pressure adds no measurable gain at stop level.
+The answer for terrain is a qualified yes:
+- Held-out RMSE is 11.7 % lower than time alone (MSE 22 %).
+- 59 % of the gain comes from six notch stops, a site also used to calibrate the model.
+- Without them it is −5.5 %, still clear; without the 10 % most shielded stops it is not distinguishable from zero.
+- The test reconstructs local anomalies along Curiosity's past traverse.
+
+The two models cannot be distinguished, and pressure adds no measurable gain at stop level. Experiment 1's "No notch" subset lets a researcher check the concentration directly.
 
 **Journey:**
 1. Evidence → RAD + pressure analysis.

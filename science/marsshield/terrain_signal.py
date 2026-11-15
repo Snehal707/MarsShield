@@ -222,34 +222,121 @@ def _spearman(a, b):
     return float(np.corrcoef(ra, rb)[0, 1])
 
 
-def robustness(base_rows) -> list[dict]:
-    """Pre-specified robustness variants: same models, same CV, different data choices."""
+MGN_SITE = 92                                   # Maria Gordon Notch: Curiosity navigation site of Guo et al. period P6
+SEP_2017 = ("2017-09-10", "2017-09-14")          # September 2017 solar particle event at Mars (Hassler et al. 2018, GRL 45, 5845)
+
+
+def _site(r):
+    return int(r["rmc"].split("_")[0])
+
+
+def _published_sols():
     from .published import GUO2026_TABLE1
-    pub_sols = [(v[1], v[2]) for v in GUO2026_TABLE1.values()] + [(1456, 1468)]
+    return [(v[1], v[2]) for v in GUO2026_TABLE1.values()] + [(1456, 1468)]
+
+
+def in_published_period(r):
+    return any(a - 1 <= r["mid_sol"] <= b + 1 for a, b in _published_sols())
+
+
+def in_sep_2017(r):
+    return r["utc_start"][:10] <= SEP_2017[1] and r["utc_end"][:10] >= SEP_2017[0]
+
+
+def site_bootstrap_dmse(y, pa, pb, site, B=2000, seed=29):
+    """95 % interval of mean[(y-pa)^2 - (y-pb)^2] resampling whole navigation sites (predictions held fixed)."""
+    d = (y - pa) ** 2 - (y - pb) ** 2
+    us = np.unique(site); idx = {s_: np.flatnonzero(site == s_) for s_ in us}
+    rng = np.random.default_rng(seed); bs = []
+    for _ in range(B):
+        i = np.concatenate([idx[s_] for s_ in rng.choice(us, size=us.size, replace=True)])
+        bs.append(np.mean(d[i]))
+    return [float(np.percentile(bs, 2.5) * 1e4), float(np.percentile(bs, 97.5) * 1e4)]
+
+
+def gain_shares(y, p_model, p_base, site):
+    """Share of the total squared-error reduction (base -> model) contributed by each site, largest first."""
+    c = (y - p_base) ** 2 - (y - p_model) ** 2
+    tot = c.sum()
+    by = {int(s_): float(c[site == s_].sum() / tot) for s_ in np.unique(site)}
+    return sorted(by.items(), key=lambda kv: -kv[1]), c, float(tot)
+
+
+def robustness(base_rows) -> list[dict]:
+    """Robustness variants: same models, same CV, different data choices. Intervals: moving-block bootstrap over
+    time-ordered stops (L = 20, as before) AND resampling whole navigation sites, which respects the clustering."""
     def summ(name, rows, window=WINDOW):
         if len(rows) < 40:
             return dict(variant=name, n=len(rows), note="too few stops")
         pred, *_ = cross_validate(rows, window=window)
         y = _arr(rows, "y_obs"); mse0 = np.mean((y - pred["M0"]) ** 2)
+        site = np.array([_site(r) for r in rows])
         sk = {m: float(1 - np.mean((y - pred[m]) ** 2) / mse0) for m in ("M1", "M2", "M3", "M4")}
+        rmse_red = {m: float(1 - np.sqrt(np.mean((y - pred[m]) ** 2) / mse0)) for m in ("M2", "M3")}
         rng = np.random.default_rng(23)
         ci = {}
         for m in ("M2", "M3"):
             d = (y - pred[m]) ** 2 - (y - pred["M0"]) ** 2
             bs = [np.mean(d[_mbb_indices(len(y), 20, rng)]) for _ in range(2000)]
             ci[m] = [float(np.percentile(bs, 2.5) * 1e4), float(np.percentile(bs, 97.5) * 1e4)]
-        return dict(variant=name, n=len(rows), skill=sk, dMSE_vs_M0_ci95_pp2=ci,
+        ci_site = {m: site_bootstrap_dmse(y, pred[m], pred["M0"], site) for m in ("M2", "M3")}
+        shares, _, _ = gain_shares(y, pred["M3"], pred["M0"], site)
+        return dict(variant=name, n=len(rows), n_sites=int(np.unique(site).size), skill=sk, rmse_reduction=rmse_red,
+                    dMSE_vs_M0_ci95_pp2=ci, dMSE_vs_M0_site_ci95_pp2=ci_site,
+                    largest_site_share_M3=dict(site=shares[0][0], share=shares[0][1]),
                     r_terrain=float(np.corrcoef(y, _arr(rows, "m_terrain"))[0, 1]),
                     spearman_terrain=_spearman(y, _arr(rows, "m_terrain")))
     out = [summ("baseline (window 15 sols, >= 1 sol of data)", base_rows)]
-    in_pub = lambda r: any(a - 1 <= r["mid_sol"] <= b + 1 for a, b in pub_sols)
-    out.append(summ("excluding stops inside the published Guo et al. periods", [r for r in base_rows if not in_pub(r)]))
-    cut = np.percentile(np.abs(_arr(base_rows, "m_terrain")), 95)
-    out.append(summ("excluding the 5 % of stops with the largest modeled anomaly", [r for r in base_rows if abs(r["m_terrain"]) <= cut]))
+    out.append(summ("excluding stops inside the published Guo et al. periods", [r for r in base_rows if not in_published_period(r)]))
+    out.append(summ(f"excluding site {MGN_SITE} (Maria Gordon Notch)", [r for r in base_rows if _site(r) != MGN_SITE]))
+    out.append(summ(f"excluding site {MGN_SITE} and the published periods",
+                    [r for r in base_rows if _site(r) != MGN_SITE and not in_published_period(r)]))
+    for q in (95, 90):
+        cut = np.percentile(np.abs(_arr(base_rows, "m_terrain")), q)
+        out.append(summ(f"excluding the {100 - q} % of stops with the largest modeled anomaly", [r for r in base_rows if abs(r["m_terrain"]) <= cut]))
+    out.append(summ("excluding the September 2017 solar particle event", [r for r in base_rows if not in_sep_2017(r)]))
     out.append(summ("stops with >= 2 sols of data", [r for r in base_rows if r["data_sols"] >= 2]))
     for w in (10.0, 30.0):
         out.append(summ(f"detrending window {w:.0f} sols", build_table(window=w)["rows"], window=w))
     return out
+
+
+def influence(rows, pred) -> dict:
+    """Where the terrain model's gain over time-only comes from, and how much each site carries (leave-one-site-out:
+    the site is removed and the cross-validation rerun)."""
+    y = _arr(rows, "y_obs"); site = np.array([_site(r) for r in rows])
+    shares, c, tot = gain_shares(y, pred["M3"], pred["M0"], site)
+    top_stops = [dict(rmc=rows[i]["rmc"], sol=rows[i]["sol"], y_obs_pct=float(y[i] * 100), m_terrain_pct=float(rows[i]["m_terrain"] * 100),
+                      g_proxy_pct=float(rows[i]["g_proxy"] * 100), share=float(c[i] / tot), in_published_period=in_published_period(rows[i]))
+                 for i in np.argsort(-c)[:6]]
+    loso = []
+    for s_ in np.unique(site):
+        sub = [r for r in rows if _site(r) != s_]
+        p, *_ = cross_validate(sub)
+        ys = _arr(sub, "y_obs"); m0 = np.mean((ys - p["M0"]) ** 2)
+        loso.append(dict(site=int(s_), skill_M3=float(1 - np.mean((ys - p["M3"]) ** 2) / m0), skill_M2=float(1 - np.mean((ys - p["M2"]) ** 2) / m0)))
+    loso.sort(key=lambda d: d["skill_M3"])
+    mgn = site == MGN_SITE
+    return dict(site_shares_M3_vs_M0=[dict(site=s_, n=int(np.sum(site == s_)), share=v) for s_, v in shares[:6]],
+                top_stops=top_stops, n_sites=int(np.unique(site).size),
+                mgn_site=dict(site=MGN_SITE, n=int(mgn.sum()), share=float(c[mgn].sum() / tot)),
+                leave_one_site_out=dict(min=loso[0], max=loso[-1], all=loso))
+
+
+def evaluation_overlap(rows) -> dict:
+    """Which evaluated stops were also used to develop or calibrate the terrain model (not independent validation)."""
+    pub = [r for r in rows if in_published_period(r)]
+    return dict(
+        n_stops=len(rows), n_in_published_periods=len(pub), sites_in_published_periods=sorted({_site(r) for r in pub}),
+        n_sep_2017=sum(in_sep_2017(r) for r in rows),
+        albedo_parameter=("The terrain model's only free parameter, the flat-terrain albedo share (18-24 %, default 0.21), was derived "
+                          "by Guo et al. (2026, Eq. 5 and Table 1) from RAD measurements at parking periods P1-P8 and backgrounds "
+                          "BG1-BG8, which include the Maria Gordon Notch stops (P6)."),
+        model_error_threshold="The validated model error used for 'model cannot tell' (MAE 3.37 / RMSE 5.24 pp) comes from the same eight parking periods.",
+        own_choices=("The detrending window (15 sols), block count (8) and minimum data (1 sol) were reused from the earlier observation "
+                     "analysis, not tuned on these results; the analysis was not pre-registered. Robustness variants vary them."),
+        status="partly independent: the terrain model was not fitted in this cross-validation, but its albedo parameter was calibrated "
+               "on RAD data that overlap the stops that carry most of its measured gain.")
 
 
 def disagreement_test(rows, tops=(10, 20, 40), B=4000, seed=31) -> dict:
@@ -327,7 +414,12 @@ def run() -> dict:
         predictor_spread_pp=dict(y_obs=float(np.std(_arr(rows, "y_obs")) * 100), m_terrain=float(np.std(_arr(rows, "m_terrain")) * 100),
                                  g_proxy=float(np.std(_arr(rows, "g_proxy")) * 100),
                                  pressure_term=float(np.std(kappa_rel * _arr(rows, "x_p")) * 100)),
+        rmse_reduction_vs_M0={m: float(1 - perf[m]["rmse_pp"] / perf["M0"]["rmse_pp"]) for m in MODELS},
+        site_ci95_dMSE_vs_M0_pp2={m: site_bootstrap_dmse(_arr(rows, "y_obs"), pred[m], pred["M0"], np.array([_site(r) for r in rows]))
+                                  for m in ("M2", "M3", "M4")},
         robustness=robustness(rows),
+        influence=influence(rows, pred),
+        evaluation_overlap=evaluation_overlap(rows),
         disagreement_test=disagreement_test(rows),
         calibration=calibration_slopes(rows),
         spearman_terrain=_spearman(_arr(rows, 'y_obs'), _arr(rows, 'm_terrain')),

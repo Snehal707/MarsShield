@@ -34,12 +34,13 @@ Click **Plan a Marswalk**.
 
 Open **Experiment**, then **Does the landscape change the dose?**
 - Choose a model and a baseline. Predictions for 322 rover stops are made on held-out time blocks, before any measurement is shown.
-- Click **Reveal**. The verdict appears with its interval: the terrain model predicts better than time only, ΔMSE −3.44 pp² [−8.0, −0.7].
+- Click **Reveal**. The verdict appears with intervals from resampling whole sites and time blocks: the terrain model predicts better than time only, with 11.7 % lower RMSE (22 % lower MSE).
+- The panel then flags that 6 stops at Maria Gordon Notch carry 59 % of that gain. Click **No notch**: the gain shrinks but remains. It also states that the test reconstructs local anomalies and is only partly independent of the model's calibration.
 
 Then open **Physical model or simple rule?** and **Where would a measurement best separate the models?** Both end in **cannot distinguish**, with the reason given. This is the honest result.
 
 ## 4. Evidence (30 s)
 
-The **RAD + pressure analysis** tab shows that pressure adds nothing measurable at stop level, that terrain adds +22 % skill, and that this signal is concentrated in a few strongly shielded stops.
+The **RAD + pressure analysis** tab shows that pressure adds nothing measurable at stop level, that terrain lowers RMSE by 11.7 %, where that gain comes from, the robustness variants, and why the test is only partly independent.
 
 **Validation** and **Limitations** list every number, including the P6 and P8 geometry misses.

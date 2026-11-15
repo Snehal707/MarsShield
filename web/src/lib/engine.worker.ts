@@ -2,6 +2,8 @@
 // Runs the client-side engine off the main thread. Messages: {id, kind, ...}.
 import { breakEven, Engine, type EngineInput, type Objective } from "./engine";
 
+const thin = (xy: [number, number][]) => xy.filter((_, i) => i % 2 === 0 || i === xy.length - 1);
+
 let base: Omit<EngineInput, "alpha" | "suit"> | null = null;
 const cache = new Map<string, Engine>();
 
@@ -31,13 +33,8 @@ self.onmessage = (ev: MessageEvent) => {
       }
       (self as unknown as Worker).postMessage({ id: m.id, ok: true, result: out });
     } else if (m.kind === "breakeven") {
-      const r = breakEven(e, m.start, m.end, m.target, m.radius, m.Dflat, m.err, m.stopMaxSlope);
-      const opts = r.options.map((o) => {
-        const p1 = e.path(e.toRC(m.start[0], m.start[1]), e.toRC(o.x, o.y), "low_dose");
-        const p2 = e.path(e.toRC(o.x, o.y), e.toRC(m.end[0], m.end[1]), "low_dose");
-        const xy = [...(p1 ? e.metrics(p1, m.Dflat).xy : []), ...(p2 ? e.metrics(p2, m.Dflat).xy.slice(1) : [])];
-        return { ...o, xy: xy.filter((_, i) => i % 2 === 0 || i === xy.length - 1) };
-      });
+      const r = breakEven(e, m.start, m.end, m.target, m.radius, m.Dflat, m.err, m.stopMaxSlope, m.objective);
+      const opts = r.options.map((o) => ({ ...o, xy: thin([...o.out.xy, ...(o.back ? o.back.xy.slice(1) : [])]) }));
       (self as unknown as Worker).postMessage({ id: m.id, ok: true, result: { ...r, options: opts, classify: undefined } });
     } else if (m.kind === "rate") {
       (self as unknown as Worker).postMessage({ id: m.id, ok: true, result: (m.points as [number, number][]).map(([x, y]) => e.rateAt(x, y)) });

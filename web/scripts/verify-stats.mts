@@ -1,6 +1,6 @@
 // Verifies src/lib/stats.ts against Python results in public/data (point estimates must match exactly).
 import { readFileSync } from "node:fs";
-import { crossValidate, parkingPredictions, MODELS, type ModelId } from "../src/lib/stats.ts";
+import { crossValidate, parkingPredictions, siteDMSE, siteShares, MODELS, type ModelId } from "../src/lib/stats.ts";
 
 const D = new URL("../public/data/", import.meta.url);
 const js = (n: string) => JSON.parse(readFileSync(new URL(n, D), "utf8"));
@@ -21,6 +21,16 @@ for (const m of ids) {
   check(`${m} skill`, 1 - mse(cv.pred[m]) / m0, ts.performance[m].skill_vs_M0);
   check(`${m} rmse_pp`, Math.sqrt(mse(cv.pred[m])) * 100, ts.performance[m].rmse_pp);
 }
+
+// gain concentration (exact) and site-cluster interval (Monte Carlo: different generator, so a tolerance)
+const sh = siteShares(ts.rows, y, cv.pred.M3, cv.pred.M0);
+check("site 92 share of M3 gain", sh.find((s) => s.site === 92)!.share, ts.influence.mgn_site.share);
+check("largest site share", sh[0].share, ts.influence.site_shares_M3_vs_M0[0].share);
+const sc = siteDMSE(ts.rows, y, cv.pred.M3, cv.pred.M0, 4000);
+const [plo, phi] = ts.site_ci95_dMSE_vs_M0_pp2.M3;
+check("site-bootstrap M3-M0 lower bound (MC tol 15 %)", sc.lo, plo, 0.15);
+check("site-bootstrap M3-M0 upper bound (MC tol 0.3 pp2)", sc.hi, phi, 0.3 / Math.max(1, Math.abs(phi)));
+check("RMSE reduction M3", 1 - Math.sqrt(mse(cv.pred.M3) / m0), ts.rmse_reduction_vs_M0.M3);
 
 const ex = js("experiment_parking.json");
 const val = js("validation.json");

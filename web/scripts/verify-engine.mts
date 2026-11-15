@@ -46,5 +46,28 @@ for (const [name, be] of Object.entries(js("breakeven.json")) as [string, any][]
     if (j.status !== b.resolvability) { failures++; console.log(`FAIL status ${j.status} vs ${b.resolvability}`); }
   }
 }
+// 3. mission consistency: for every route strategy, the walking dose used in the stop comparison (W, accumulated on the
+//    Dijkstra trees) equals the dose of the actual outbound + return paths the plan reports; one-way has no return leg;
+//    and the low_dose comparison is unchanged from the Python-verified one above.
+{
+  const be = (js("breakeven.json") as Record<string, any>)["Maria Gordon Notch"];
+  const base = breakEven(eng, be.start, be.end, be.target, be.radius_m, be.D_flat_uGy_d, be.model_error);
+  for (const obj of ["low_dose", "fastest", "shortest", "shelter"] as Objective[]) {
+    const res = breakEven(eng, be.start, be.end, be.target, be.radius_m, be.D_flat_uGy_d, be.model_error, undefined, obj);
+    for (const o of res.options) {
+      check(`plan ${obj} ${o.keys.join("")}: W = out + back path dose`, o.W, o.out.dose_uGy + (o.back?.dose_uGy ?? 0), 1e-9);
+      const p = o.out.xy, q = o.back!.xy;
+      if (Math.hypot(p[p.length - 1][0] - o.x, p[p.length - 1][1] - o.y) > 1e-6 || Math.hypot(q[0][0] - o.x, q[0][1] - o.y) > 1e-6) {
+        failures++; console.log(`FAIL plan ${obj} ${o.keys.join("")}: path does not pass through the stop`);
+      }
+    }
+    if (obj === "low_dose") for (const o of res.options) check(`plan low_dose ${o.keys.join("")} = default`, o.W, base.options.find((q) => q.i === o.i)!.W, 1e-12);
+  }
+  const one = breakEven(eng, be.start, null, be.target, be.radius_m, be.D_flat_uGy_d, be.model_error, undefined, "fastest");
+  for (const o of one.options) {
+    if (o.back !== null) { failures++; console.log("FAIL one-way plan has a return leg"); }
+    check(`one-way fastest ${o.keys.join("")}: W = out path dose`, o.W, o.out.dose_uGy, 1e-9);
+  }
+}
 console.log(failures ? `\n${failures} FAILURES` : "\nALL CHECKS PASSED");
 process.exit(failures ? 1 : 0);

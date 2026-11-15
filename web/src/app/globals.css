@@ -41,7 +41,7 @@ button { font: inherit; color: inherit; }
 /* ---------------- shell ---------------- */
 .app { position: relative; height: 100dvh; overflow: hidden; }
 .topbar { position: absolute; inset: 0 0 auto 0; height: 56px; display: flex; align-items: center; gap: 18px; padding: 0 18px; z-index: 6;
-  background: linear-gradient(180deg, rgba(23, 19, 16, 0.92), rgba(23, 19, 16, 0.55) 70%, transparent); }
+  background: linear-gradient(180deg, rgba(23, 19, 16, 0.97), rgba(23, 19, 16, 0.9) 70%, rgba(23, 19, 16, 0)); }
 .wordmark { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
 .wordmark b { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; font-stretch: 110%; }
 .wordmark span { color: var(--ink-3); font-size: 12.5px; white-space: nowrap; }
@@ -143,6 +143,11 @@ select.sel { background: var(--basalt-800); color: var(--ink); border: 1px solid
 .routes-t td { padding: 7px 4px; text-align: right; border-bottom: 1px solid var(--line); }
 .routes-t tr { cursor: pointer; }
 .routes-t tr[aria-selected="true"] td { background: rgba(239, 230, 216, 0.05); }
+table.data.pick tbody tr { cursor: pointer; }
+table.data.pick tbody tr:hover td { background: rgba(239, 230, 216, 0.04); }
+table.data.pick tr[aria-selected="true"] td { background: rgba(208, 144, 79, 0.12); }
+table.data.pick tr[aria-selected="true"] td:first-child { font-weight: 600; }
+.plan-note { margin: 0; padding: 10px 12px; border-left: 3px solid var(--dust, #d0904f); background: rgba(208, 144, 79, 0.07); border-radius: 0 8px 8px 0; font-size: 14px; line-height: 1.5; }
 .sw { display: inline-block; width: 16px; height: 0; border-top: 3px solid; vertical-align: middle; margin-right: 7px; }
 .good { color: var(--ok); }
 .bad { color: var(--bad); }
@@ -190,7 +195,7 @@ select.sel { background: var(--basalt-800); color: var(--ink); border: 1px solid
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
 table.data { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 table.data th, table.data td { padding: 5px 5px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: top; }
-table.data th { color: var(--ink-3); font-weight: 500; }
+table.data th { color: var(--ink-3); font-weight: 500; white-space: nowrap; }
 table.data th:first-child, table.data td:first-child { text-align: left; }
 
 /* evidence workspace */
@@ -224,4 +229,21 @@ table.data th:first-child, table.data td:first-child { text-align: left; }
 }
 @media (min-width: 861px) and (max-width: 1180px) {
   .panel { width: 360px; }
+}
+
+/* plain-language scope note under a verdict: quieter than a callout, louder than muted text */
+.note { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px dashed var(--line-2); border-radius: 10px; font-size: 13px; line-height: 1.5; color: var(--ink-2); }
+.note p { margin: 0; }
+.note b { color: var(--ink); font-weight: 600; }
+
+/* map dock: the legend toggle only matters where the dock competes with the terrain for space */
+.legend-toggle { display: none; }
+@media (max-width: 860px) {
+  .legend-toggle { display: inline-flex; }
+  .mapcard.compact { padding: 8px 10px; }
+  .mapcard.compact .layers { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .mapcard.compact .layers button { flex: none; }
+  .mapcard.compact > :not(.layers):not(.ramp):not(.ramp + .ramp-l) { display: none; }
+  .mapcard.compact .ramp { margin-top: 6px; }
+  .mapdock .mapcard.compact > .ramp + .ramp-l { display: flex; }
 }

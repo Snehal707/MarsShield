@@ -102,3 +102,32 @@ def test_published_terrain_signal_reproduces():
     # the headline: terrain model beats time-only out of sample; pressure adds nothing measurable
     assert d["performance"]["M3"]["skill_vs_M0"] > 0.15
     assert abs(d["performance"]["M1"]["skill_vs_M0"]) < 0.02
+
+
+@pytest.mark.skipif(not EXPORT.exists(), reason="web export not built")
+def test_gain_concentration_and_units_reproduce():
+    """The reviewed numbers: RMSE (not MSE) reduction, and the share of the gain carried by Maria Gordon Notch."""
+    d = json.loads(EXPORT.read_text())
+    rows = d["rows"]
+    pred, *_ = T.cross_validate(rows, k=d["k_blocks"], window=d["window_sols"])
+    y = np.array([r["y_obs"] for r in rows])
+    site = np.array([T._site(r) for r in rows])
+    rmse = lambda p: np.sqrt(np.mean((y - p) ** 2))
+    assert 1 - rmse(pred["M3"]) / rmse(pred["M0"]) == pytest.approx(d["rmse_reduction_vs_M0"]["M3"], rel=1e-9)
+    assert 0.11 < d["rmse_reduction_vs_M0"]["M3"] < 0.12 and 0.21 < d["performance"]["M3"]["skill_vs_M0"] < 0.23
+    shares, _, _ = T.gain_shares(y, pred["M3"], pred["M0"], site)
+    assert shares[0][0] == T.MGN_SITE and shares[0][1] == pytest.approx(d["influence"]["mgn_site"]["share"], rel=1e-9)
+    assert 0.55 < shares[0][1] < 0.63
+
+
+@pytest.mark.skipif(not EXPORT.exists(), reason="web export not built")
+def test_overlap_and_robustness_are_reported_honestly():
+    d = json.loads(EXPORT.read_text())
+    e = d["evaluation_overlap"]
+    assert e["n_in_published_periods"] == sum(T.in_published_period(r) for r in d["rows"]) == 27
+    assert T.MGN_SITE in e["sites_in_published_periods"] and e["status"].startswith("partly independent")
+    v = {r["variant"]: r for r in d["robustness"]}
+    no_mgn = v[f"excluding site {T.MGN_SITE} (Maria Gordon Notch)"]
+    assert no_mgn["dMSE_vs_M0_site_ci95_pp2"]["M3"][1] < 0          # survives removing the notch
+    top10 = v["excluding the 10 % of stops with the largest modeled anomaly"]
+    assert top10["dMSE_vs_M0_ci95_pp2"]["M3"][1] > 0                # but not removing the most shielded tenth

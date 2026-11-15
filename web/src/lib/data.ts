@@ -386,4 +386,7 @@ export type TerrainSignal = { rows: TSRow[]; window_sols: number; k_blocks: numb
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   performance: Record<string, any>; mse_differences: Record<string, any>; correlations: Record<string, any>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  pressure_coefficient: any; meta: any; predictor_spread_pp: Record<string, number> };
+  pressure_coefficient: any; meta: any; predictor_spread_pp: Record<string, number>;
+  rmse_reduction_vs_M0?: Record<string, number>; site_ci95_dMSE_vs_M0_pp2?: Record<string, [number, number]>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  influence?: any; evaluation_overlap?: { status: string; albedo_parameter: string; model_error_threshold: string; own_choices: string; n_in_published_periods: number } };

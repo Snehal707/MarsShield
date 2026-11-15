@@ -205,9 +205,31 @@ Only the intersecting 128-pixel tiles of the 24 GB file are fetched. It is block
 
 **Disagreement test.** The 10, 20 and 40 stops with the largest |m − g| are selected from model values alone, then compared with RAD.
 
-**Robustness.** Detrending windows of 10 and 30 sols; ≥ 2 sols of data; excluding stops inside the published Guo et al. periods; excluding the 5 % largest modeled anomalies.
+**Robustness.** Each variant reruns the full cross-validation and reports RMSE and MSE change with both time-block and whole-site intervals:
+- detrending windows of 10 and 30 sols
+- ≥ 2 sols of data
+- excluding stops inside the published Guo et al. periods
+- excluding site 92 (Maria Gordon Notch), alone and together with the published periods
+- excluding the 5 % and 10 % largest modeled anomalies
+- excluding the September 2017 solar particle event
 
-## 13. Browser engine (public site)
+**Influence.** Each site's share of the squared-error reduction is reported, along with the largest single-stop contributions and a leave-one-site-out rerun.
+
+**What the test is and is not.**
+- It scores reconstruction of each stop's local anomaly relative to Curiosity's other stops at about the same time. It does not score absolute dose at new locations.
+- It is only partly independent of model development. The terrain model's albedo share was derived by Guo et al. (2026) from RAD data at the published periods, which include the notch stops that carry most of the gain.
+- The model-error threshold used by the planner comes from the same eight periods.
+- The facts are recorded in `evaluation_overlap` in `terrain_signal.json`.
+
+## 13. Mission plan consistency
+
+In the Mission mode, everything after the activity step comes from **one** stop comparison computed along the user's selected route strategy: outbound, plus return if chosen, or one way with no return leg.
+- **Walking dose.** For each candidate stop, walking dose is accumulated along that strategy's Dijkstra trees. For "lowest dose" this is the Python break-even exactly.
+- **The plan.** It uses one compared spot. That is spot B (nearest workable ground to the target) unless the model *resolves* a better spot across the planned duration range, or the user picks another row. Its distance, walking time, walking dose, dose rate, stationary dose, map line, summary and JSON export are all taken from that spot's actual outbound and return paths.
+- **Alternatives.** Spots the model does not resolve are reported as alternatives with their saving, never mixed into the totals.
+- **Checks.** `web/scripts/verify-engine.mts` checks that the comparison's walking dose equals the dose of the reported paths for every strategy and for one-way trips.
+
+## 14. Browser engine (public site)
 
 The static site recalculates without a server:
 - **Routes:** a TypeScript port of `routing.py`, with the same 16-connected grid, Tobler × suit factor, 25° walking limit and cost functions, and a binary-heap Dijkstra.
