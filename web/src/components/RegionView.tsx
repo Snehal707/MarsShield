@@ -7,7 +7,7 @@ import { Canvas, useLoader, useThree, type ThreeEvent } from "@react-three/fiber
 import { Html, Line, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { layerUrl, loadRegion, nearestLocal, profileLine, profileSlope, sampleGlobal, sampleLocal, type Capability, type Region, type RegionIndex, type Status } from "@/lib/regions";
-import { DockPortal } from "./Dock";
+import { DockPortal, useDock } from "./Dock";
 import { ProfileChart } from "./ResearchCharts";
 import { More, Seg, Tabs } from "./ui";
 import { Blockers, CompareDock, MeasuredContext, RadiationDownloads, ScenarioControls, UncertaintyList, useRadiation, ValidationNotes, type Scenario } from "./RadiationLab";
@@ -74,6 +74,7 @@ export function MarsOverview({ index, onOpen, onCaseStudy, sc, setSc }: { index:
   const [hover, setHover] = useState<{ lon: number; lat: number; z: number } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const { R } = useRadiation();
+  const { expand } = useDock();
   useEffect(() => { loadRegion("mars").then(setReg).catch((e) => setErr(String(e))); }, []);
   const mars = index.regions.find((r) => r.id === "mars")!;
   const others = index.regions.filter((r) => r.id !== "mars");
@@ -112,7 +113,8 @@ export function MarsOverview({ index, onOpen, onCaseStudy, sc, setSc }: { index:
             </div>
           </article>))}</div>
         <section className="rg-sec" aria-labelledby="cmp-h"><h2 id="cmp-h" className="q">Compare the three regions</h2>
-          <p className="prose">One published transport model at one atmosphere source, with the same assumptions for every site. The chart and table are in the analysis area.</p>
+          <p className="prose">One published transport model at one atmosphere source, with the same assumptions for every site.</p>
+          <button className="btn primary" onClick={expand}>Show the comparison chart and table</button>
           <ScenarioControls sc={sc} set={setSc} />
           {R && <MeasuredContext R={R} />}
           {R && <RadiationMethods R={R} />}
@@ -232,6 +234,7 @@ function LocationDose({ R, reg, region, sc, pick }: { R: Radiation; reg: Region;
 
 export function RegionalView({ id, index, onOpen, desktop, sc, setSc }: { id: string; index: RegionIndex; onOpen: (id: string) => void; desktop: boolean; sc: Scenario; setSc: (s: Scenario) => void }) {
   const { R } = useRadiation();
+  const { expand } = useDock();
   const [tab, setTab] = useState<"radiation" | "terrain" | "sources">("radiation");
   const [pick, setPick] = useState<[number, number] | null>(null);
   const [reg, setReg] = useState<Region | null>(null);
@@ -280,6 +283,7 @@ export function RegionalView({ id, index, onOpen, desktop, sc, setSc }: { id: st
     return { z, s, sky, unit: leg ? `${leg.id}, ${leg.name}` : null };
   }, [reg, hover]);
   // phones: the dock follows the panel in the page, so bring a newly opened profile into view
+  useEffect(() => { if (prof) expand(); }, [prof, expand]);
   useEffect(() => { if (prof && window.innerWidth <= 860) window.setTimeout(() => document.getElementById("analysis")?.scrollIntoView({ behavior: "smooth" }), 80); }, [prof]);
   const onTerrainClick = (xy: [number, number]) => {
     if (!draw) { if (tab === "radiation") setPick(xy); return; }
@@ -333,8 +337,8 @@ export function RegionalView({ id, index, onOpen, desktop, sc, setSc }: { id: st
             <section className="rg-sec" aria-labelledby="rg-loc"><h2 id="rg-loc" className="q">Dose at a location</h2>
               {reg && <LocationDose R={R} reg={reg} region={id} sc={sc} pick={pick} />}</section>
             <section className="rg-sec" aria-labelledby="rg-cmp"><h2 id="rg-cmp" className="q">Against Gale and the other region</h2>
-              <p className="prose">The comparison table and the dose-against-pressure chart are in the analysis area{prof ? " (close the profile to see them)" : ""}.</p>
-              {prof && <button className="btn" onClick={() => setProf(null)}>Show the comparison</button>}
+              <p className="prose">The comparison table and the dose-against-pressure chart open in the analysis area below the terrain.</p>
+              <button className="btn" onClick={() => { setProf(null); expand(); }}>Show the comparison</button>
               <MeasuredContext R={R} />
               <RadiationMethods R={R} />
             </section>

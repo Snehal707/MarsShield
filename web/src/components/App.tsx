@@ -157,11 +157,11 @@ export default function App() {
   const [rindex, setRindex] = useState<RegionIndex | null>(null);
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get("region");
-    if (q) setRegion(q);
+    if (q) { setRegion(q); if (q === "gale") setDockSize("mid"); }
     loadIndex().then(setRindex).catch(() => setRindex(null));
   }, []);
   const openRegion = useCallback((id: string) => {
-    setRegion(id); setCard(null); setTip(null);
+    setRegion(id); setCard(null); setTip(null); setDockSize(id === "gale" ? "mid" : "min");
     try { const u = new URL(window.location.href); if (id === "mars") u.searchParams.delete("region"); else u.searchParams.set("region", id); window.history.replaceState(null, "", u); } catch { /* ignore */ }
     window.scrollTo({ top: 0 });
   }, []);
@@ -169,7 +169,9 @@ export default function App() {
   // research dock
   const [dockTitle, setDockTitle] = useState<string | null>(null);
   const [dockHead, setDockHead] = useState<HTMLElement | null>(null), [dockBody, setDockBody] = useState<HTMLElement | null>(null);
-  const [dockSize, setDockSize] = useState<DockSize>("mid");
+  // the analysis dock starts collapsed in the overview and regional views (only its bar shows), open in Gale experiments
+  const [dockSize, setDockSize] = useState<DockSize>("min");
+  const expandDock = useCallback(() => setDockSize((s) => (s === "min" ? "mid" : s)), []);
   const [dockH, setDockH] = useState(340);
   const obsPick = useRef<((s: Stop) => void) | null>(null);    // an experiment can take over clicks on Curiosity's stops
   const stageRef = useRef<HTMLElement>(null);
@@ -221,7 +223,7 @@ export default function App() {
   if (region !== "gale" && rindex && rindex.regions.some((r) => r.id === region)) {
     const desk = vw > 860, pw = vw > 1180 ? 400 : 370, dmax = Math.max(260, vh - 56 - 16 - 150);
     return (
-      <DockCtx.Provider value={{ head: dockHead, body: dockBody, setTitle: setDockTitle, mobile: !desk }}>
+      <DockCtx.Provider value={{ head: dockHead, body: dockBody, setTitle: setDockTitle, mobile: !desk, expand: expandDock }}>
       <div className="app region-app">
         <a className="skip-link" href="#panel">Skip to the panel</a>
         {dockActive && <a className="skip-link" href="#analysis">Skip to the analysis</a>}
@@ -265,7 +267,7 @@ export default function App() {
     : calc.last ? `Last calculation: ${Math.round(calc.last.ms)} ms in your browser` : "Calculating in your browser";
 
   return (
-    <DockCtx.Provider value={{ head: dockHead, body: dockBody, setTitle: setDockTitle, mobile: !desktop }}>
+    <DockCtx.Provider value={{ head: dockHead, body: dockBody, setTitle: setDockTitle, mobile: !desktop, expand: expandDock }}>
     <div className="app">
       <a className="skip-link" href="#panel">Skip to the panel</a>
       {dockActive && <a className="skip-link" href="#analysis">Skip to the analysis</a>}

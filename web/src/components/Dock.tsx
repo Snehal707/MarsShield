@@ -5,8 +5,8 @@
 import { createContext, useContext, useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-type DockCtxT = { head: HTMLElement | null; body: HTMLElement | null; setTitle: (t: string | null) => void; mobile: boolean };
-export const DockCtx = createContext<DockCtxT>({ head: null, body: null, setTitle: () => {}, mobile: false });
+type DockCtxT = { head: HTMLElement | null; body: HTMLElement | null; setTitle: (t: string | null) => void; mobile: boolean; expand: () => void };
+export const DockCtx = createContext<DockCtxT>({ head: null, body: null, setTitle: () => {}, mobile: false, expand: () => {} });
 export const useDock = () => useContext(DockCtx);
 
 /** Render `children` into the dock body and `head` (downloads) into the dock bar while this component is mounted. */
