@@ -31,6 +31,15 @@ function siteFlags(ds: Dataset, x: number, y: number): string[] {
   return out;
 }
 
+/** What MarsShield assumes a hypothetical astronaut does at the site, by activity type. Deliberately generic: the
+ *  plan models only time and position, not equipment, so it never assumes Curiosity's instruments (DAN, SAM, ...). */
+function astronautTask(label: string) {
+  const l = label.toLowerCase();
+  if (l.startsWith("sample")) return "Collect and document rock samples by hand";
+  if (l.startsWith("outcrop")) return "Document the outcrop and its layers";
+  return "Stationary fieldwork beside the cliff, with whatever equipment the expedition carries";
+}
+
 const flagTag = (f: string) => (f.startsWith("Steep") ? "steep ground" : f.startsWith("Below") ? "below a cliff" : "flag");
 
 export function MissionMode({ ds, eng, setScene, focusOn }: { ds: Dataset; eng: Eng; setScene: (s: SceneSpec) => void; focusOn: (x: number, y: number, dist?: number) => void }) {
@@ -173,7 +182,7 @@ export function MissionMode({ ds, eng, setScene, focusOn }: { ds: Dataset; eng: 
   const exportRun = () => download(`marsshield-mission-${dest}.json`, {
     kind: "MarsShield mission plan (modeled exposure; not a safety assessment)", generated: new Date().toISOString(), computed_in: "browser engine (verified against Python pipeline)",
     destination: { id: D.id, name: D.name, sources: D.sources }, start: { id: S.id, name: S.name }, return_leg: ret,
-    assumptions: { walking_speed_factor: suit, activity_duration_h: dur, work_radius_m: radius, eva_time_limit_h: limit || null, albedo_share: alpha, solar_modulation_MV: phi, stop_max_slope_deg: 15, walk_max_slope_deg: 25 },
+    assumptions: { astronaut_task: astronautTask(D.activity_label), curiosity_objective_historical: D.objective, walking_speed_factor: suit, activity_duration_h: dur, work_radius_m: radius, eva_time_limit_h: limit || null, albedo_share: alpha, solar_modulation_MV: phi, stop_max_slope_deg: 15, walk_max_slope_deg: 25 },
     routes: Object.fromEntries(STRATS.map(([o]) => [o, routes?.[o] ? { distance_m: sum("distance_m", o), time_h: sum("time_h", o), walking_dose_uGy: sum("dose_uGy", o) } : null])),
     plan: {
       route_strategy: sel,
@@ -210,8 +219,11 @@ export function MissionMode({ ds, eng, setScene, focusOn }: { ds: Dataset; eng: 
               <button key={t.id} role="radio" aria-checked={t.id === dest} onClick={() => pickDest(t.id)}>{t.name.split(",")[0]}</button>))}
           </div>
           <div className="dest-card">
-            <p className="dest-sub">{(() => { const q = D.name.split(",").slice(1).join(",").trim(); return q ? q[0].toUpperCase() + q.slice(1) : "Gale Crater"; })()}. {D.activity_label}.</p>
+            <p className="dest-sub">{(() => { const q = D.name.split(",").slice(1).join(",").trim(); return q ? q[0].toUpperCase() + q.slice(1) : "Gale Crater"; })()}</p>
+            <p className="role">Curiosity&apos;s objective here, sol {D.waypoint.sol} (historical)</p>
             <p className="lede">{D.objective}</p>
+            <p className="role">Your astronaut&apos;s task (assumed for this plan)</p>
+            <p className="prose"><A>{astronautTask(D.activity_label)}</A>. MarsShield plans only where and how long the astronaut works; it does not assume they carry Curiosity&apos;s instruments.</p>
             <dl className="facts">
               <div><dt>Work time</dt><dd><A>{h(D.duration_h[1])}</A></dd></div>
               <div><dt>Work area</dt><dd><A>{D.work_radius_m} m</A> radius</dd></div>
@@ -260,7 +272,7 @@ export function MissionMode({ ds, eng, setScene, focusOn }: { ds: Dataset; eng: 
 
         {step === 2 && (<>
           <h2 className="q">How long will the science take?</h2>
-          <p className="prose">{D.activity_label} at {D.name.split(",")[0]}.</p>
+          <p className="prose">At {D.name.split(",")[0]}: <A>{astronautTask(D.activity_label).toLowerCase()}</A>. A hypothetical task, not Curiosity&apos;s.</p>
           <Slider label={<>Time at the site <A>(planning assumption)</A></>} value={dur} min={0.25} max={Math.max(8, D.duration_h[2])} step={0.25} onChange={setDur} fmt={h} />
           <div className="row"><span className="muted">Your EVA time limit</span>
             <Seg label="EVA time limit" value={limit} onChange={setLimit} options={[[0, "None"], [4, "4 h"], [6, "6 h"], [8, "8 h"]]} /></div>
@@ -335,21 +347,24 @@ export function MissionMode({ ds, eng, setScene, focusOn }: { ds: Dataset; eng: 
         {step === 4 && (<>
           <h2 className="q">What did Curiosity actually measure here?</h2>
           <Grammar />
-          {D.measured_rad ? (
-            <div className="figure-pair">
-              <div><b><M>{D.measured_rad.E_mean_uGy_d.toFixed(0)}</M></b><span>µGy/day measured by RAD, {D.measured_rad.utc_start?.slice(0, 10)} to {D.measured_rad.utc_end?.slice(0, 10)}</span></div>
-              <div><b><M>{D.measured_rad.local_anomaly != null ? `${sgn(D.measured_rad.local_anomaly * 100)} %` : "n/a"}</M></b><span>against the surrounding ±15 sols</span></div>
-            </div>
-          ) : <p className="muted">No RAD summary at Curiosity&apos;s position for this site.</p>}
-          {(() => {
-            const near = ds.terrainSignal?.rows.filter((r) => Math.hypot(r.x - D.x, r.y - D.y) < 40) ?? [];
-            if (!near.length) return null;
-            const avg = (k: "y_obs" | "m_terrain" | "g_proxy") => (near.reduce((s, r) => s + r[k], 0) / near.length) * 100;
-            return <p className="prose">At Curiosity&apos;s {near.length} stop{near.length > 1 ? "s" : ""} here, the dose was <M>{sgn(avg("y_obs"))} %</M> against its surroundings.
-              The terrain model predicted <P>{sgn(avg("m_terrain"))} %</P> and the simple blocked-sky rule <P>{sgn(avg("g_proxy"))} %</P>.</p>;
-          })()}
-          {ds.periods.filter((q) => q.kind === "parking" && Math.hypot(q.x - D.x, q.y - D.y) < 60).map((q) => (
-            <p key={q.id} className="prose">Published terrain-shielding period {q.id}: RAD dropped <M>{((q.pub.decrease ?? 0) * 100).toFixed(1)} %</M> against a nearby background position.</p>))}
+          <p className="prose">Each figure compares Curiosity&apos;s dose here with a <b>different reference</b>, so they are not expected to match and do not contradict each other.</p>
+          <div className="cmp-list">
+            {D.measured_rad?.local_anomaly != null && (
+              <div className="cmp"><b><M>{sgn(D.measured_rad.local_anomaly * 100)} %</M></b>
+                <span><strong>At the target waypoint</strong> (sol {D.measured_rad.sol}, <M>{D.measured_rad.E_mean_uGy_d.toFixed(0)} µGy/day</M>), against Curiosity&apos;s dose at its other stops within ±15 sols.</span></div>)}
+            {(() => {
+              const near = ds.terrainSignal?.rows.filter((r) => Math.hypot(r.x - D.x, r.y - D.y) < 40) ?? [];
+              if (!near.length) return null;
+              const avg = (k: "y_obs" | "m_terrain" | "g_proxy") => (near.reduce((q, r) => q + r[k], 0) / near.length) * 100;
+              return <div className="cmp"><b><M>{sgn(avg("y_obs"))} %</M></b>
+                <span><strong>Average of Curiosity&apos;s {near.length} stop{near.length > 1 ? "s" : ""} within 40 m</strong>, same ±15-sol reference; these stops have {(Math.min(...near.map((r) => r.B)) * 100).toFixed(0)} to {(Math.max(...near.map((r) => r.B)) * 100).toFixed(0)} % of the sky blocked, so the average mixes sheltered and open ground. Terrain model <P>{sgn(avg("m_terrain"))} %</P>, blocked-sky rule <P>{sgn(avg("g_proxy"))} %</P>. This is the comparison used across all 322 stops.</span></div>;
+            })()}
+            {ds.parking.pairs.filter((q) => { const pp = ds.parking.periods[q.parking]; return pp && Math.hypot(pp.x - D.x, pp.y - D.y) < 60; }).map((q) => {
+              const pp = ds.parking.periods[q.parking], bg = ds.parking.periods[q.background];
+              return <div className="cmp" key={q.parking}><b><M>{sgn((pp.D_RAD_ours / bg.D_RAD_ours - 1) * 100)} %</M></b>
+                <span><strong>Published parking pair {q.parking} against {q.background}</strong>: deep inside against the notch mouth {Math.hypot(pp.x - bg.x, pp.y - bg.y).toFixed(0)} m away, on consecutive days (Guo et al. 2026). This is the comparison in the opening story.</span></div>;
+            })}
+          </div>
           {ds.skiesTargets[dest] && (<>
             <SkyDisc sky={ds.skiesTargets[dest]} size={260} />
             <More label="How much dose arrives from each part of the sky"><ZenithBars sky={ds.skiesTargets[dest]} /></More>

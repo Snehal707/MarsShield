@@ -50,7 +50,7 @@ Audiences and the question each can answer: [docs/AUDIENCES.md](docs/AUDIENCES.m
 | ![Where to stand](docs/img/3-where-to-stand.png) Where to stand: decision and dose difference first; the selected spot's own hazard flags | ![Summary](docs/img/4-mission-summary.png) The plan's route, stop and totals, all from one computation |
 | ![Experiment](docs/img/5-experiment-result.png) Experiment: question, prediction, reveal, result, explanation | ![Parking](docs/img/6-experiment-parking.png) Physical model or simple rule: cannot tell them apart |
 
-Phone: [story](docs/img/7-phone-story.png), [where to stand](docs/img/8-phone-where-to-stand.png). No-WebGL fallback: [docs/img/9-no-webgl.png](docs/img/9-no-webgl.png). Earlier interfaces are in `docs/img/before/` (`v2-*` is the version before the current redesign).
+Story opening: [docs/img/1-notch-story-start.png](docs/img/1-notch-story-start.png). Mission evidence, three references: [docs/img/4-mission-evidence.png](docs/img/4-mission-evidence.png). Phone: [story](docs/img/7-phone-story.png), [where to stand](docs/img/8-phone-where-to-stand.png). No-WebGL fallback: [docs/img/9-no-webgl.png](docs/img/9-no-webgl.png). Earlier interfaces are in `docs/img/before/` (`v2-*` is the version before the current redesign).
 
 ## What is verified and what is modeled
 
@@ -73,6 +73,7 @@ Phone: [story](docs/img/7-phone-story.png), [where to stand](docs/img/8-phone-wh
 - [docs/METHODS.md](docs/METHODS.md): methods
 - [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md): provenance
 - [docs/DEMO.md](docs/DEMO.md): a 3-minute demo script
+- [docs/USABILITY_TEST.md](docs/USABILITY_TEST.md): usability test script (not yet run with participants)
 - [docs/AUDIENCES.md](docs/AUDIENCES.md): intended audiences and their questions
 - [docs/SUBMISSION.md](docs/SUBMISSION.md): submission text
 

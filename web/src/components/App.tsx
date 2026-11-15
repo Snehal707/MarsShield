@@ -83,6 +83,7 @@ export default function App() {
   const [layer, setLayer] = useState<Layer>("dose");
   const [showObs, setShowObs] = useState(false);     // Curiosity's 322 RAD stops: in Layers, off by default
   const [story, setStory] = useState<StoryScene | null>(null);
+  const [initExp, setInitExp] = useState<"parking" | null>(null);   // the story can hand over straight to an experiment
   // desktop: the panel covers the right of the canvas, so centre the camera's focus in what remains
   const [vw, setVw] = useState(1440);
   useEffect(() => { const f = () => setVw(window.innerWidth); f(); window.addEventListener("resize", f); return () => window.removeEventListener("resize", f); }, []);
@@ -102,7 +103,8 @@ export default function App() {
     loadDataset().then(setDs).catch((e) => setErr(String(e.message ?? e)));
   }, []);
   const focusOn = useCallback((x: number, y: number, dist?: number) => setFocus((f) => ({ x, y, dist, n: (f?.n ?? 0) + 1 })), []);
-  const finishWelcome = (m: Mode) => {
+  const finishWelcome = (m: Mode, exp?: "parking") => {
+    setInitExp(exp ?? null);
     setWelcome(false); setMode(m); setCard(null); setScene({});   // each mode draws only its own lines
     if (m !== "mission") overview();
     if (m === "evidence") setLayer("dose");
@@ -180,11 +182,11 @@ export default function App() {
         <button className="btn ghost panel-toggle" style={{ display: panel ? "none" : undefined }} onClick={() => setPanel(true)}>Show panel</button>
       </section>
 
-      <aside className={`panel ${panel ? "" : "hidden"}`} aria-label="Panel">
+      <aside className={`panel ${panel ? "" : "hidden"}${welcome ? " fit" : ""}`} aria-label="Panel">
         {welcome ? (
           <NotchStory ds={ds} setStoryScene={setStoryScene} onDone={finishWelcome} />
         ) : mode === "mission" ? <MissionMode ds={ds} eng={eng} setScene={setSceneCb} focusOn={focusOn} />
-          : mode === "experiment" ? <ExperimentMode ds={ds} setScene={setSceneCb} setLayer={setLayerCb} />
+          : mode === "experiment" ? <ExperimentMode ds={ds} setScene={setSceneCb} setLayer={setLayerCb} initial={initExp} />
           : <EvidenceMode ds={ds} />}
       </aside>
     </div>

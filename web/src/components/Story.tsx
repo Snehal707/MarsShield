@@ -4,13 +4,14 @@
 import { useEffect, useState } from "react";
 import type { Dataset } from "@/lib/data";
 import type { ScenePin } from "./TerrainScene";
+import { dropScale, GUESS_MAX } from "@/lib/storyScale";
 import { M, P } from "./ui";
 
 type Mode = "mission" | "experiment" | "evidence";
 export type StoryScene = { pins: ScenePin[]; sky: boolean; focus: { x: number; y: number; dist: number } };
 const STEPS = ["The place", "The question", "The model", "The measurement", "What it means"];
 
-export function NotchStory({ ds, setStoryScene, onDone }: { ds: Dataset; setStoryScene: (s: StoryScene) => void; onDone: (m: Mode) => void }) {
+export function NotchStory({ ds, setStoryScene, onDone }: { ds: Dataset; setStoryScene: (s: StoryScene) => void; onDone: (m: Mode, exp?: "parking") => void }) {
   const [step, setStep] = useState(0);
   const [guess, setGuess] = useState<number | null>(null);
   const inside = ds.parking.periods.P6, mouth = ds.parking.periods.BG6;
@@ -53,7 +54,8 @@ export function NotchStory({ ds, setStoryScene, onDone }: { ds: Dataset; setStor
           <div className="guess">
             <label htmlFor="guess"><b>How much lower was the dose deep inside?</b> <span className="muted">Your guess, optional</span></label>
             <div className="guess-row">
-              <input id="guess" type="range" min={0} max={40} step={1} value={guess ?? 0} onChange={(e) => setGuess(+e.target.value)} />
+              <input id="guess" type="range" min={0} max={GUESS_MAX} step={1} value={guess ?? 0} onChange={(e) => setGuess(+e.target.value)}
+                onPointerUp={(e) => setGuess(+e.currentTarget.value)} onKeyUp={(e) => setGuess(+e.currentTarget.value)} />
               <output>{guess == null ? "–" : `${guess} % lower`}</output>
             </div>
           </div>
@@ -64,6 +66,7 @@ export function NotchStory({ ds, setStoryScene, onDone }: { ds: Dataset; setStor
         {step === 2 && (<>
           <p className="lede">The published physical model counts both effects and predicts the dose inside to be <P>{(model * 100).toFixed(1)} % lower</P>.</p>
           <p className="prose">It traces the sky the walls block and adds radiation re-emitted by the rock (Guo et al. 2021, 2026), using the terrain you see.</p>
+          <p className="caveat"><b>A look back, not a blind test.</b> How much radiation the rock re-emits is the model&apos;s one adjustable setting, and its authors partly derived it from Curiosity&apos;s parking measurements, including this notch.</p>
         </>)}
         {step === 3 && (<>
           <p className="lede">Curiosity measured <M>{inside.D_RAD_ours.toFixed(0)} µGy/day</M> inside against <M>{mouth.D_RAD_ours.toFixed(0)}</M> at the mouth: <M>{(measured * 100).toFixed(1)} % lower</M>, twice the predicted drop.</p>
@@ -83,18 +86,19 @@ export function NotchStory({ ds, setStoryScene, onDone }: { ds: Dataset; setStor
           <div className="story-nav">
             {step > 0 && <button className="btn ghost" onClick={() => setStep(step - 1)}>Back</button>}
             <button className="btn primary" onClick={next}>{["Ask the question", "See the prediction", "Reveal the measurement", "What it means"][step]}</button>
+            <button className="linklike small skip" onClick={() => onDone("mission")}>Skip the story</button>
           </div>
         ) : (
           <div className="story-cta">
-            <button className="btn primary" onClick={() => onDone("mission")}>Plan a Marswalk to the notch</button>
-            <button className="btn" onClick={() => onDone("experiment")}>Test the models yourself</button>
+            <p className="bridge">Is the notch typical? Put the same two models up against all eight places Curiosity parked beside terrain.</p>
+            <button className="btn primary" onClick={() => onDone("experiment", "parking")}>Test the models at all eight spots</button>
+            <button className="btn" onClick={() => onDone("mission")}>Plan a Marswalk to the notch</button>
             <div className="row" style={{ justifyContent: "space-between" }}>
               <button className="linklike small" onClick={() => setStep(step - 1)}>Back</button>
               <button className="linklike small" onClick={() => onDone("evidence")}>See all the evidence</button>
             </div>
           </div>
         )}
-        {step < STEPS.length - 1 && <button className="linklike small skip" onClick={() => onDone("mission")}>Skip the story</button>}
       </div>
     </>
   );
@@ -105,7 +109,10 @@ export function NotchStory({ ds, setStoryScene, onDone }: { ds: Dataset; setStor
 function ShieldBars({ model, measured, rule, showMeasured, showRule, guess, mouth, inside }: {
   model: number; measured: number; rule: number; showMeasured: boolean; showRule: boolean; guess: number | null; mouth: number; inside: number;
 }) {
-  const W = 380, pl = 118, pr = 58, max = 25, x = (v: number) => pl + (v / max) * (W - pl - pr);
+  const { max, ticks, grid } = dropScale([model * 100, measured * 100, rule * 100], guess);
+  const W = 380, pl = 118, pr = 58, x = (v: number) => pl + (Math.min(Math.max(v, 0), max) / max) * (W - pl - pr);
+  // keep the guess label inside the plot at the extremes (0 % and the top of the scale)
+  const gAnchor = guess == null ? "middle" : x(guess) - pl < 30 ? "start" : W - pr - x(guess) < 30 ? "end" : "middle";
   const rows: { k: string; label: string; sub: string; v: number | null; cls: string }[] = [
     { k: "model", label: "Physical model", sub: "prediction", v: model, cls: "bar-model" },
     ...(showRule ? [{ k: "rule", label: "Simple rule", sub: "prediction", v: rule, cls: "bar-rule" }] : []),
@@ -117,10 +124,10 @@ function ShieldBars({ model, measured, rule, showMeasured, showRule, guess, mout
       <p className="bars-title">How much lower the dose was deep inside</p>
       <svg viewBox={`0 0 ${W} ${H}`} className="chart" role="img"
         aria-label={`Drop in dose rate inside the notch: model ${(model * 100).toFixed(1)} %${showMeasured ? `, measured ${(measured * 100).toFixed(1)} %` : ""}${showRule ? `, simple rule ${(rule * 100).toFixed(1)} %` : ""}`}>
-        <g className="grid">{[0, 5, 10, 15, 20, 25].map((t) => <line key={t} x1={x(t)} x2={x(t)} y1={top} y2={H - 18} />)}</g>
-        {guess != null && <g>
+        <g className="grid">{grid.map((t) => <line key={t} x1={x(t)} x2={x(t)} y1={top} y2={H - 18} />)}</g>
+        {guess != null && <g data-guess={guess}>
           <line x1={x(guess)} x2={x(guess)} y1={top} y2={H - 18} stroke="#e7b37d" strokeWidth={2} strokeDasharray="5 3" />
-          <text x={x(guess)} y={H - 4} textAnchor="middle" className="guess-lbl">your guess</text></g>}
+          <text x={x(guess)} y={H - 4} textAnchor={gAnchor} className="guess-lbl">your guess {guess} %</text></g>}
         {rows.map((r, i) => {
           const cy = top + i * rowH;
           return (
@@ -135,7 +142,14 @@ function ShieldBars({ model, measured, rule, showMeasured, showRule, guess, mout
             </g>
           );
         })}
-        {[0, 10, 20].map((t) => (guess != null && Math.abs(t - guess) < 4 ? null : <text key={t} x={x(t)} y={H - 4} textAnchor="middle">{t} %</text>))}
+        {ticks.map((t) => {
+          // hide a tick label wherever the guess label (about 92 px wide) would overlap it
+          if (guess != null) {
+            const gx = x(guess), [l, r] = gAnchor === "start" ? [gx, gx + 92] : gAnchor === "end" ? [gx - 92, gx] : [gx - 46, gx + 46];
+            if (x(t) > l - 18 && x(t) < r + 18) return null;
+          }
+          return <text key={t} x={x(t)} y={H - 4} textAnchor={t === 0 ? "start" : "middle"}>{t} %</text>;
+        })}
       </svg>
       {showMeasured && <figcaption className="muted">Measured dose rate: <span className="v-measured">{mouth.toFixed(0)} µGy/day</span> at the mouth, <span className="v-measured">{inside.toFixed(0)}</span> deep inside.</figcaption>}
     </figure>

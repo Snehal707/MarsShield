@@ -66,8 +66,8 @@ function slopeCI(x: number[], y: number[], L = 20, B = 2000) {
   return { slope: s(x.map((_, i) => i)), lo: pct(bs, 0.025), hi: pct(bs, 0.975) };
 }
 
-export function ExperimentMode({ ds, setScene, setLayer }: { ds: Dataset; setScene: (s: SceneSpec) => void; setLayer: (l: "dose" | "disagree" | "image") => void }) {
-  const [exp, setExp] = useState<Exp | null>(null);
+export function ExperimentMode({ ds, setScene, setLayer, initial = null }: { ds: Dataset; setScene: (s: SceneSpec) => void; setLayer: (l: "dose" | "disagree" | "image") => void; initial?: Exp | null }) {
+  const [exp, setExp] = useState<Exp | null>(initial);
   const [revealed, setRevealed] = useState(false);
   const ts = ds.terrainSignal;
   useEffect(() => { setRevealed(false); }, [exp]);
