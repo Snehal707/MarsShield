@@ -11,7 +11,7 @@ Built for the NASA Space Apps Challenge 2026, *Interplanetary Survival Guide: Ma
 - MGS MOLA and Mars Express HRSC
 - the published Curiosity science record
 
-**Public demo (no backend needed):** https://snehal707.github.io/MarsShield/
+**Public demo (no backend needed):** https://web-three-psi-64.vercel.app (Vercel, fastest) and https://snehal707.github.io/MarsShield/ (GitHub Pages mirror)
 
 ## The opening: Maria Gordon Notch
 
