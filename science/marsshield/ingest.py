@@ -256,7 +256,7 @@ def fetch_zenodo() -> Path:
 # --------------------------------------------------------------------------------------
 # MSL sol <-> UTC. Curiosity's sol count is local mean solar time at the landing site.
 # Calibrated against the `Start_sol`/`Start_time` attributes of the RAD CDF files
-# (see tests/test_solclock.py); a Mars solar day is 88775.244 s.
+# (see tests/test_science.py); a Mars solar day is 88775.244 s.
 SOL_SECONDS = 88775.244
 MSL_SOL0_UTC = dt.datetime(2012, 8, 5, 13, 49, 59, tzinfo=dt.timezone.utc)
 

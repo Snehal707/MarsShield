@@ -3,7 +3,7 @@
 import { BASE } from "./data";
 
 export type Status = "validated" | "exploratory" | "unavailable";
-export type Capability = { name: string; status: Status; detail: string };
+export type Capability = { name: string; status: Status; detail: string; area?: "terrain" | "atmosphere" | "radiation" };
 export type GridSpec = { file: string; w: number; h: number; dtype: "int16le" | "uint8"; scale: number; offset?: number; nodata: number;
   x0?: number; y0?: number; dx?: number; dy?: number; source_res_m?: number; cell_deg?: number; note?: string; unit?: string; codes?: string[]; exploratory?: boolean };
 export type Layer = { id: string; name: string; kind: "drape" | "image"; file: string; px: [number, number]; bytes: number; note?: string; exploratory?: boolean;

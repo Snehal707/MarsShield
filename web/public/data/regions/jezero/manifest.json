@@ -5883,40 +5883,59 @@
  ],
  "capabilities": [
   {
+   "area": "terrain",
    "name": "Elevation, 3D terrain",
    "status": "validated",
-   "detail": "USGS CTX DTM, 20 m posts over 30 \u00d7 30 km."
+   "detail": "USGS Mars 2020 CTX DTM, 20 m posts."
   },
   {
-   "name": "Slope",
+   "area": "terrain",
+   "name": "Slope and elevation profiles",
    "status": "validated",
-   "detail": "Over 20 m. Steps, boulders and scarps narrower than about 40 m are not resolved, so this cannot judge traversability."
+   "detail": "Over 20 m (profiles on the 60 m grid). Steps, boulders and scarps narrower than about 40 m are not resolved, so this cannot judge traversability."
   },
   {
-   "name": "Elevation profiles",
-   "status": "validated",
-   "detail": "Sampled from the 60 m grid."
-  },
-  {
+   "area": "terrain",
    "name": "Perseverance traverse",
    "status": "validated",
-   "detail": "708 localized waypoints, sols 13\u20132022; DTM minus rover elevation median -1.1 m."
+   "detail": "Localized waypoints (NASA/JPL); the DTM agrees with the rover elevations to a median of about 1 m."
   },
   {
+   "area": "terrain",
    "name": "Sky blocked by terrain",
    "status": "exploratory",
-   "detail": "Same definition as Gale, computed on the 60 m grid. Not tested against any measurement here; misses walls narrower than about 100 m."
+   "detail": "Same definition as Gale, on the 60 m grid; misses walls narrower than about 100 m."
   },
   {
-   "name": "Radiation dose",
-   "status": "unavailable",
-   "detail": "Perseverance carries no cosmic-ray dosimeter, so no local measurement exists to test a model. Gale's RAD results are not transferred."
+   "area": "atmosphere",
+   "name": "Surface pressure",
+   "status": "validated",
+   "detail": "MEDA pressure (PDS), normalised to the landing elevation, agrees with the Mars Climate Database annual mean to about 0.5 %; the model uses MCD for consistency with the other sites."
   },
   {
-   "name": "Walking routes",
+   "area": "radiation",
+   "name": "GCR dose estimate",
+   "status": "exploratory",
+   "detail": "Effective dose, dose equivalent and water-phantom absorbed dose from published AtRIS/Geant4 tables at the MCD pressure. No ionizing-radiation detector has operated at Jezero, so the estimate cannot be validated here."
+  },
+  {
+   "area": "radiation",
+   "name": "Dose differences across the region",
+   "status": "exploratory",
+   "detail": "Hydrostatic pressure from the DTM; the modeled change across the region is far smaller than the model's Monte Carlo noise, so locations are not distinguished."
+  },
+  {
+   "area": "radiation",
+   "name": "Terrain shielding of dose",
    "status": "unavailable",
-   "detail": "The 20 m DTM cannot represent hazards at walking scale."
+   "detail": "The published tables have no zenith-angle resolution, so blocked sky cannot be turned into dose without an invented factor."
+  },
+  {
+   "area": "radiation",
+   "name": "RAD-E comparison, walking routes",
+   "status": "unavailable",
+   "detail": "No RAD-equivalent measurement or detector model exists for Jezero; the 20 m DTM cannot represent walking-scale hazards."
   }
  ],
- "generated_utc": "2026-11-15T14:21:32+00:00"
+ "generated_utc": "2026-11-15T15:58:15+00:00"
 }

@@ -1,6 +1,7 @@
 "use client";
-// Regions beyond Gale: a global Mars overview (MOLA) and regional terrain views (Jezero, Olympus Mons) built from the
-// regional manifests. Terrain only: radiation tools stay in Gale, where Curiosity's RAD measurements exist.
+// The Mars overview (MOLA map plus the three-region radiation comparison) and the regional workspaces for Jezero and
+// Olympus Mons: radiation estimates from one published transport model at one atmosphere source, terrain from the
+// regional manifests. Curiosity's RAD measurements stay with Gale; nothing here is a measurement of dose.
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Canvas, useLoader, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Html, Line, OrbitControls } from "@react-three/drei";
@@ -8,26 +9,41 @@ import * as THREE from "three";
 import { layerUrl, loadRegion, nearestLocal, profileLine, profileSlope, sampleGlobal, sampleLocal, type Capability, type Region, type RegionIndex, type Status } from "@/lib/regions";
 import { DockPortal } from "./Dock";
 import { ProfileChart } from "./ResearchCharts";
-import { More, Seg } from "./ui";
+import { More, Seg, Tabs } from "./ui";
+import { Blockers, CompareDock, MeasuredContext, RadiationDownloads, ScenarioControls, UncertaintyList, useRadiation, ValidationNotes, type Scenario } from "./RadiationLab";
+import { pressureAt, QUANTITIES, rateAt, noiseFor, PA_TO_GCM2, type Radiation } from "@/lib/radiation";
 
 const STATUS_LABEL: Record<Status, string> = { validated: "Validated", exploratory: "Exploratory model", unavailable: "Unavailable" };
 const fmtM = (v: number) => `${Math.round(v).toLocaleString("en")} m`;
 const fmtKm = (m: number) => (m >= 2000 ? `${(m / 1000).toFixed(m < 20000 ? 1 : 0)} km` : `${Math.round(m)} m`);
 
+const AREA_LABEL: Record<string, string> = { radiation: "Radiation evidence", atmosphere: "Atmosphere", terrain: "Terrain data" };
 export function CapabilityMatrix({ caps, defs }: { caps: Capability[]; defs?: Record<Status, string> }) {
+  const areas = ["radiation", "atmosphere", "terrain"].filter((a) => caps.some((c) => (c.area ?? "terrain") === a));
   return (
     <div className="caps">
-      <table className="dt wrap caps-t">
-        <caption className="sr-only">What this region supports</caption>
-        <thead><tr><th scope="col">Capability</th><th scope="col">Status</th><th scope="col">Basis and limits</th></tr></thead>
-        <tbody>{caps.map((c) => (
-          <tr key={c.name}><td>{c.name}</td><td><span className={`cap cap-${c.status}`}>{STATUS_LABEL[c.status]}</span></td><td>{c.detail}</td></tr>))}</tbody>
-      </table>
+      {areas.map((a) => (
+        <section key={a} className="cap-group" aria-label={AREA_LABEL[a]}>
+          <h3>{AREA_LABEL[a]}</h3>
+          <ul className="cap-list">{caps.filter((c) => (c.area ?? "terrain") === a).map((c) => (
+            <li key={c.name}><div className="cap-row"><b>{c.name}</b><span className={`cap cap-${c.status}`}>{STATUS_LABEL[c.status]}</span></div><p>{c.detail}</p></li>))}</ul>
+        </section>))}
       {defs && <More label="What the three labels mean">
-        <dl className="cap-defs">{(Object.keys(STATUS_LABEL) as Status[]).map((s) => <div key={s}><dt><span className={`cap cap-${s}`}>{STATUS_LABEL[s]}</span></dt><dd>{defs[s]}</dd></div>)}</dl>
+        <dl className="cap-defs">{(Object.keys(STATUS_LABEL) as Status[]).map((st) => <div key={st}><dt><span className={`cap cap-${st}`}>{STATUS_LABEL[st]}</span></dt><dd>{defs[st]}</dd></div>)}</dl>
       </More>}
     </div>
   );
+}
+
+function RadiationMethods({ R }: { R: Radiation }) {
+  return (<>
+    <More label="Model, uncertainty and validation">
+      <p className="prose">{R.model.name}: {R.model.gcr}, published surface tables at {R.model.pressures_pa.join(", ")} Pa (columns {R.model.column_gcm2_published.join(", ")} g/cm²). doi:{R.model.doi}; data doi:{R.model.data_doi}. {R.model.interpolation}.</p>
+      <UncertaintyList R={R} />
+      <ValidationNotes R={R} />
+    </More>
+    <More label="What cannot be calculated yet, and why"><Blockers R={R} /></More>
+  </>);
 }
 
 function Sources({ reg }: { reg: Region }) {
@@ -48,13 +64,20 @@ function checkText(c: Record<string, unknown>) {
 }
 
 // ------------------------------------------------------------------ global overview
-export function MarsOverview({ index, onOpen }: { index: RegionIndex; onOpen: (id: string) => void }) {
+const EVIDENCE: Record<string, string> = {
+  gale: "Measured by Curiosity's RAD detector at 322 stops, plus models tested against it",
+  jezero: "Modeled only: no radiation detector has operated here (MEDA measures pressure and sunlight)",
+  olympus: "Modeled only: no lander has visited; atmosphere from a climate model",
+};
+export function MarsOverview({ index, onOpen, onCaseStudy, sc, setSc }: { index: RegionIndex; onOpen: (id: string) => void; onCaseStudy: () => void; sc: Scenario; setSc: (s: Scenario) => void }) {
   const [reg, setReg] = useState<Region | null>(null);
   const [hover, setHover] = useState<{ lon: number; lat: number; z: number } | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const { R } = useRadiation();
   useEffect(() => { loadRegion("mars").then(setReg).catch((e) => setErr(String(e))); }, []);
   const mars = index.regions.find((r) => r.id === "mars")!;
   const others = index.regions.filter((r) => r.id !== "mars");
+  const col = (id: string) => R?.sites.find((x) => x.region === id)?.baseline.column_gcm2;
   return (<>
     <section className="stage region-stage" aria-label="Elevation map of Mars">
       <div className="mars-map">
@@ -76,20 +99,32 @@ export function MarsOverview({ index, onOpen }: { index: RegionIndex; onOpen: (i
       </div>
     </section>
     <main id="panel" tabIndex={-1} className="panel region-panel">
-      <div className="panel-head"><p className="kicker">Mars overview</p><h1 className="panel-title">Three places, three kinds of evidence</h1>
-        <p className="sub">{mars.summary}</p></div>
+      <div className="panel-head"><p className="kicker">Radiation on Mars</p><h1 className="panel-title">Cosmic rays reach the ground on Mars</h1>
+        <p className="sub">Mars has no global magnetic field and a thin atmosphere, so galactic cosmic rays reach the surface. What changes from place to place is the air overhead: the Olympus Mons caldera has about an eighth of the atmospheric column above Gale Crater.</p></div>
       <div className="panel-body">
         <div className="region-cards">{others.map((r) => (
           <article key={r.id} className="region-card">
             <h2>{r.name}</h2><p>{r.summary}</p>
-            <p className="cap-line">{(["validated", "exploratory", "unavailable"] as Status[]).map((s) => { const n = r.capabilities.filter((c) => c.status === s).length; return n ? <span key={s} className={`cap cap-${s}`}>{n} {STATUS_LABEL[s].toLowerCase()}</span> : null; })}</p>
-            <button className="btn primary" onClick={() => onOpen(r.id)}>Open {r.name}{r.bytes ? ` (${(r.bytes / 1e6).toFixed(1)} MB)` : ""}</button>
+            <p className="evidence-line"><b>Radiation evidence.</b> {EVIDENCE[r.id]}{col(r.id) ? `. Atmospheric column ${col(r.id)!.toFixed(1)} g/cm² (annual mean, modeled)` : ""}.</p>
+            <div className="row">
+              <button className="btn primary" onClick={() => onOpen(r.id)}>Open {r.name}{r.bytes ? ` (${(r.bytes / 1e6).toFixed(1)} MB)` : ""}</button>
+              {r.id === "gale" && <button className="btn" onClick={onCaseStudy}>Case study: Maria Gordon Notch</button>}
+            </div>
           </article>))}</div>
-        <h2 className="q">This map</h2>
-        <CapabilityMatrix caps={mars.capabilities} defs={index.status_definitions} />
-        {reg && <Sources reg={reg} />}
+        <section className="rg-sec" aria-labelledby="cmp-h"><h2 id="cmp-h" className="q">Compare the three regions</h2>
+          <p className="prose">One published transport model at one atmosphere source, with the same assumptions for every site. The chart and table are in the analysis area.</p>
+          <ScenarioControls sc={sc} set={setSc} />
+          {R && <MeasuredContext R={R} />}
+          {R && <RadiationMethods R={R} />}
+        </section>
+        <section className="rg-sec" aria-labelledby="map-h"><h2 id="map-h" className="q">What this overview supports</h2>
+          <CapabilityMatrix caps={mars.capabilities} defs={index.status_definitions} />
+          {reg && <Sources reg={reg} />}</section>
       </div>
     </main>
+    {R && <DockPortal title={`Three-region comparison: ${QUANTITIES[sc.q].label.toLowerCase()}`} head={<RadiationDownloads R={R} sc={sc} />}>
+      <CompareDock R={R} sc={sc} />
+    </DockPortal>}
   </>);
 }
 
@@ -153,8 +188,8 @@ function CameraRig({ focus, reg, exag }: { focus: Focus; reg: Region; exag: numb
   return null;
 }
 
-function Overlays({ reg, exag, sel, profile, hoverPt, drawA }: { reg: Region; exag: number; sel: string | null;
-  profile: { a: [number, number]; b: [number, number] } | null; hoverPt: [number, number] | null; drawA: [number, number] | null }) {
+function Overlays({ reg, exag, sel, profile, hoverPt, drawA, pick }: { reg: Region; exag: number; sel: string | null;
+  profile: { a: [number, number]; b: [number, number] } | null; hoverPt: [number, number] | null; drawA: [number, number] | null; pick?: [number, number] | null }) {
   const { toScene, size } = useRegionGeometry(reg, exag);
   const lift = size * 0.002;
   const trav = useMemo(() => reg.m.traverse ? reg.m.traverse.xy.map(([x, y]) => toScene(x, y, lift)) : null, [reg, toScene, lift]);
@@ -168,13 +203,37 @@ function Overlays({ reg, exag, sel, profile, hoverPt, drawA }: { reg: Region; ex
           <span className="pin-label">{l.name}</span></div>
       </Html>); })}
     {drawA && <Html position={toScene(drawA[0], drawA[1], lift * 2)} center><div className="pin sel" aria-hidden="true" style={{ width: 12, height: 12, background: "#7db3cb" }}><span className="pin-label">A</span></div></Html>}
+    {pick && <Html position={toScene(pick[0], pick[1], lift * 3)} center><div className="pin sel" aria-hidden="true" data-sel="1" style={{ width: 14, height: 14, background: "#c48bd6" }}><span className="pin-label">Evaluated location</span></div></Html>}
     {hoverPt && <Html position={toScene(hoverPt[0], hoverPt[1], lift * 2)} center><div className="pin" aria-hidden="true" style={{ width: 10, height: 10, background: "#7db3cb" }} /></Html>}
   </>);
 }
 
 type Prof = { name: string; a: [number, number]; b: [number, number]; kind: "line" } | { name: string; kind: "traverse" };
 
-export function RegionalView({ id, index, onOpen, desktop }: { id: string; index: RegionIndex; onOpen: (id: string) => void; desktop: boolean }) {
+function LocationDose({ R, reg, region, sc, pick }: { R: Radiation; reg: Region; region: string; sc: Scenario; pick: [number, number] | null }) {
+  const phi = QUANTITIES[sc.q].phiFixed ?? sc.phi, u = QUANTITIES[sc.q].unit, noise = noiseFor(R, sc.q, phi);
+  const h = R.hydrostatic[region];
+  const at = (z: number) => { const p = pressureAt(R, region, z, sc.season); return { z, p, X: p * PA_TO_GCM2, ...rateAt(R, sc.q, phi, p) }; };
+  const [zlo, zhi] = reg.m.elevation_range_m;
+  const low = at(zlo), high = at(zhi), span = Math.abs(high.v / low.v - 1);
+  const z = pick ? sampleLocal(reg.elev, reg.elev, pick[0], pick[1]) : NaN;
+  const here = Number.isFinite(z) ? at(z) : null, ref = at(h.ref_elev_m);
+  return (
+    <div className="loc-dose">
+      {here ? (<>
+        <p className="role">Evaluated location (exploratory)</p>
+        <p><b>{fmtM(here.z)}</b> elevation; modeled pressure <b>{here.p.toFixed(0)} Pa</b> ({here.X.toFixed(2)} g/cm²); <span className="v-model">{here.v.toFixed(1)} {u}</span>{here.edge ? " (at the 82 Pa grid edge)" : ""}.</p>
+        <p className="muted small">Against the region&apos;s reference point ({fmtM(h.ref_elev_m)}): {((here.v / ref.v - 1) * 100).toFixed(2)} %, {Math.abs(here.v / ref.v - 1) > 2 * noise ? "larger than" : "smaller than"} twice the model&apos;s Monte Carlo noise ({(noise * 100).toFixed(1)} %).</p>
+      </>) : <p className="muted">Click the terrain to evaluate a location. Pressure there comes from the elevation by the hydrostatic relation (scale height {(h.scale_height_m / 1000).toFixed(1)} km).</p>}
+      <p className="muted small">Across this region&apos;s full elevation range ({fmtM(zlo)} to {fmtM(zhi)}) the modeled {QUANTITIES[sc.q].label.toLowerCase()} changes by {(span * 100).toFixed(1)} %{span < 2 * noise ? ", below what the model resolves, so it does not distinguish locations here" : ""}. Terrain shielding of dose is not included (no angular data in the published tables).</p>
+    </div>
+  );
+}
+
+export function RegionalView({ id, index, onOpen, desktop, sc, setSc }: { id: string; index: RegionIndex; onOpen: (id: string) => void; desktop: boolean; sc: Scenario; setSc: (s: Scenario) => void }) {
+  const { R } = useRadiation();
+  const [tab, setTab] = useState<"radiation" | "terrain" | "sources">("radiation");
+  const [pick, setPick] = useState<[number, number] | null>(null);
   const [reg, setReg] = useState<Region | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loadMs, setLoadMs] = useState<number | null>(null);
@@ -190,7 +249,7 @@ export function RegionalView({ id, index, onOpen, desktop }: { id: string; index
   const [profHover, setProfHover] = useState<number | null>(null);
   useEffect(() => {
     let live = true; const t0 = performance.now();
-    setReg(null); setErr(null); setProf(null); setSel(null); setLayer("relief"); setExag(id === "olympus" ? 3 : 2);
+    setReg(null); setErr(null); setProf(null); setSel(null); setLayer("relief"); setExag(id === "olympus" ? 3 : 2); setPick(null); setTab("radiation");
     loadRegion(id).then((r) => { if (live) { setReg(r); setLoadMs(performance.now() - t0); } }).catch((e) => live && setErr(String(e)));
     return () => { live = false; };
   }, [id]);
@@ -220,8 +279,10 @@ export function RegionalView({ id, index, onOpen, desktop }: { id: string; index
     const leg = reg.m.layers.find((l) => l.legend)?.legend?.find((q) => q.id === unit);
     return { z, s, sky, unit: leg ? `${leg.id}, ${leg.name}` : null };
   }, [reg, hover]);
+  // phones: the dock follows the panel in the page, so bring a newly opened profile into view
+  useEffect(() => { if (prof && window.innerWidth <= 860) window.setTimeout(() => document.getElementById("analysis")?.scrollIntoView({ behavior: "smooth" }), 80); }, [prof]);
   const onTerrainClick = (xy: [number, number]) => {
-    if (!draw) return;
+    if (!draw) { if (tab === "radiation") setPick(xy); return; }
     if (!drawA) { setDrawA(xy); return; }
     setProf({ name: "Your profile", kind: "line", a: drawA, b: xy }); setDrawA(null); setDraw(false);
   };
@@ -237,7 +298,7 @@ export function RegionalView({ id, index, onOpen, desktop }: { id: string; index
           <Suspense fallback={null}>
             <Terrain reg={reg} layer={layer} exag={exag} onHover={setHover} onClick={onTerrainClick} />
           </Suspense>
-          <Overlays reg={reg} exag={exag} sel={sel} profile={profile?.line ?? null} hoverPt={hoverXY} drawA={drawA} />
+          <Overlays reg={reg} exag={exag} sel={sel} profile={profile?.line ?? null} hoverPt={hoverXY} drawA={drawA} pick={pick} />
           <OrbitControls makeDefault maxPolarAngle={Math.PI * 0.47} minDistance={500} maxDistance={reg.elev.h * reg.elev.dy! * 3} />
           <CameraRig focus={focus} reg={reg} exag={exag} />
         </Canvas>
@@ -256,10 +317,32 @@ export function RegionalView({ id, index, onOpen, desktop }: { id: string; index
         <h1 className="panel-title" style={{ marginTop: 8 }}>{summary.name}</h1>
         <p className="sub">{summary.summary}</p>
       </div>
+      <Tabs className="subnav region-tabs" label="Workspace sections" tabs={[["radiation", "Radiation"], ["terrain", "Terrain"], ["sources", "Sources and limits"]]} value={tab}
+        onChange={(t) => { setTab(t); document.querySelector(".region-panel .panel-body")?.scrollTo({ top: 0 }); }} />
       <div className="panel-body">
+        {tab === "radiation" && (<>
+          {R && (<>
+            <section className="rg-sec" aria-labelledby="rg-atm"><h2 id="rg-atm" className="q">Atmosphere overhead</h2>
+              <ul className="atm-list">{R.sites.filter((x) => x.region === id).map((x) => (
+                <li key={x.id}><b>{x.name}</b><span><span className="v-model">{x.baseline.pressure_pa.toFixed(0)} Pa</span> annual mean ({x.season_low.pressure_pa.toFixed(0)}–{x.season_high.pressure_pa.toFixed(0)} Pa over the year), a column of {x.baseline.column_gcm2.toFixed(2)} g/cm². Mars Climate Database v6.2 (modeled).</span></li>))}</ul>
+              {id === "jezero" && <p className="muted small">Check: Perseverance&apos;s MEDA pressure, normalised to the landing elevation, differs from the model by {R.validation.pressure_checks.meda_vs_mcd_jezero_pct} %.</p>}
+              {id === "olympus" && <p className="muted small">No pressure has been measured above about 4 km anywhere on Mars; the table carries a ±10 % assumption band. Gale&apos;s column is {R.sites.find((x) => x.id === "gale")!.baseline.column_gcm2.toFixed(1)} g/cm² for comparison.</p>}
+            </section>
+            <section className="rg-sec" aria-labelledby="rg-sc"><h2 id="rg-sc" className="q">Assumptions (shared by every region)</h2>
+              <ScenarioControls sc={sc} set={setSc} /></section>
+            <section className="rg-sec" aria-labelledby="rg-loc"><h2 id="rg-loc" className="q">Dose at a location</h2>
+              {reg && <LocationDose R={R} reg={reg} region={id} sc={sc} pick={pick} />}</section>
+            <section className="rg-sec" aria-labelledby="rg-cmp"><h2 id="rg-cmp" className="q">Against Gale and the other region</h2>
+              <p className="prose">The comparison table and the dose-against-pressure chart are in the analysis area{prof ? " (close the profile to see them)" : ""}.</p>
+              {prof && <button className="btn" onClick={() => setProf(null)}>Show the comparison</button>}
+              <MeasuredContext R={R} />
+              <RadiationMethods R={R} />
+            </section>
+          </>)}
+          {!R && <p className="muted">Loading the radiation model…</p>}
+        </>)}
+        {tab === "terrain" && (<>
         {reg && <p className="muted calc-time">Loaded {((summary.bytes ?? 0) / 1e6).toFixed(1)} MB in {Math.round(loadMs ?? 0)} ms; {reg.elev.w} × {reg.elev.h} elevation grid at {Math.round(reg.elev.dx!)}–{Math.round(reg.elev.dy!)} m.</p>}
-        <section className="rg-sec" aria-labelledby="rg-cap"><h2 id="rg-cap" className="q">What this region supports</h2>
-          <CapabilityMatrix caps={summary.capabilities} defs={index.status_definitions} /></section>
         {reg && (<>
           <section className="rg-sec" aria-labelledby="rg-layers"><h2 id="rg-layers" className="q">Map layer</h2>
             <div className="layer-list" role="radiogroup" aria-label="Map layer">
@@ -268,12 +351,6 @@ export function RegionalView({ id, index, onOpen, desktop }: { id: string; index
             {lay?.legend && <ul className="unit-legend">{lay.legend.map((u) => <li key={u.id}><i style={{ background: `rgb(${u.color.join(",")})` }} aria-hidden="true" /><b>{u.id}</b> {u.name}<span>{u.desc}</span></li>)}</ul>}
             <div className="row"><span className="muted">Vertical exaggeration</span><Seg label="Vertical exaggeration" value={exag} onChange={setExag} options={[[1, "×1"], [2, "×2"], [3, "×3"], [5, "×5"]]} /></div>
           </section>
-          <section className="rg-sec" aria-labelledby="rg-lm"><h2 id="rg-lm" className="q">Landmarks</h2>
-            <div className="lm-list">{(reg.m.landmarks ?? []).map((l) => (
-              <button key={l.name} aria-pressed={sel === l.name} onClick={() => { setSel(l.name); setFocus((f) => ({ x: l.x, y: l.y, dist: reg.elev.h * reg.elev.dy! * 0.28, n: (f?.n ?? 0) + 1 })); }}>
-                <b>{l.name}</b><span>{l.note}</span></button>))}</div>
-            <button className="linklike small" onClick={() => { setSel(null); setFocus((f) => ({ x: reg.elev.x0! + (reg.elev.w * reg.elev.dx!) / 2, y: reg.elev.y0! - (reg.elev.h * reg.elev.dy!) / 2, dist: reg.elev.h * reg.elev.dy! * 1.05, n: (f?.n ?? 0) + 1 })); }}>Show the whole region</button>
-          </section>
           <section className="rg-sec" aria-labelledby="rg-prof"><h2 id="rg-prof" className="q">Elevation profiles</h2>
             <div className="lm-list">
               {(reg.m.profiles ?? []).map((p) => <button key={p.name} aria-pressed={prof?.name === p.name} onClick={() => setProf({ ...p, kind: "line" })}><b>{p.name}</b></button>)}
@@ -281,19 +358,40 @@ export function RegionalView({ id, index, onOpen, desktop }: { id: string; index
                 <b>Along Perseverance&apos;s traverse</b><span>DTM elevation and the rover&apos;s own localized elevations, sols {reg.m.traverse.sol_range[0]}–{reg.m.traverse.sol_range[1]}</span></button>}
             </div>
             <button className="btn" aria-pressed={draw} onClick={() => { setDraw(!draw); setDrawA(null); }}>{draw ? (drawA ? "Click the end point on the terrain" : "Click the start point on the terrain") : "Draw your own profile"}</button>
+            {prof && <button className="linklike small" onClick={() => setProf(null)}>Close the profile</button>}
             <p className="muted small">Profiles are sampled at the grid spacing ({Math.round(reg.elev.dy!)} m); slopes over shorter distances are not resolved.</p>
+          </section>
+          <section className="rg-sec" aria-labelledby="rg-lm"><h2 id="rg-lm" className="q">Landmarks</h2>
+            <label className="sr-only" htmlFor="lm-pick">Landmark</label>
+            <select id="lm-pick" className="sel" value={sel ?? ""} onChange={(e) => { const l = (reg.m.landmarks ?? []).find((q) => q.name === e.target.value); if (!l) return; setSel(l.name); setFocus((f) => ({ x: l.x, y: l.y, dist: reg.elev.h * reg.elev.dy! * 0.28, n: (f?.n ?? 0) + 1 })); }}>
+              <option value="">Fly to a landmark…</option>
+              {(reg.m.landmarks ?? []).map((l) => <option key={l.name} value={l.name}>{l.name}</option>)}
+            </select>
+            {sel && <p className="muted small">{(reg.m.landmarks ?? []).find((q) => q.name === sel)?.note}</p>}
+            <button className="linklike small" onClick={() => { setSel(null); setFocus((f) => ({ x: reg.elev.x0! + (reg.elev.w * reg.elev.dx!) / 2, y: reg.elev.y0! - (reg.elev.h * reg.elev.dy!) / 2, dist: reg.elev.h * reg.elev.dy! * 1.05, n: (f?.n ?? 0) + 1 })); }}>Show the whole region</button>
           </section>
           {id === "olympus" && reg.m.context && <figure className="ctx-fig">
             {/* eslint-disable-next-line @next/next/no-img-element -- static export */}
             <img src={layerUrl(id, reg.m.context.file)} alt="Shaded relief of the whole Olympus Mons volcano; the caldera map area is outlined" />
             <span className="ctx-box" style={{ left: `${((reg.m.frame.lon[0] - reg.m.context.lon[0]) / (reg.m.context.lon[1] - reg.m.context.lon[0])) * 100}%`, width: `${((reg.m.frame.lon[1] - reg.m.frame.lon[0]) / (reg.m.context.lon[1] - reg.m.context.lon[0])) * 100}%`,
               top: `${((reg.m.context.lat[1] - reg.m.frame.lat[1]) / (reg.m.context.lat[1] - reg.m.context.lat[0])) * 100}%`, height: `${((reg.m.frame.lat[1] - reg.m.frame.lat[0]) / (reg.m.context.lat[1] - reg.m.context.lat[0])) * 100}%` }} />
-            <figcaption className="muted small">{reg.m.context.note}.</figcaption></figure>}
-          <Sources reg={reg} />
+            <figcaption className="muted small">{reg.m.context.note}. The caldera study area is the outlined box; the summit lies just south of it.</figcaption></figure>}
+        </>)}
+        </>)}
+        {tab === "sources" && (<>
+          <section className="rg-sec" aria-labelledby="rg-cap"><h2 id="rg-cap" className="q">What this region supports</h2>
+            <CapabilityMatrix caps={summary.capabilities} defs={index.status_definitions} /></section>
+          {reg && <Sources reg={reg} />}
+          {R && <RadiationMethods R={R} />}
         </>)}
       </div>
     </main>
 
+    {R && !(reg && profile && prof) && (
+      <DockPortal title={`${summary.name} against the other regions: ${QUANTITIES[sc.q].label.toLowerCase()}`} head={<RadiationDownloads R={R} sc={sc} />}>
+        <CompareDock R={R} sc={sc} highlight={id} />
+      </DockPortal>
+    )}
     {reg && profile && prof && (
       <DockPortal title={`Elevation profile: ${prof.name}`}>
         <div className="dock-grid">

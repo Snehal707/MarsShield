@@ -52,16 +52,19 @@ def test_files_exist_and_match_grid_sizes(rid):
 
 @pytest.mark.parametrize("rid", ["mars", "jezero", "olympus"])
 def test_no_radiation_validation_outside_gale(rid):
-    """Curiosity RAD data and radiation validation belong to Gale only."""
+    """No radiation capability outside Gale is labelled validated, and no Curiosity RAD data are assigned there."""
     m = _manifest(rid)
+    assert {c["area"] for c in m["capabilities"]} <= {"terrain", "atmosphere", "radiation"}
     for c in m["capabilities"]:
-        if "radiation" in c["name"].lower() or "dose" in c["name"].lower():
-            assert c["status"] == "unavailable", c
-    text = json.dumps(m)
-    assert "RAD Level 2" not in text
-    # the only mention of RAD is the statement that it is not transferred
-    for s in [t for t in text.split('"') if "RAD" in t]:
-        assert "not transferred" in s or "Gale's RAD results are not transferred" in s, s
+        if c["area"] == "radiation":
+            assert c["status"] in ("exploratory", "unavailable"), c
+    assert "RAD Level 2" not in json.dumps(m)
+
+
+def test_gale_keeps_measured_radiation():
+    gale = next(r for r in _index()["regions"] if r["id"] == "gale")
+    meas = next(c for c in gale["capabilities"] if c["name"] == "Radiation measurements")
+    assert meas["status"] == "validated" and meas["area"] == "radiation"
 
 
 def test_exploratory_layers_are_labelled():

@@ -268,11 +268,7 @@ def mars_overview() -> dict:
         "elevation_range_m": [round(float(np.nanmin(z))), round(float(np.nanmax(z)))],
         "sources": [{"name": "MGS MOLA Mission Experiment Gridded Data Record (MEGDR), 4 pixels per degree", "url": MOLA_MEGDR_4PPD,
                      "producer": "NASA PDS Geosciences Node (Smith et al., 2003)", "role": "Elevation relative to the areoid"}],
-        "capabilities": [
-            {"name": "Global elevation", "status": "validated", "detail": "MOLA gridded elevations at about 15 km per pixel; finer features are not resolved."},
-            {"name": "Region outlines", "status": "validated", "detail": "Bounds of each regional dataset, from the regional manifests."},
-            {"name": "Radiation", "status": "unavailable", "detail": "No global radiation map is offered; MarsShield's radiation analysis is local to Gale Crater."},
-        ],
+        "capabilities": CAPABILITIES["mars"],
     }
 
 
@@ -371,15 +367,7 @@ def jezero() -> dict:
             {"name": "Mars 2020 TRN HiRISE DTM mosaic, 1 m", "url": JEZ_HIRISE_DTM, "producer": "USGS Astrogeology",
              "role": "Evaluated, not used: 1.8 GB; a 1 m inset needs a defined study site (see docs/REGIONS.md)"},
         ],
-        "capabilities": [
-            {"name": "Elevation, 3D terrain", "status": "validated", "detail": f"USGS CTX DTM, 20 m posts over {abs(b.right - b.left) / 1000 * math.cos(math.radians(lat_c)):.0f} × {abs(b.top - b.bottom) / 1000:.0f} km."},
-            {"name": "Slope", "status": "validated", "detail": "Over 20 m. Steps, boulders and scarps narrower than about 40 m are not resolved, so this cannot judge traversability."},
-            {"name": "Elevation profiles", "status": "validated", "detail": "Sampled from the 60 m grid."},
-            {"name": "Perseverance traverse", "status": "validated", "detail": f"{len(inside)} localized waypoints, sols {first['sol']}–{last['sol']}; DTM minus rover elevation median {np.median(dz):+.1f} m."},
-            {"name": "Sky blocked by terrain", "status": "exploratory", "detail": "Same definition as Gale, computed on the 60 m grid. Not tested against any measurement here; misses walls narrower than about 100 m."},
-            {"name": "Radiation dose", "status": "unavailable", "detail": "Perseverance carries no cosmic-ray dosimeter, so no local measurement exists to test a model. Gale's RAD results are not transferred."},
-            {"name": "Walking routes", "status": "unavailable", "detail": "The 20 m DTM cannot represent hazards at walking scale."},
-        ],
+        "capabilities": CAPABILITIES["jezero"],
     }
 
 
@@ -543,14 +531,7 @@ def olympus() -> dict:
             {"name": "Mars HRSC MOLA Blended DEM Global 200 m v2", "url": C.HRSC_MOLA_200M_URL, "producer": "USGS Astrogeology (Fergason et al., 2018), from Mars Express HRSC and MGS MOLA", "role": "Elevation"},
             {"name": "Geologic map of Olympus Mons caldera (SIM 3470)", "url": "https://doi.org/10.3133/sim3470", "producer": SIM3470_CITE, "role": "Geologic units, faults and ridges"},
         ],
-        "capabilities": [
-            {"name": "Elevation, 3D caldera", "status": "validated", "detail": "HRSC/MOLA blend at 200 m posts over the 1:200,000 map area."},
-            {"name": "Slope", "status": "validated", "detail": "Over 200 m only. Caldera walls that are 1–3 km high are steeper over shorter distances than this shows."},
-            {"name": "Elevation profiles", "status": "validated", "detail": "Sampled from the 200 m grid."},
-            {"name": "Geologic units", "status": "validated", "detail": "USGS SIM 3470 polygons (Mouginis-Mark, 2021), 1:200,000."},
-            {"name": "Radiation dose", "status": "unavailable", "detail": "No surface radiation measurement exists here. Curiosity's RAD data belong to Gale and are not transferred; no model is offered."},
-            {"name": "Sky blocked, routes", "status": "unavailable", "detail": "A 200 m grid cannot represent shielding or hazards at the scale of a person."},
-        ],
+        "capabilities": CAPABILITIES["olympus"],
     }
 
 
@@ -560,14 +541,54 @@ def gale_entry() -> dict:
         "id": "gale", "name": "Gale Crater", "kind": "gale", "summary": "Curiosity's radiation measurements and the terrain around Mount Sharp.",
         "frame": {"type": "lonlat_box", "lon": [round(math.degrees(C.NEAR_BOUNDS["left"] / R), 4), round(math.degrees(C.NEAR_BOUNDS["right"] / R), 4)],
                   "lat": [round(math.degrees(C.NEAR_BOUNDS["bottom"] / R), 4), round(math.degrees(C.NEAR_BOUNDS["top"] / R), 4)]},
-        "capabilities": [
-            {"name": "Elevation, 3D terrain", "status": "validated", "detail": "USGS MSL Gale merged DEM, 1 m."},
-            {"name": "Radiation measurements", "status": "validated", "detail": "Curiosity RAD Level 2 dose rates (NASA PDS/SPDF) at 322 stops."},
-            {"name": "Sky blocked by terrain", "status": "exploratory", "detail": "Ray traced on the 1 m DEM; compared with Guo et al. (2026) at the parking positions, and differs at P6 (0.33 against 0.38)."},
-            {"name": "Radiation dose model", "status": "exploratory", "detail": "Tested retrospectively against RAD (322 stops, 8 parking periods). Its albedo share was derived from the same data, so this is not independent validation."},
-            {"name": "Routes and where to stand", "status": "exploratory", "detail": "Planning illustration from the dose model; not validated for astronaut dose and not for operational use."},
-        ],
+        "capabilities": CAPABILITIES["gale"],
     }
+
+
+# Capability matrix: one list per region, split into terrain data and radiation evidence so that a "validated" elevation
+# model is never read as validated radiation. Labels follow STATUS_DEF.
+def _c(area, name, status, detail):
+    return {"area": area, "name": name, "status": status, "detail": detail}
+
+
+CAPABILITIES = {
+    "mars": [
+        _c("terrain", "Global elevation", "validated", "MOLA gridded elevations at about 15 km per pixel; finer features are not resolved."),
+        _c("radiation", "Three-region dose comparison", "exploratory",
+           "Effective dose, dose equivalent and water-phantom absorbed dose at Gale, Jezero and Olympus Mons from one published transport model (Zhang et al. 2022) and one atmosphere source (Mars Climate Database v6.2), at matched assumptions. Reproduced from published tables; not validated outside Gale."),
+        _c("radiation", "Global radiation map", "unavailable", "Only three sites have matched atmospheric inputs here; a global map would need the full MCD and transport tables over every location."),
+    ],
+    "jezero": [
+        _c("terrain", "Elevation, 3D terrain", "validated", "USGS Mars 2020 CTX DTM, 20 m posts."),
+        _c("terrain", "Slope and elevation profiles", "validated", "Over 20 m (profiles on the 60 m grid). Steps, boulders and scarps narrower than about 40 m are not resolved, so this cannot judge traversability."),
+        _c("terrain", "Perseverance traverse", "validated", "Localized waypoints (NASA/JPL); the DTM agrees with the rover elevations to a median of about 1 m."),
+        _c("terrain", "Sky blocked by terrain", "exploratory", "Same definition as Gale, on the 60 m grid; misses walls narrower than about 100 m."),
+        _c("atmosphere", "Surface pressure", "validated", "MEDA pressure (PDS), normalised to the landing elevation, agrees with the Mars Climate Database annual mean to about 0.5 %; the model uses MCD for consistency with the other sites."),
+        _c("radiation", "GCR dose estimate", "exploratory",
+           "Effective dose, dose equivalent and water-phantom absorbed dose from published AtRIS/Geant4 tables at the MCD pressure. No ionizing-radiation detector has operated at Jezero, so the estimate cannot be validated here."),
+        _c("radiation", "Dose differences across the region", "exploratory", "Hydrostatic pressure from the DTM; the modeled change across the region is far smaller than the model's Monte Carlo noise, so locations are not distinguished."),
+        _c("radiation", "Terrain shielding of dose", "unavailable", "The published tables have no zenith-angle resolution, so blocked sky cannot be turned into dose without an invented factor."),
+        _c("radiation", "RAD-E comparison, walking routes", "unavailable", "No RAD-equivalent measurement or detector model exists for Jezero; the 20 m DTM cannot represent walking-scale hazards."),
+    ],
+    "olympus": [
+        _c("terrain", "Elevation, 3D caldera", "validated", "HRSC/MOLA blend at 200 m posts over the 1:200,000 map area."),
+        _c("terrain", "Slope and elevation profiles", "validated", "Over 200 m only. Caldera walls 1–3 km high are steeper over shorter distances than this shows."),
+        _c("terrain", "Geologic units", "validated", "USGS SIM 3470 polygons (Mouginis-Mark, 2021), 1:200,000."),
+        _c("atmosphere", "Surface pressure", "exploratory", "Mars Climate Database v6.2 only; no pressure has been measured above about 4 km anywhere on Mars. A ±10 % assumption band is shown."),
+        _c("radiation", "GCR dose estimate", "exploratory",
+           "Effective dose, dose equivalent and water-phantom absorbed dose from published AtRIS/Geant4 tables; the paper's 82 Pa case is the top of Olympus Mons. No measurement exists here."),
+        _c("radiation", "Dose differences across the caldera", "exploratory", "Hydrostatic pressure from the DEM; the modeled change across the caldera is below the model's Monte Carlo noise."),
+        _c("radiation", "Terrain shielding of dose", "unavailable", "No zenith-angle resolution in the published tables, and a 200 m grid cannot locate person-scale shelter."),
+        _c("radiation", "RAD-E comparison, walking routes", "unavailable", "No RAD-equivalent model at 2–3 g/cm2; the 200 m grid cannot represent hazards at the scale of a person."),
+    ],
+    "gale": [
+        _c("terrain", "Elevation, 3D terrain", "validated", "USGS MSL Gale merged DEM, 1 m."),
+        _c("radiation", "Radiation measurements", "validated", "Curiosity RAD Level 2 dose rates (NASA PDS/SPDF) at 322 stops."),
+        _c("radiation", "Terrain shielding model (RAD-E)", "exploratory", "Tested retrospectively against RAD (322 stops, 8 parking periods). Its albedo share was derived from the same data, so this is not independent validation."),
+        _c("radiation", "Three-region dose comparison", "exploratory", "The same published-table model as Jezero and Olympus Mons, at the MCD pressure; a different quantity from the RAD-E product above."),
+        _c("radiation", "Routes and where to stand", "exploratory", "Planning illustration from the RAD-E model; not validated for astronaut dose and not for operational use."),
+    ],
+}
 
 
 def run() -> dict:

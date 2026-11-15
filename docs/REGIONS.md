@@ -1,6 +1,6 @@
 # Mars regions (Phase 3, November 2026)
 
-MarsShield now opens on a region menu: **Gale Crater** (the full radiation experience, unchanged), a **Mars overview**, **Jezero Crater** and the **Olympus Mons caldera**. The new regions are terrain views. They carry no radiation analysis, because no local radiation measurement exists there. Curiosity's RAD data and every radiation result stay in Gale.
+MarsShield now opens on a region menu: **Gale Crater** (the full radiation experience, unchanged), a **Mars overview**, **Jezero Crater** and the **Olympus Mons caldera**. The new regions are terrain views. Since the radiation phase they also carry model dose estimates. See [REGIONAL_RADIATION.md](REGIONAL_RADIATION.md); no local radiation measurement exists there. Curiosity's RAD data and every radiation result stay in Gale.
 
 ## Architecture
 
@@ -49,7 +49,8 @@ Gale's own entries use the same labels:
 | Rover traverse | — | Validated (708 waypoints) | — |
 | Geologic units | — | — | Validated (USGS SIM 3470) |
 | Sky blocked by terrain | — | Exploratory model (60 m grid) | Unavailable (a 200 m grid cannot resolve it) |
-| Radiation dose | Unavailable | Unavailable (no dosimeter on Perseverance) | Unavailable (no measurement) |
+| Radiation dose | Exploratory model (three-region comparison) | Exploratory model (no dosimeter on Perseverance) | Exploratory model (no measurement) |
+| Terrain shielding of dose | — | Unavailable (no angular data in the published tables) | Unavailable |
 | Walking routes | — | Unavailable (the DTM cannot see walking-scale hazards) | Unavailable |
 
 ## Sources

@@ -11,6 +11,7 @@ import { useEngine, type CalcStatus } from "@/lib/useEngine";
 import { NotchStory, type StoryScene } from "./Story";
 import { M, P, sgn, Tabs } from "./ui";
 import { DockCtx, DockShell, type DockSize } from "./Dock";
+import { DEFAULT_SCENARIO, type Scenario } from "./RadiationLab";
 import { loadIndex, type RegionIndex } from "@/lib/regions";
 import { MarsOverview, RegionalView } from "./RegionView";
 
@@ -130,7 +131,7 @@ export default function App() {
   const [ds, setDs] = useState<Dataset | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("mission");
-  const [welcome, setWelcome] = useState(true);
+  const [welcome, setWelcome] = useState(false);   // true while the optional Maria Gordon Notch case study is open
   const [layer, setLayer] = useState<Layer>("dose");
   const [showObs, setShowObs] = useState(false);     // Curiosity's 322 RAD stops: in Layers, off by default
   const [story, setStory] = useState<StoryScene | null>(null);
@@ -151,16 +152,17 @@ export default function App() {
   const [card, setCard] = useState<Stop | null>(null);
   const [calc, setCalc] = useState<CalcStatus>({ running: 0, last: null });
   // regions: Gale is the full experience; other regions are terrain views described by manifests, loaded on demand
-  const [region, setRegion] = useState("gale");
+  const [region, setRegion] = useState("mars");    // the entry is the Mars overview
+  const [sc, setSc] = useState<Scenario>(DEFAULT_SCENARIO);   // matched assumptions, shared by every region
   const [rindex, setRindex] = useState<RegionIndex | null>(null);
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get("region");
-    if (q && q !== "gale") { setRegion(q); setWelcome(false); }
+    if (q) setRegion(q);
     loadIndex().then(setRindex).catch(() => setRindex(null));
   }, []);
   const openRegion = useCallback((id: string) => {
     setRegion(id); setCard(null); setTip(null);
-    try { const u = new URL(window.location.href); if (id === "gale") u.searchParams.delete("region"); else u.searchParams.set("region", id); window.history.replaceState(null, "", u); } catch { /* ignore */ }
+    try { const u = new URL(window.location.href); if (id === "mars") u.searchParams.delete("region"); else u.searchParams.set("region", id); window.history.replaceState(null, "", u); } catch { /* ignore */ }
     window.scrollTo({ top: 0 });
   }, []);
   const eng = useEngine(ds, setCalc);
@@ -174,7 +176,6 @@ export default function App() {
 
   useEffect(() => {
     setWebgl(hasWebGL());
-    try { if (window.localStorage.getItem("marsshield-welcome") === "done") setWelcome(false); } catch { /* storage unavailable */ }
     loadDataset().then(setDs).catch((e) => setErr(String(e.message ?? e)));
   }, []);
   const focusOn = useCallback((x: number, y: number, dist?: number) => setFocus((f) => ({ x, y, dist, n: (f?.n ?? 0) + 1 })), []);
@@ -189,6 +190,7 @@ export default function App() {
   };
   const setStoryScene = useCallback((s: StoryScene) => { setStory(s); focusOn(s.focus.x, s.focus.y, s.focus.dist); }, [focusOn]);
   const replayStory = () => { setWelcome(true); setCard(null); setScene({}); setLayer("dose"); setPanel(true); setReading(false); };
+  const openCaseStudy = () => { openRegion("gale"); replayStory(); };
   // median of (model - proxy) over the walk area: the reference for the local-contrast disagreement layer
   const dref = useMemo(() => {
     if (!ds) return 0;
@@ -215,6 +217,7 @@ export default function App() {
       <select value={region} onChange={(e) => openRegion(e.target.value)}>
         {rindex.regions.map((r) => <option key={r.id} value={r.id}>{r.id === "mars" ? "Mars overview" : r.name}</option>)}
       </select></label>);
+  if (region !== "gale" && !rindex) return <div className="loading">Loading the Mars regions…</div>;
   if (region !== "gale" && rindex && rindex.regions.some((r) => r.id === region)) {
     const desk = vw > 860, pw = vw > 1180 ? 400 : 370, dmax = Math.max(260, vh - 56 - 16 - 150);
     return (
@@ -223,11 +226,12 @@ export default function App() {
         <a className="skip-link" href="#panel">Skip to the panel</a>
         {dockActive && <a className="skip-link" href="#analysis">Skip to the analysis</a>}
         <header className="topbar">
-          <button className="wordmark" onClick={() => openRegion("gale")} title="Back to Gale Crater"><b>MarsShield</b><span>Terrain and cosmic radiation on Mars</span></button>
+          <button className="wordmark" onClick={() => openRegion("mars")} title="Mars overview"><b>MarsShield</b><span>Cosmic radiation on Mars</span></button>
           {regionPick}
-          <span className="runmode region-note">Terrain only here: radiation tools are in Gale Crater</span>
+          <span className="runmode region-note">Model estimates here; measurements only at Gale</span>
         </header>
-        {region === "mars" ? <MarsOverview index={rindex} onOpen={openRegion} /> : <RegionalView id={region} index={rindex} onOpen={openRegion} desktop={desk} />}
+        {region === "mars" ? <MarsOverview index={rindex} onOpen={openRegion} onCaseStudy={openCaseStudy} sc={sc} setSc={setSc} />
+          : <RegionalView id={region} index={rindex} onOpen={openRegion} desktop={desk} sc={sc} setSc={setSc} />}
         <DockShell title={dockActive ? dockTitle : null} size={dockSize} setSize={setDockSize} height={Math.min(dockH, dmax)} setHeight={setDockH} maxH={dmax}
           desktop={desk} right={pw + 32} setHead={setDockHead} setBody={setDockBody} />
       </div>
@@ -266,8 +270,9 @@ export default function App() {
       <a className="skip-link" href="#panel">Skip to the panel</a>
       {dockActive && <a className="skip-link" href="#analysis">Skip to the analysis</a>}
       <header className="topbar">
-        <button className="wordmark" onClick={replayStory} title="Replay the Maria Gordon Notch story"><b>MarsShield</b><span>Terrain and cosmic radiation in Gale Crater</span></button>
+        <button className="wordmark" onClick={() => openRegion("mars")} title="Mars overview"><b>MarsShield</b><span>Cosmic radiation on Mars</span></button>
         {regionPick}
+        {!welcome && <button className="btn case-btn" onClick={replayStory}>Case study: Maria Gordon Notch</button>}
         <nav aria-label="Modes" className="modes-nav">
           <Tabs className="modes" label="Experience" manual tabs={[["mission", "Mission"], ["experiment", "Experiment"], ["evidence", "Evidence"]]}
             value={welcome ? null : mode} onChange={(k: Mode) => finishWelcome(k)} />

@@ -46,7 +46,7 @@ K_HEAVY = 1.1
 K_RADIAL = 1.015
 # The Zenodo Fig1 tables are exactly 2x the per-degree dose used in the papers' integrals:
 # Guo et al. (2021) Zenodo Fig4b 'during parking' proton column == 0.5 * Fig1_a(484 MV) * Fig4a
-# sky ratio at every zenith angle (max abs deviation < 1e-6, tests/test_radiation.py).
+# sky ratio at every zenith angle (max abs deviation < 1e-6, tests/test_science.py).
 FIG1_NORM = 0.5
 ALPHA_RANGE = (0.18, 0.24)    # albedo / total on flat terrain (Guo et al. 2026)
 ALPHA_DEFAULT = 0.21          # mid-range value

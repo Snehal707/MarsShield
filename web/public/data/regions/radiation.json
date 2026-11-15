@@ -1,0 +1,561 @@
+{
+ "model": {
+  "name": "AtRIS/Geant4 surface dose tables (Zhang et al. 2022)",
+  "doi": "10.1029/2021JE007157",
+  "data_doi": "10.5281/zenodo.5953666",
+  "data_md5": "f65945053d690414dbbbb9481073333d",
+  "gcr": "BON2010, H to Fe",
+  "pressures_pa": [
+   82,
+   305,
+   529,
+   753,
+   975,
+   1200
+  ],
+  "column_gcm2_published": [
+   2.23,
+   8.26,
+   14.25,
+   20.24,
+   26.18,
+   32.16
+  ],
+  "phi_nodes_MV": [
+   400,
+   700,
+   1000
+  ],
+  "phi_580_only": [
+   "water_absorbed",
+   "dose_equivalent"
+  ],
+  "interpolation": "linear in surface pressure between published nodes; no extrapolation; phi only at published nodes",
+  "not_rad_e": "Water-phantom and effective-dose quantities. Not comparable number-for-number with Curiosity RAD-E plastic dose rates."
+ },
+ "tables": {
+  "effective_mSv_yr": {
+   "400": [
+    245.0,
+    250.879,
+    250.295,
+    245.214,
+    246.938,
+    247.271
+   ],
+   "700": [
+    161.171,
+    167.679,
+    169.302,
+    167.519,
+    170.693,
+    172.238
+   ],
+   "1000": [
+    118.078,
+    124.099,
+    126.547,
+    126.223,
+    129.209,
+    130.603
+   ]
+  },
+  "water_absorbed_mGy_yr_580MV": {
+   "pressures_pa": [
+    82,
+    753,
+    1200
+   ],
+   "values": [
+    62.54,
+    62.067,
+    61.647
+   ]
+  },
+  "dose_equivalent_mSv_yr_580MV": {
+   "pressures_pa": [
+    82,
+    753,
+    1200
+   ],
+   "values": [
+    234.26,
+    248.15,
+    249.23
+   ]
+  },
+  "water_HHe_mGy_yr_580MV": {
+   "pressures_pa": [
+    82,
+    305,
+    529,
+    753,
+    975,
+    1200
+   ],
+   "values": [
+    52.538,
+    54.614,
+    55.735,
+    56.863,
+    57.059,
+    57.148
+   ]
+  }
+ },
+ "sites": [
+  {
+   "id": "gale",
+   "name": "Gale Crater",
+   "region": "gale",
+   "lat": -4.59,
+   "lon": 137.44,
+   "pressure_source": "MCD v6.2 (modeled)",
+   "baseline": {
+    "pressure_pa": 851.4,
+    "column_gcm2": 22.949,
+    "at_grid_edge": false,
+    "effective_mSv_yr": {
+     "400": 245.98,
+     "700": 168.93,
+     "1000": 127.55
+    },
+    "water_absorbed_mGy_yr_580MV": 61.97,
+    "dose_equivalent_mSv_yr_580MV": 248.4
+   },
+   "season_low": {
+    "pressure_pa": 738.9,
+    "column_gcm2": 19.916,
+    "at_grid_edge": false,
+    "effective_mSv_yr": {
+     "400": 245.53,
+     "700": 167.63,
+     "1000": 126.24
+    },
+    "water_absorbed_mGy_yr_580MV": 62.08,
+    "dose_equivalent_mSv_yr_580MV": 247.9,
+    "ls": 150.0
+   },
+   "season_high": {
+    "pressure_pa": 935.4,
+    "column_gcm2": 25.213,
+    "at_grid_edge": false,
+    "effective_mSv_yr": {
+     "400": 246.63,
+     "700": 170.13,
+     "1000": 128.68
+    },
+    "water_absorbed_mGy_yr_580MV": 61.9,
+    "dose_equivalent_mSv_yr_580MV": 248.6,
+    "ls": 255.0
+   },
+   "mcd_query_url": "https://www-mars.lmd.jussieu.fr/mcd_python/cgi-bin/mcdcgi.py?var1=ps&var2=none&var3=none&var4=none&datekeyhtml=1&ls=all&localtime=all&year=2026&month=11&day=15&hours=0&minutes=0&seconds=0&julian=2461360&martianyear=38&sol=1&latitude=-4.59&longitude=137.44&altitude=10.&zkey=3&spacecraft=none&isfixedlt=off&dust=1&hrkey=1&averaging=off&dpi=80&islog=off&colorm=jet&minval=&maxval=&proj=cyl&palt=&plon=&plat=&trans=&iswind=off&latpoint=&lonpoint="
+  },
+  {
+   "id": "jezero",
+   "name": "Jezero Crater",
+   "region": "jezero",
+   "lat": 18.44,
+   "lon": 77.45,
+   "pressure_source": "MCD v6.2 (modeled)",
+   "baseline": {
+    "pressure_pa": 723.2,
+    "column_gcm2": 19.493,
+    "at_grid_edge": false,
+    "effective_mSv_yr": {
+     "400": 245.89,
+     "700": 167.76,
+     "1000": 126.27
+    },
+    "water_absorbed_mGy_yr_580MV": 62.09,
+    "dose_equivalent_mSv_yr_580MV": 247.5
+   },
+   "season_low": {
+    "pressure_pa": 623.7,
+    "column_gcm2": 16.811,
+    "at_grid_edge": false,
+    "effective_mSv_yr": {
+     "400": 248.15,
+     "700": 168.55,
+     "1000": 126.41
+    },
+    "water_absorbed_mGy_yr_580MV": 62.16,
+    "dose_equivalent_mSv_yr_580MV": 245.5,
+    "ls": 150.0
+   },
+   "season_high": {
+    "pressure_pa": 807.8,
+    "column_gcm2": 21.774,
+    "at_grid_edge": false,
+    "effective_mSv_yr": {
+     "400": 245.64,
+     "700": 168.3,
+     "1000": 126.96
+    },
+    "water_absorbed_mGy_yr_580MV": 62.02,
+    "dose_equivalent_mSv_yr_580MV": 248.3,
+    "ls": 255.0
+   },
+   "mcd_query_url": "https://www-mars.lmd.jussieu.fr/mcd_python/cgi-bin/mcdcgi.py?var1=ps&var2=none&var3=none&var4=none&datekeyhtml=1&ls=all&localtime=all&year=2026&month=11&day=15&hours=0&minutes=0&seconds=0&julian=2461360&martianyear=38&sol=1&latitude=18.44&longitude=77.45&altitude=10.&zkey=3&spacecraft=none&isfixedlt=off&dust=1&hrkey=1&averaging=off&dpi=80&islog=off&colorm=jet&minval=&maxval=&proj=cyl&palt=&plon=&plat=&trans=&iswind=off&latpoint=&lonpoint="
+  },
+  {
+   "id": "oly_zeus",
+   "name": "Olympus Mons caldera (Zeus Patera)",
+   "region": "olympus",
+   "lat": 18.372,
+   "lon": 227.034,
+   "pressure_source": "MCD v6.2 (modeled)",
+   "baseline": {
+    "pressure_pa": 102.6,
+    "column_gcm2": 2.765,
+    "at_grid_edge": false,
+    "effective_mSv_yr": {
+     "400": 245.54,
+     "700": 161.77,
+     "1000": 118.63
+    },
+    "water_absorbed_mGy_yr_580MV": 62.53,
+    "dose_equivalent_mSv_yr_580MV": 234.7
+   },
+   "season_low": {
+    "pressure_pa": 83.7,
+    "column_gcm2": 2.256,
+    "at_grid_edge": false,
+    "effective_mSv_yr": {
+     "400": 245.04,
+     "700": 161.22,
+     "1000": 118.12
+    },
+    "water_absorbed_mGy_yr_580MV": 62.54,
+    "dose_equivalent_mSv_yr_580MV": 234.3,
+    "ls": 135.0
+   },
+   "season_high": {
+    "pressure_pa": 123.1,
+    "column_gcm2": 3.318,
+    "at_grid_edge": false,
+    "effective_mSv_yr": {
+     "400": 246.08,
+     "700": 162.37,
+     "1000": 119.19
+    },
+    "water_absorbed_mGy_yr_580MV": 62.51,
+    "dose_equivalent_mSv_yr_580MV": 235.1,
+    "ls": 255.0
+   },
+   "mcd_query_url": "https://www-mars.lmd.jussieu.fr/mcd_python/cgi-bin/mcdcgi.py?var1=ps&var2=none&var3=none&var4=none&datekeyhtml=1&ls=all&localtime=all&year=2026&month=11&day=15&hours=0&minutes=0&seconds=0&julian=2461360&martianyear=38&sol=1&latitude=18.372&longitude=227.034&altitude=10.&zkey=3&spacecraft=none&isfixedlt=off&dust=1&hrkey=1&averaging=off&dpi=80&islog=off&colorm=jet&minval=&maxval=&proj=cyl&palt=&plon=&plat=&trans=&iswind=off&latpoint=&lonpoint=",
+   "pressure_assumption_band": {
+    "rel": 0.1,
+    "low": {
+     "pressure_pa": 92.3,
+     "column_gcm2": 2.489,
+     "at_grid_edge": false,
+     "effective_mSv_yr": {
+      "400": 245.27,
+      "700": 161.47,
+      "1000": 118.36
+     },
+     "water_absorbed_mGy_yr_580MV": 62.53,
+     "dose_equivalent_mSv_yr_580MV": 234.5
+    },
+    "high": {
+     "pressure_pa": 112.9,
+     "column_gcm2": 3.042,
+     "at_grid_edge": false,
+     "effective_mSv_yr": {
+      "400": 245.81,
+      "700": 162.07,
+      "1000": 118.91
+     },
+     "water_absorbed_mGy_yr_580MV": 62.52,
+     "dose_equivalent_mSv_yr_580MV": 234.9
+    },
+    "kind": "assumption",
+    "note": "\u00b110 % on MCD pressure: judgment of the atmospheric review; no pressure measurement above ~4 km on Mars"
+   }
+  },
+  {
+   "id": "oly_athena",
+   "name": "Olympus Mons caldera (Athena Patera)",
+   "region": "olympus",
+   "lat": 18.723,
+   "lon": 227.186,
+   "pressure_source": "MCD v6.2 (modeled)",
+   "baseline": {
+    "pressure_pa": 109.6,
+    "column_gcm2": 2.954,
+    "at_grid_edge": false,
+    "effective_mSv_yr": {
+     "400": 245.73,
+     "700": 161.98,
+     "1000": 118.82
+    },
+    "water_absorbed_mGy_yr_580MV": 62.52,
+    "dose_equivalent_mSv_yr_580MV": 234.8
+   },
+   "season_low": {
+    "pressure_pa": 89.8,
+    "column_gcm2": 2.42,
+    "at_grid_edge": false,
+    "effective_mSv_yr": {
+     "400": 245.21,
+     "700": 161.4,
+     "1000": 118.29
+    },
+    "water_absorbed_mGy_yr_580MV": 62.53,
+    "dose_equivalent_mSv_yr_580MV": 234.4,
+    "ls": 135.0
+   },
+   "season_high": {
+    "pressure_pa": 131.1,
+    "column_gcm2": 3.534,
+    "at_grid_edge": false,
+    "effective_mSv_yr": {
+     "400": 246.29,
+     "700": 162.6,
+     "1000": 119.4
+    },
+    "water_absorbed_mGy_yr_580MV": 62.51,
+    "dose_equivalent_mSv_yr_580MV": 235.3,
+    "ls": 255.0
+   },
+   "mcd_query_url": "https://www-mars.lmd.jussieu.fr/mcd_python/cgi-bin/mcdcgi.py?var1=ps&var2=none&var3=none&var4=none&datekeyhtml=1&ls=all&localtime=all&year=2026&month=11&day=15&hours=0&minutes=0&seconds=0&julian=2461360&martianyear=38&sol=1&latitude=18.723&longitude=227.186&altitude=10.&zkey=3&spacecraft=none&isfixedlt=off&dust=1&hrkey=1&averaging=off&dpi=80&islog=off&colorm=jet&minval=&maxval=&proj=cyl&palt=&plon=&plat=&trans=&iswind=off&latpoint=&lonpoint=",
+   "pressure_assumption_band": {
+    "rel": 0.1,
+    "low": {
+     "pressure_pa": 98.6,
+     "column_gcm2": 2.659,
+     "at_grid_edge": false,
+     "effective_mSv_yr": {
+      "400": 245.44,
+      "700": 161.66,
+      "1000": 118.53
+     },
+     "water_absorbed_mGy_yr_580MV": 62.53,
+     "dose_equivalent_mSv_yr_580MV": 234.6
+    },
+    "high": {
+     "pressure_pa": 120.6,
+     "column_gcm2": 3.25,
+     "at_grid_edge": false,
+     "effective_mSv_yr": {
+      "400": 246.02,
+      "700": 162.3,
+      "1000": 119.12
+     },
+     "water_absorbed_mGy_yr_580MV": 62.51,
+     "dose_equivalent_mSv_yr_580MV": 235.1
+    },
+    "kind": "assumption",
+    "note": "\u00b110 % on MCD pressure: judgment of the atmospheric review; no pressure measurement above ~4 km on Mars"
+   }
+  },
+  {
+   "id": "oly_summit",
+   "name": "Olympus Mons summit (outside the caldera)",
+   "region": "olympus",
+   "lat": 17.35,
+   "lon": 226.565,
+   "pressure_source": "MCD v6.2 (modeled)",
+   "baseline": {
+    "pressure_pa": 81.4,
+    "column_gcm2": 2.194,
+    "at_grid_edge": true,
+    "effective_mSv_yr": {
+     "400": 245.0,
+     "700": 161.17,
+     "1000": 118.08
+    },
+    "water_absorbed_mGy_yr_580MV": 62.54,
+    "dose_equivalent_mSv_yr_580MV": 234.3
+   },
+   "season_low": {
+    "pressure_pa": 65.7,
+    "column_gcm2": 1.771,
+    "at_grid_edge": true,
+    "effective_mSv_yr": {
+     "400": 245.0,
+     "700": 161.17,
+     "1000": 118.08
+    },
+    "water_absorbed_mGy_yr_580MV": 62.54,
+    "dose_equivalent_mSv_yr_580MV": 234.3,
+    "ls": 135.0
+   },
+   "season_high": {
+    "pressure_pa": 98.7,
+    "column_gcm2": 2.66,
+    "at_grid_edge": false,
+    "effective_mSv_yr": {
+     "400": 245.44,
+     "700": 161.66,
+     "1000": 118.53
+    },
+    "water_absorbed_mGy_yr_580MV": 62.53,
+    "dose_equivalent_mSv_yr_580MV": 234.6,
+    "ls": 255.0
+   },
+   "mcd_query_url": "https://www-mars.lmd.jussieu.fr/mcd_python/cgi-bin/mcdcgi.py?var1=ps&var2=none&var3=none&var4=none&datekeyhtml=1&ls=all&localtime=all&year=2026&month=11&day=15&hours=0&minutes=0&seconds=0&julian=2461360&martianyear=38&sol=1&latitude=17.35&longitude=226.565&altitude=10.&zkey=3&spacecraft=none&isfixedlt=off&dust=1&hrkey=1&averaging=off&dpi=80&islog=off&colorm=jet&minval=&maxval=&proj=cyl&palt=&plon=&plat=&trans=&iswind=off&latpoint=&lonpoint=",
+   "pressure_assumption_band": {
+    "rel": 0.1,
+    "low": {
+     "pressure_pa": 73.3,
+     "column_gcm2": 1.975,
+     "at_grid_edge": true,
+     "effective_mSv_yr": {
+      "400": 245.0,
+      "700": 161.17,
+      "1000": 118.08
+     },
+     "water_absorbed_mGy_yr_580MV": 62.54,
+     "dose_equivalent_mSv_yr_580MV": 234.3
+    },
+    "high": {
+     "pressure_pa": 89.5,
+     "column_gcm2": 2.413,
+     "at_grid_edge": false,
+     "effective_mSv_yr": {
+      "400": 245.2,
+      "700": 161.39,
+      "1000": 118.28
+     },
+     "water_absorbed_mGy_yr_580MV": 62.53,
+     "dose_equivalent_mSv_yr_580MV": 234.4
+    },
+    "kind": "assumption",
+    "note": "\u00b110 % on MCD pressure: judgment of the atmospheric review; no pressure measurement above ~4 km on Mars"
+   }
+  }
+ ],
+ "uncertainty": {
+  "mc_noise_rel": {
+   "400": 0.0091,
+   "700": 0.0104,
+   "1000": 0.0115
+  },
+  "mc_noise_note": "RMS relative residual of each published effective-dose curve about a straight line in pressure; a site difference smaller than about twice this is not resolved.",
+  "terms": [
+   {
+    "term": "Monte Carlo statistics of the published simulation",
+    "kind": "stat",
+    "value": "1.1 % (largest of the three phi curves)",
+    "source": "derived from Zhang et al. (2022) tables"
+   },
+   {
+    "term": "Seasonal pressure (Ls 150 to Ls 255)",
+    "kind": "range",
+    "value": "per site, evaluated at the low and high pressures",
+    "source": "MCD v6.2"
+   },
+   {
+    "term": "Olympus pressure",
+    "kind": "assumption",
+    "value": "\u00b110 %",
+    "source": "atmospheric review judgment; no measurement"
+   },
+   {
+    "term": "Solar modulation",
+    "kind": "scenario",
+    "value": "400, 700, 1000 MV (effective dose); 580 MV only for absorbed dose and dose equivalent",
+    "source": "Zhang et al. (2022)"
+   },
+   {
+    "term": "Transport model choice",
+    "kind": "not quantified",
+    "value": "AtRIS and HZETRN disagree on the sign of dose equivalent versus depth (Guo et al. 2017, JGR Planets 122, 329)",
+    "source": "literature"
+   }
+  ]
+ },
+ "validation": {
+  "reproduction": {
+   "what": "Integrating the published 580 MV proton integrands (Fig. 4) over energy reproduces the published surface proton dose (Fig. 6)",
+   "pressures_pa": [
+    82,
+    753,
+    1200
+   ],
+   "integrated_mGy_yr": [
+    38.79,
+    43.47,
+    44.32
+   ],
+   "published_mGy_yr": [
+    38.36,
+    42.97,
+    43.79
+   ],
+   "rel_diff": [
+    0.0113,
+    0.0117,
+    0.0121
+   ]
+  },
+  "rad_pressure_slope": {
+   "model_water_total_uGy_day_Pa": -0.0026,
+   "model_water_HHe_uGy_day_Pa": 0.0024,
+   "rad_observed": {
+    "value": -0.13,
+    "sigma": 0.02,
+    "unit": "uGy/day/Pa",
+    "quantity": "RAD E detector (plastic) absorbed dose",
+    "source": "Guo et al. (2015), ApJ 810, 24, Sec. 4.1 (diurnal pressure-dose anticorrelation at Gale)"
+   },
+   "verdict": "The model's absorbed-dose change with pressure near Gale is far weaker than RAD observes (different target, so only the sign and order of magnitude are comparable). The small regional differences below are therefore model-dependent and not validated.",
+   "kind": "independent check (not used for fitting)"
+  },
+  "pressure_checks": {
+   "meda_vs_mcd_jezero_pct": 0.53,
+   "zhang_olympus_82pa_vs_mcd_summit_annual": 81.4
+  },
+  "levels": {
+   "fitting": "none in this module (no parameter is fitted)",
+   "reproduction": "published tables reproduced (above)",
+   "independent_validation": "impossible at Jezero and Olympus Mons: no ionizing-radiation detector has operated there"
+  }
+ },
+ "hydrostatic": {
+  "jezero": {
+   "ref_site": "jezero",
+   "ref_pressure_pa": 723.2,
+   "ref_elev_m": -2568.8,
+   "scale_height_m": 10400,
+   "season_low_factor": 0.8624,
+   "season_high_factor": 1.117,
+   "note": "P(z) = P_ref exp(-(z - z_ref)/H): exploratory; ignores slope flows and tides; reference elevation from the exported DEM"
+  },
+  "olympus": {
+   "ref_site": "oly_zeus",
+   "ref_pressure_pa": 102.6,
+   "ref_elev_m": 18412.2,
+   "scale_height_m": 10800,
+   "season_low_factor": 0.8158,
+   "season_high_factor": 1.1998,
+   "note": "P(z) = P_ref exp(-(z - z_ref)/H): exploratory; ignores slope flows and tides; reference elevation from the exported DEM"
+  }
+ },
+ "gale_rad_measured": {
+  "quantity": "absorbed dose rate in the RAD E detector (plastic), quiet-time GCR",
+  "unit": "uGy/day",
+  "n_stops": 322,
+  "median": 297.9,
+  "range": [
+   194.7,
+   432.8
+  ],
+  "period": [
+   "2017-06-25",
+   "2023-06-19"
+  ],
+  "source": "NASA PDS/SPDF MSL RAD Level 2, reduced by MarsShield (data/processed/terrain_signal.json)",
+  "note": "Measured. The range spans the solar cycle (the Sun's activity changed the GCR flux) and the seasons; it is not comparable number-for-number with the water-phantom or effective-dose model values."
+ },
+ "sol_days": 1.02749125,
+ "blockers": [
+  "RAD-E plastic dose at other altitudes: no published or executable model gives the RAD E detector response versus atmospheric depth; scaling the Gale RAD-E product by a water-phantom ratio would be an invented multiplier (silicon and water depth trends differ: H+He +15 % vs +9 %).",
+  "Absorbed dose and dose equivalent at solar modulation other than 580 MV: the archive gives response functions but GCR spectra only at 400 and 1000 MV with heavy ions lumped; the BON2010 code is not in hand.",
+  "Terrain shielding of dose at Jezero and Olympus Mons: the published tables have no angular (zenith) resolution, so blocked sky cannot be converted into dose without an invented factor.",
+  "Independent rerun: the AtRIS repository host did not resolve; values are reproduced from the published tables, not recomputed.",
+  "Solar particle events: no published SPE response at these pressures was reproduced; see docs/SPE_FEASIBILITY.md."
+ ]
+}

@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-11-15T14:21:33+00:00",
+ "generated_utc": "2026-11-15T15:58:16+00:00",
  "status_definitions": {
   "validated": "An authentic data product, or a direct geometric derivative of one (slope, profile) at a scale the data resolve, with a published accuracy assessment.",
   "exploratory": "Computed by MarsShield with a model that has not been tested against measurements in this region.",
@@ -55,29 +55,34 @@
    },
    "capabilities": [
     {
+     "area": "terrain",
      "name": "Elevation, 3D terrain",
      "status": "validated",
      "detail": "USGS MSL Gale merged DEM, 1 m."
     },
     {
+     "area": "radiation",
      "name": "Radiation measurements",
      "status": "validated",
      "detail": "Curiosity RAD Level 2 dose rates (NASA PDS/SPDF) at 322 stops."
     },
     {
-     "name": "Sky blocked by terrain",
-     "status": "exploratory",
-     "detail": "Ray traced on the 1 m DEM; compared with Guo et al. (2026) at the parking positions, and differs at P6 (0.33 against 0.38)."
-    },
-    {
-     "name": "Radiation dose model",
+     "area": "radiation",
+     "name": "Terrain shielding model (RAD-E)",
      "status": "exploratory",
      "detail": "Tested retrospectively against RAD (322 stops, 8 parking periods). Its albedo share was derived from the same data, so this is not independent validation."
     },
     {
+     "area": "radiation",
+     "name": "Three-region dose comparison",
+     "status": "exploratory",
+     "detail": "The same published-table model as Jezero and Olympus Mons, at the MCD pressure; a different quantity from the RAD-E product above."
+    },
+    {
+     "area": "radiation",
      "name": "Routes and where to stand",
      "status": "exploratory",
-     "detail": "Planning illustration from the dose model; not validated for astronaut dose and not for operational use."
+     "detail": "Planning illustration from the RAD-E model; not validated for astronaut dose and not for operational use."
     }
    ]
   },
@@ -99,23 +104,26 @@
    },
    "capabilities": [
     {
+     "area": "terrain",
      "name": "Global elevation",
      "status": "validated",
      "detail": "MOLA gridded elevations at about 15 km per pixel; finer features are not resolved."
     },
     {
-     "name": "Region outlines",
-     "status": "validated",
-     "detail": "Bounds of each regional dataset, from the regional manifests."
+     "area": "radiation",
+     "name": "Three-region dose comparison",
+     "status": "exploratory",
+     "detail": "Effective dose, dose equivalent and water-phantom absorbed dose at Gale, Jezero and Olympus Mons from one published transport model (Zhang et al. 2022) and one atmosphere source (Mars Climate Database v6.2), at matched assumptions. Reproduced from published tables; not validated outside Gale."
     },
     {
-     "name": "Radiation",
+     "area": "radiation",
+     "name": "Global radiation map",
      "status": "unavailable",
-     "detail": "No global radiation map is offered; MarsShield's radiation analysis is local to Gale Crater."
+     "detail": "Only three sites have matched atmospheric inputs here; a global map would need the full MCD and transport tables over every location."
     }
    ],
    "manifest": "regions/mars/manifest.json",
-   "bytes": 685048
+   "bytes": 685420
   },
   {
    "id": "jezero",
@@ -138,43 +146,62 @@
    },
    "capabilities": [
     {
+     "area": "terrain",
      "name": "Elevation, 3D terrain",
      "status": "validated",
-     "detail": "USGS CTX DTM, 20 m posts over 30 \u00d7 30 km."
+     "detail": "USGS Mars 2020 CTX DTM, 20 m posts."
     },
     {
-     "name": "Slope",
+     "area": "terrain",
+     "name": "Slope and elevation profiles",
      "status": "validated",
-     "detail": "Over 20 m. Steps, boulders and scarps narrower than about 40 m are not resolved, so this cannot judge traversability."
+     "detail": "Over 20 m (profiles on the 60 m grid). Steps, boulders and scarps narrower than about 40 m are not resolved, so this cannot judge traversability."
     },
     {
-     "name": "Elevation profiles",
-     "status": "validated",
-     "detail": "Sampled from the 60 m grid."
-    },
-    {
+     "area": "terrain",
      "name": "Perseverance traverse",
      "status": "validated",
-     "detail": "708 localized waypoints, sols 13\u20132022; DTM minus rover elevation median -1.1 m."
+     "detail": "Localized waypoints (NASA/JPL); the DTM agrees with the rover elevations to a median of about 1 m."
     },
     {
+     "area": "terrain",
      "name": "Sky blocked by terrain",
      "status": "exploratory",
-     "detail": "Same definition as Gale, computed on the 60 m grid. Not tested against any measurement here; misses walls narrower than about 100 m."
+     "detail": "Same definition as Gale, on the 60 m grid; misses walls narrower than about 100 m."
     },
     {
-     "name": "Radiation dose",
-     "status": "unavailable",
-     "detail": "Perseverance carries no cosmic-ray dosimeter, so no local measurement exists to test a model. Gale's RAD results are not transferred."
+     "area": "atmosphere",
+     "name": "Surface pressure",
+     "status": "validated",
+     "detail": "MEDA pressure (PDS), normalised to the landing elevation, agrees with the Mars Climate Database annual mean to about 0.5 %; the model uses MCD for consistency with the other sites."
     },
     {
-     "name": "Walking routes",
+     "area": "radiation",
+     "name": "GCR dose estimate",
+     "status": "exploratory",
+     "detail": "Effective dose, dose equivalent and water-phantom absorbed dose from published AtRIS/Geant4 tables at the MCD pressure. No ionizing-radiation detector has operated at Jezero, so the estimate cannot be validated here."
+    },
+    {
+     "area": "radiation",
+     "name": "Dose differences across the region",
+     "status": "exploratory",
+     "detail": "Hydrostatic pressure from the DTM; the modeled change across the region is far smaller than the model's Monte Carlo noise, so locations are not distinguished."
+    },
+    {
+     "area": "radiation",
+     "name": "Terrain shielding of dose",
      "status": "unavailable",
-     "detail": "The 20 m DTM cannot represent hazards at walking scale."
+     "detail": "The published tables have no zenith-angle resolution, so blocked sky cannot be turned into dose without an invented factor."
+    },
+    {
+     "area": "radiation",
+     "name": "RAD-E comparison, walking routes",
+     "status": "unavailable",
+     "detail": "No RAD-equivalent measurement or detector model exists for Jezero; the 20 m DTM cannot represent walking-scale hazards."
     }
    ],
    "manifest": "regions/jezero/manifest.json",
-   "bytes": 1801918
+   "bytes": 1802945
   },
   {
    "id": "olympus",
@@ -197,38 +224,56 @@
    },
    "capabilities": [
     {
+     "area": "terrain",
      "name": "Elevation, 3D caldera",
      "status": "validated",
      "detail": "HRSC/MOLA blend at 200 m posts over the 1:200,000 map area."
     },
     {
-     "name": "Slope",
+     "area": "terrain",
+     "name": "Slope and elevation profiles",
      "status": "validated",
-     "detail": "Over 200 m only. Caldera walls that are 1\u20133 km high are steeper over shorter distances than this shows."
+     "detail": "Over 200 m only. Caldera walls 1\u20133 km high are steeper over shorter distances than this shows."
     },
     {
-     "name": "Elevation profiles",
-     "status": "validated",
-     "detail": "Sampled from the 200 m grid."
-    },
-    {
+     "area": "terrain",
      "name": "Geologic units",
      "status": "validated",
      "detail": "USGS SIM 3470 polygons (Mouginis-Mark, 2021), 1:200,000."
     },
     {
-     "name": "Radiation dose",
-     "status": "unavailable",
-     "detail": "No surface radiation measurement exists here. Curiosity's RAD data belong to Gale and are not transferred; no model is offered."
+     "area": "atmosphere",
+     "name": "Surface pressure",
+     "status": "exploratory",
+     "detail": "Mars Climate Database v6.2 only; no pressure has been measured above about 4 km anywhere on Mars. A \u00b110 % assumption band is shown."
     },
     {
-     "name": "Sky blocked, routes",
+     "area": "radiation",
+     "name": "GCR dose estimate",
+     "status": "exploratory",
+     "detail": "Effective dose, dose equivalent and water-phantom absorbed dose from published AtRIS/Geant4 tables; the paper's 82 Pa case is the top of Olympus Mons. No measurement exists here."
+    },
+    {
+     "area": "radiation",
+     "name": "Dose differences across the caldera",
+     "status": "exploratory",
+     "detail": "Hydrostatic pressure from the DEM; the modeled change across the caldera is below the model's Monte Carlo noise."
+    },
+    {
+     "area": "radiation",
+     "name": "Terrain shielding of dose",
      "status": "unavailable",
-     "detail": "A 200 m grid cannot represent shielding or hazards at the scale of a person."
+     "detail": "No zenith-angle resolution in the published tables, and a 200 m grid cannot locate person-scale shelter."
+    },
+    {
+     "area": "radiation",
+     "name": "RAD-E comparison, walking routes",
+     "status": "unavailable",
+     "detail": "No RAD-equivalent model at 2\u20133 g/cm2; the 200 m grid cannot represent hazards at the scale of a person."
     }
    ],
    "manifest": "regions/olympus/manifest.json",
-   "bytes": 2239084
+   "bytes": 2239922
   }
  ]
 }

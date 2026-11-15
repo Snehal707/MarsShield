@@ -10,7 +10,7 @@ Conventions
   i.e. including the drop of a spherical surface of radius R = 3396190 m.
 * Zenith angle theta = 90 deg - elevation. A sky ring at zenith theta is *blocked* in
   azimuth az when h(az) > 90 - theta (the definition reproduced exactly from the
-  Guo et al. (2021) Zenodo data, see tests/test_horizon.py::test_reproduces_guo2021_ring_ratio).
+  Guo et al. (2021) Zenodo data, see tests/test_science.py).
 """
 from __future__ import annotations
 

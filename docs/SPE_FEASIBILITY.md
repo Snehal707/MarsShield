@@ -67,3 +67,15 @@ MarsShield therefore:
 - a published, machine-readable SPE spectrum at Mars from instruments other than RAD
 - an openly available, validated Mars transport code with a RAD-E response
 - ideally, paired measurements at different terrain positions during an event
+
+## Regional SPE scenarios (November 2026 review)
+
+Before the three-region radiation phase, the earlier findings above were rechecked rather than repeated, and the regional question was added: can a historical event be computed at Jezero or Olympus Mons?
+
+**Verdict: not yet.** The transport review found no published SPE surface response at Martian surface pressures in a form we can reproduce:
+- The Zhang et al. (2022) archive covers galactic cosmic rays only.
+- AtRIS could not be obtained, so there was no rerun.
+
+GCR and SPE analyses therefore stay separate. The Gale screening of September 2017 and October 2021 is unchanged, and no storm shelter guidance or forecast is offered.
+
+**What would be needed:** event proton spectra at Mars, for example from MAVEN SEP or RAD-derived spectra, plus a pressure-resolved SPE surface response with angular resolution.

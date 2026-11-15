@@ -1,0 +1,1503 @@
+{
+ "source": "Mars Climate Database v6.2 web interface, climatology average-solar scenario, high-resolution topography (MOLA 32 ppd + Viking Lander 1 pressure); Ls x local-time tables averaged here",
+ "citation": "Millour, E., Forget, F., et al., The Mars Climate Database (version 6.x). LMD/OU/IAA/ESA/CNES. https://www-mars.lmd.jussieu.fr/",
+ "terms": "MCD output files are not redistributed; derived numbers only, with query URLs.",
+ "g_ms2": 3.71,
+ "pa_to_gcm2": 0.026954177897574122,
+ "sites": {
+  "gale": {
+   "lat": -4.59,
+   "lon": 137.44,
+   "label": "Gale Crater (Curiosity study area)",
+   "annual_mean_pa": 851.4,
+   "season_min": {
+    "ls": 150.0,
+    "pa": 738.9
+   },
+   "season_max": {
+    "ls": 255.0,
+    "pa": 935.4
+   },
+   "instantaneous_pa": [
+    701.6,
+    979.3
+   ],
+   "diurnal_peak_to_peak_pa": [
+    51.5,
+    104.3
+   ],
+   "diurnal_mean_by_ls": [
+    [
+     0.0,
+     853.0
+    ],
+    [
+     15.0,
+     865.8
+    ],
+    [
+     30.0,
+     885.1
+    ],
+    [
+     45.0,
+     902.6
+    ],
+    [
+     60.0,
+     906.8
+    ],
+    [
+     75.0,
+     891.7
+    ],
+    [
+     90.0,
+     857.8
+    ],
+    [
+     105.0,
+     815.6
+    ],
+    [
+     120.0,
+     776.9
+    ],
+    [
+     135.0,
+     750.7
+    ],
+    [
+     150.0,
+     738.9
+    ],
+    [
+     165.0,
+     743.2
+    ],
+    [
+     180.0,
+     763.9
+    ],
+    [
+     195.0,
+     798.4
+    ],
+    [
+     210.0,
+     843.1
+    ],
+    [
+     225.0,
+     887.6
+    ],
+    [
+     240.0,
+     921.3
+    ],
+    [
+     255.0,
+     935.4
+    ],
+    [
+     270.0,
+     928.9
+    ],
+    [
+     285.0,
+     909.6
+    ],
+    [
+     300.0,
+     886.3
+    ],
+    [
+     315.0,
+     867.0
+    ],
+    [
+     330.0,
+     854.4
+    ],
+    [
+     345.0,
+     849.1
+    ]
+   ],
+   "query_url": "https://www-mars.lmd.jussieu.fr/mcd_python/cgi-bin/mcdcgi.py?var1=ps&var2=none&var3=none&var4=none&datekeyhtml=1&ls=all&localtime=all&year=2026&month=11&day=15&hours=0&minutes=0&seconds=0&julian=2461360&martianyear=38&sol=1&latitude=-4.59&longitude=137.44&altitude=10.&zkey=3&spacecraft=none&isfixedlt=off&dust=1&hrkey=1&averaging=off&dpi=80&islog=off&colorm=jet&minval=&maxval=&proj=cyl&palt=&plon=&plat=&trans=&iswind=off&latpoint=&lonpoint=",
+   "column_gcm2": {
+    "annual_mean": 22.949,
+    "season_min": 19.916,
+    "season_max": 25.213
+   }
+  },
+  "gale_cold": {
+   "lat": -4.59,
+   "lon": 137.44,
+   "label": "Gale Crater (Curiosity study area)",
+   "annual_mean_pa": 852.7,
+   "season_min": {
+    "ls": 150.0,
+    "pa": 736.8
+   },
+   "season_max": {
+    "ls": 255.0,
+    "pa": 936.0
+   },
+   "instantaneous_pa": [
+    704.9,
+    971.1
+   ],
+   "diurnal_peak_to_peak_pa": [
+    37.1,
+    76.3
+   ],
+   "diurnal_mean_by_ls": [
+    [
+     0.0,
+     855.0
+    ],
+    [
+     15.0,
+     867.5
+    ],
+    [
+     30.0,
+     886.8
+    ],
+    [
+     45.0,
+     904.4
+    ],
+    [
+     60.0,
+     908.4
+    ],
+    [
+     75.0,
+     893.2
+    ],
+    [
+     90.0,
+     858.3
+    ],
+    [
+     105.0,
+     815.5
+    ],
+    [
+     120.0,
+     775.1
+    ],
+    [
+     135.0,
+     747.6
+    ],
+    [
+     150.0,
+     736.8
+    ],
+    [
+     165.0,
+     742.0
+    ],
+    [
+     180.0,
+     764.2
+    ],
+    [
+     195.0,
+     800.5
+    ],
+    [
+     210.0,
+     844.8
+    ],
+    [
+     225.0,
+     888.9
+    ],
+    [
+     240.0,
+     922.3
+    ],
+    [
+     255.0,
+     936.0
+    ],
+    [
+     270.0,
+     931.0
+    ],
+    [
+     285.0,
+     913.3
+    ],
+    [
+     300.0,
+     890.7
+    ],
+    [
+     315.0,
+     872.1
+    ],
+    [
+     330.0,
+     858.0
+    ],
+    [
+     345.0,
+     851.3
+    ]
+   ],
+   "query_url": "https://www-mars.lmd.jussieu.fr/mcd_python/cgi-bin/mcdcgi.py?var1=ps&var2=none&var3=none&var4=none&datekeyhtml=1&ls=all&localtime=all&year=2026&month=11&day=15&hours=0&minutes=0&seconds=0&julian=2461360&martianyear=38&sol=1&latitude=-4.59&longitude=137.44&altitude=10.&zkey=3&spacecraft=none&isfixedlt=off&dust=8&hrkey=1&averaging=off&dpi=80&islog=off&colorm=jet&minval=&maxval=&proj=cyl&palt=&plon=&plat=&trans=&iswind=off&latpoint=&lonpoint=",
+   "column_gcm2": {
+    "annual_mean": 22.984,
+    "season_min": 19.86,
+    "season_max": 25.229
+   }
+  },
+  "jezero": {
+   "lat": 18.44,
+   "lon": 77.45,
+   "label": "Jezero Crater (Perseverance landing site)",
+   "annual_mean_pa": 723.2,
+   "season_min": {
+    "ls": 150.0,
+    "pa": 623.7
+   },
+   "season_max": {
+    "ls": 255.0,
+    "pa": 807.8
+   },
+   "instantaneous_pa": [
+    615.3,
+    826.8
+   ],
+   "diurnal_peak_to_peak_pa": [
+    12.9,
+    48.1
+   ],
+   "diurnal_mean_by_ls": [
+    [
+     0.0,
+     725.1
+    ],
+    [
+     15.0,
+     732.6
+    ],
+    [
+     30.0,
+     744.6
+    ],
+    [
+     45.0,
+     755.1
+    ],
+    [
+     60.0,
+     755.6
+    ],
+    [
+     75.0,
+     740.2
+    ],
+    [
+     90.0,
+     712.3
+    ],
+    [
+     105.0,
+     677.4
+    ],
+    [
+     120.0,
+     647.7
+    ],
+    [
+     135.0,
+     628.4
+    ],
+    [
+     150.0,
+     623.7
+    ],
+    [
+     165.0,
+     632.6
+    ],
+    [
+     180.0,
+     653.3
+    ],
+    [
+     195.0,
+     685.9
+    ],
+    [
+     210.0,
+     725.4
+    ],
+    [
+     225.0,
+     764.7
+    ],
+    [
+     240.0,
+     794.8
+    ],
+    [
+     255.0,
+     807.8
+    ],
+    [
+     270.0,
+     801.2
+    ],
+    [
+     285.0,
+     783.6
+    ],
+    [
+     300.0,
+     762.4
+    ],
+    [
+     315.0,
+     744.6
+    ],
+    [
+     330.0,
+     731.8
+    ],
+    [
+     345.0,
+     725.2
+    ]
+   ],
+   "query_url": "https://www-mars.lmd.jussieu.fr/mcd_python/cgi-bin/mcdcgi.py?var1=ps&var2=none&var3=none&var4=none&datekeyhtml=1&ls=all&localtime=all&year=2026&month=11&day=15&hours=0&minutes=0&seconds=0&julian=2461360&martianyear=38&sol=1&latitude=18.44&longitude=77.45&altitude=10.&zkey=3&spacecraft=none&isfixedlt=off&dust=1&hrkey=1&averaging=off&dpi=80&islog=off&colorm=jet&minval=&maxval=&proj=cyl&palt=&plon=&plat=&trans=&iswind=off&latpoint=&lonpoint=",
+   "column_gcm2": {
+    "annual_mean": 19.493,
+    "season_min": 16.811,
+    "season_max": 21.774
+   }
+  },
+  "jezero_MY36": {
+   "lat": 18.44,
+   "lon": 77.45,
+   "label": "Jezero Crater (Perseverance landing site)",
+   "annual_mean_pa": 724.1,
+   "season_min": {
+    "ls": 150.0,
+    "pa": 623.2
+   },
+   "season_max": {
+    "ls": 255.0,
+    "pa": 808.6
+   },
+   "instantaneous_pa": [
+    610.1,
+    827.1
+   ],
+   "diurnal_peak_to_peak_pa": [
+    16.3,
+    44.5
+   ],
+   "diurnal_mean_by_ls": [
+    [
+     0.0,
+     726.4
+    ],
+    [
+     15.0,
+     734.4
+    ],
+    [
+     30.0,
+     746.1
+    ],
+    [
+     45.0,
+     756.2
+    ],
+    [
+     60.0,
+     756.8
+    ],
+    [
+     75.0,
+     741.3
+    ],
+    [
+     90.0,
+     712.4
+    ],
+    [
+     105.0,
+     676.5
+    ],
+    [
+     120.0,
+     646.4
+    ],
+    [
+     135.0,
+     626.7
+    ],
+    [
+     150.0,
+     623.2
+    ],
+    [
+     165.0,
+     633.3
+    ],
+    [
+     180.0,
+     655.7
+    ],
+    [
+     195.0,
+     690.0
+    ],
+    [
+     210.0,
+     726.9
+    ],
+    [
+     225.0,
+     763.6
+    ],
+    [
+     240.0,
+     794.6
+    ],
+    [
+     255.0,
+     808.6
+    ],
+    [
+     270.0,
+     802.6
+    ],
+    [
+     285.0,
+     785.4
+    ],
+    [
+     300.0,
+     764.4
+    ],
+    [
+     315.0,
+     746.8
+    ],
+    [
+     330.0,
+     733.7
+    ],
+    [
+     345.0,
+     726.8
+    ]
+   ],
+   "query_url": "https://www-mars.lmd.jussieu.fr/mcd_python/cgi-bin/mcdcgi.py?var1=ps&var2=none&var3=none&var4=none&datekeyhtml=1&ls=all&localtime=all&year=2026&month=11&day=15&hours=0&minutes=0&seconds=0&julian=2461360&martianyear=38&sol=1&latitude=18.44&longitude=77.45&altitude=10.&zkey=3&spacecraft=none&isfixedlt=off&dust=36&hrkey=1&averaging=off&dpi=80&islog=off&colorm=jet&minval=&maxval=&proj=cyl&palt=&plon=&plat=&trans=&iswind=off&latpoint=&lonpoint=",
+   "column_gcm2": {
+    "annual_mean": 19.518,
+    "season_min": 16.798,
+    "season_max": 21.795
+   }
+  },
+  "oly_summit": {
+   "lat": 17.35,
+   "lon": 226.565,
+   "label": "Olympus Mons summit (highest point, outside the caldera)",
+   "annual_mean_pa": 81.4,
+   "season_min": {
+    "ls": 135.0,
+    "pa": 65.7
+   },
+   "season_max": {
+    "ls": 255.0,
+    "pa": 98.7
+   },
+   "instantaneous_pa": [
+    61.3,
+    102.5
+   ],
+   "diurnal_peak_to_peak_pa": [
+    6.4,
+    12.2
+   ],
+   "diurnal_mean_by_ls": [
+    [
+     0.0,
+     80.9
+    ],
+    [
+     15.0,
+     78.2
+    ],
+    [
+     30.0,
+     77.5
+    ],
+    [
+     45.0,
+     76.6
+    ],
+    [
+     60.0,
+     75.5
+    ],
+    [
+     75.0,
+     72.9
+    ],
+    [
+     90.0,
+     70.2
+    ],
+    [
+     105.0,
+     66.9
+    ],
+    [
+     120.0,
+     65.8
+    ],
+    [
+     135.0,
+     65.7
+    ],
+    [
+     150.0,
+     68.5
+    ],
+    [
+     165.0,
+     72.9
+    ],
+    [
+     180.0,
+     77.4
+    ],
+    [
+     195.0,
+     83.5
+    ],
+    [
+     210.0,
+     89.7
+    ],
+    [
+     225.0,
+     95.9
+    ],
+    [
+     240.0,
+     98.4
+    ],
+    [
+     255.0,
+     98.7
+    ],
+    [
+     270.0,
+     96.4
+    ],
+    [
+     285.0,
+     92.7
+    ],
+    [
+     300.0,
+     90.2
+    ],
+    [
+     315.0,
+     88.0
+    ],
+    [
+     330.0,
+     85.9
+    ],
+    [
+     345.0,
+     84.5
+    ]
+   ],
+   "query_url": "https://www-mars.lmd.jussieu.fr/mcd_python/cgi-bin/mcdcgi.py?var1=ps&var2=none&var3=none&var4=none&datekeyhtml=1&ls=all&localtime=all&year=2026&month=11&day=15&hours=0&minutes=0&seconds=0&julian=2461360&martianyear=38&sol=1&latitude=17.35&longitude=226.565&altitude=10.&zkey=3&spacecraft=none&isfixedlt=off&dust=1&hrkey=1&averaging=off&dpi=80&islog=off&colorm=jet&minval=&maxval=&proj=cyl&palt=&plon=&plat=&trans=&iswind=off&latpoint=&lonpoint=",
+   "column_gcm2": {
+    "annual_mean": 2.194,
+    "season_min": 1.771,
+    "season_max": 2.66
+   }
+  },
+  "oly_summit_cold": {
+   "lat": 17.35,
+   "lon": 226.565,
+   "label": "Olympus Mons summit (highest point, outside the caldera)",
+   "annual_mean_pa": 76.5,
+   "season_min": {
+    "ls": 120.0,
+    "pa": 67.6
+   },
+   "season_max": {
+    "ls": 255.0,
+    "pa": 92.5
+   },
+   "instantaneous_pa": [
+    60.6,
+    96.5
+   ],
+   "diurnal_peak_to_peak_pa": [
+    5.4,
+    14.8
+   ],
+   "diurnal_mean_by_ls": [
+    [
+     0.0,
+     74.9
+    ],
+    [
+     15.0,
+     73.5
+    ],
+    [
+     30.0,
+     72.7
+    ],
+    [
+     45.0,
+     71.8
+    ],
+    [
+     60.0,
+     71.9
+    ],
+    [
+     75.0,
+     70.5
+    ],
+    [
+     90.0,
+     69.8
+    ],
+    [
+     105.0,
+     68.3
+    ],
+    [
+     120.0,
+     67.6
+    ],
+    [
+     135.0,
+     67.8
+    ],
+    [
+     150.0,
+     68.2
+    ],
+    [
+     165.0,
+     70.1
+    ],
+    [
+     180.0,
+     72.0
+    ],
+    [
+     195.0,
+     75.2
+    ],
+    [
+     210.0,
+     82.0
+    ],
+    [
+     225.0,
+     88.9
+    ],
+    [
+     240.0,
+     91.7
+    ],
+    [
+     255.0,
+     92.5
+    ],
+    [
+     270.0,
+     88.6
+    ],
+    [
+     285.0,
+     83.6
+    ],
+    [
+     300.0,
+     81.2
+    ],
+    [
+     315.0,
+     79.1
+    ],
+    [
+     330.0,
+     77.7
+    ],
+    [
+     345.0,
+     77.0
+    ]
+   ],
+   "query_url": "https://www-mars.lmd.jussieu.fr/mcd_python/cgi-bin/mcdcgi.py?var1=ps&var2=none&var3=none&var4=none&datekeyhtml=1&ls=all&localtime=all&year=2026&month=11&day=15&hours=0&minutes=0&seconds=0&julian=2461360&martianyear=38&sol=1&latitude=17.35&longitude=226.565&altitude=10.&zkey=3&spacecraft=none&isfixedlt=off&dust=8&hrkey=1&averaging=off&dpi=80&islog=off&colorm=jet&minval=&maxval=&proj=cyl&palt=&plon=&plat=&trans=&iswind=off&latpoint=&lonpoint=",
+   "column_gcm2": {
+    "annual_mean": 2.062,
+    "season_min": 1.822,
+    "season_max": 2.493
+   }
+  },
+  "oly_summit_warm": {
+   "lat": 17.35,
+   "lon": 226.565,
+   "label": "Olympus Mons summit (highest point, outside the caldera)",
+   "annual_mean_pa": 84.2,
+   "season_min": {
+    "ls": 105.0,
+    "pa": 68.8
+   },
+   "season_max": {
+    "ls": 240.0,
+    "pa": 99.4
+   },
+   "instantaneous_pa": [
+    63.5,
+    103.8
+   ],
+   "diurnal_peak_to_peak_pa": [
+    7.3,
+    13.3
+   ],
+   "diurnal_mean_by_ls": [
+    [
+     0.0,
+     84.8
+    ],
+    [
+     15.0,
+     83.6
+    ],
+    [
+     30.0,
+     82.6
+    ],
+    [
+     45.0,
+     81.4
+    ],
+    [
+     60.0,
+     78.4
+    ],
+    [
+     75.0,
+     73.8
+    ],
+    [
+     90.0,
+     71.7
+    ],
+    [
+     105.0,
+     68.8
+    ],
+    [
+     120.0,
+     69.2
+    ],
+    [
+     135.0,
+     70.5
+    ],
+    [
+     150.0,
+     73.5
+    ],
+    [
+     165.0,
+     78.1
+    ],
+    [
+     180.0,
+     81.6
+    ],
+    [
+     195.0,
+     86.6
+    ],
+    [
+     210.0,
+     91.9
+    ],
+    [
+     225.0,
+     97.2
+    ],
+    [
+     240.0,
+     99.4
+    ],
+    [
+     255.0,
+     99.3
+    ],
+    [
+     270.0,
+     97.4
+    ],
+    [
+     285.0,
+     94.2
+    ],
+    [
+     300.0,
+     91.9
+    ],
+    [
+     315.0,
+     90.0
+    ],
+    [
+     330.0,
+     88.1
+    ],
+    [
+     345.0,
+     87.0
+    ]
+   ],
+   "query_url": "https://www-mars.lmd.jussieu.fr/mcd_python/cgi-bin/mcdcgi.py?var1=ps&var2=none&var3=none&var4=none&datekeyhtml=1&ls=all&localtime=all&year=2026&month=11&day=15&hours=0&minutes=0&seconds=0&julian=2461360&martianyear=38&sol=1&latitude=17.35&longitude=226.565&altitude=10.&zkey=3&spacecraft=none&isfixedlt=off&dust=7&hrkey=1&averaging=off&dpi=80&islog=off&colorm=jet&minval=&maxval=&proj=cyl&palt=&plon=&plat=&trans=&iswind=off&latpoint=&lonpoint=",
+   "column_gcm2": {
+    "annual_mean": 2.27,
+    "season_min": 1.854,
+    "season_max": 2.679
+   }
+  },
+  "oly_zeus": {
+   "lat": 18.372,
+   "lon": 227.034,
+   "label": "Olympus Mons caldera, Zeus Patera centre",
+   "annual_mean_pa": 102.6,
+   "season_min": {
+    "ls": 135.0,
+    "pa": 83.7
+   },
+   "season_max": {
+    "ls": 255.0,
+    "pa": 123.1
+   },
+   "instantaneous_pa": [
+    79.3,
+    127.1
+   ],
+   "diurnal_peak_to_peak_pa": [
+    6.8,
+    13.2
+   ],
+   "diurnal_mean_by_ls": [
+    [
+     0.0,
+     102.1
+    ],
+    [
+     15.0,
+     99.2
+    ],
+    [
+     30.0,
+     98.7
+    ],
+    [
+     45.0,
+     97.9
+    ],
+    [
+     60.0,
+     96.8
+    ],
+    [
+     75.0,
+     93.6
+    ],
+    [
+     90.0,
+     90.2
+    ],
+    [
+     105.0,
+     85.9
+    ],
+    [
+     120.0,
+     84.1
+    ],
+    [
+     135.0,
+     83.7
+    ],
+    [
+     150.0,
+     86.8
+    ],
+    [
+     165.0,
+     91.7
+    ],
+    [
+     180.0,
+     97.0
+    ],
+    [
+     195.0,
+     104.2
+    ],
+    [
+     210.0,
+     111.8
+    ],
+    [
+     225.0,
+     119.3
+    ],
+    [
+     240.0,
+     122.5
+    ],
+    [
+     255.0,
+     123.1
+    ],
+    [
+     270.0,
+     120.4
+    ],
+    [
+     285.0,
+     116.1
+    ],
+    [
+     300.0,
+     112.9
+    ],
+    [
+     315.0,
+     110.3
+    ],
+    [
+     330.0,
+     107.7
+    ],
+    [
+     345.0,
+     106.1
+    ]
+   ],
+   "query_url": "https://www-mars.lmd.jussieu.fr/mcd_python/cgi-bin/mcdcgi.py?var1=ps&var2=none&var3=none&var4=none&datekeyhtml=1&ls=all&localtime=all&year=2026&month=11&day=15&hours=0&minutes=0&seconds=0&julian=2461360&martianyear=38&sol=1&latitude=18.372&longitude=227.034&altitude=10.&zkey=3&spacecraft=none&isfixedlt=off&dust=1&hrkey=1&averaging=off&dpi=80&islog=off&colorm=jet&minval=&maxval=&proj=cyl&palt=&plon=&plat=&trans=&iswind=off&latpoint=&lonpoint=",
+   "column_gcm2": {
+    "annual_mean": 2.765,
+    "season_min": 2.256,
+    "season_max": 3.318
+   }
+  },
+  "oly_athena": {
+   "lat": 18.723,
+   "lon": 227.186,
+   "label": "Olympus Mons caldera, Athena Patera",
+   "annual_mean_pa": 109.6,
+   "season_min": {
+    "ls": 135.0,
+    "pa": 89.8
+   },
+   "season_max": {
+    "ls": 255.0,
+    "pa": 131.1
+   },
+   "instantaneous_pa": [
+    85.4,
+    135.1
+   ],
+   "diurnal_peak_to_peak_pa": [
+    6.9,
+    13.5
+   ],
+   "diurnal_mean_by_ls": [
+    [
+     0.0,
+     109.2
+    ],
+    [
+     15.0,
+     106.2
+    ],
+    [
+     30.0,
+     105.8
+    ],
+    [
+     45.0,
+     105.1
+    ],
+    [
+     60.0,
+     103.9
+    ],
+    [
+     75.0,
+     100.5
+    ],
+    [
+     90.0,
+     96.9
+    ],
+    [
+     105.0,
+     92.3
+    ],
+    [
+     120.0,
+     90.3
+    ],
+    [
+     135.0,
+     89.8
+    ],
+    [
+     150.0,
+     92.8
+    ],
+    [
+     165.0,
+     98.0
+    ],
+    [
+     180.0,
+     103.5
+    ],
+    [
+     195.0,
+     111.0
+    ],
+    [
+     210.0,
+     119.0
+    ],
+    [
+     225.0,
+     127.0
+    ],
+    [
+     240.0,
+     130.4
+    ],
+    [
+     255.0,
+     131.1
+    ],
+    [
+     270.0,
+     128.3
+    ],
+    [
+     285.0,
+     123.7
+    ],
+    [
+     300.0,
+     120.4
+    ],
+    [
+     315.0,
+     117.6
+    ],
+    [
+     330.0,
+     114.9
+    ],
+    [
+     345.0,
+     113.2
+    ]
+   ],
+   "query_url": "https://www-mars.lmd.jussieu.fr/mcd_python/cgi-bin/mcdcgi.py?var1=ps&var2=none&var3=none&var4=none&datekeyhtml=1&ls=all&localtime=all&year=2026&month=11&day=15&hours=0&minutes=0&seconds=0&julian=2461360&martianyear=38&sol=1&latitude=18.723&longitude=227.186&altitude=10.&zkey=3&spacecraft=none&isfixedlt=off&dust=1&hrkey=1&averaging=off&dpi=80&islog=off&colorm=jet&minval=&maxval=&proj=cyl&palt=&plon=&plat=&trans=&iswind=off&latpoint=&lonpoint=",
+   "column_gcm2": {
+    "annual_mean": 2.954,
+    "season_min": 2.42,
+    "season_max": 3.534
+   }
+  }
+ },
+ "matched_scenarios": {
+  "baseline": "annual mean of diurnal means",
+  "low": "Ls 150 diurnal mean (seasonal minimum at Gale and Jezero; within 1 % of the Olympus minimum at Ls 135)",
+  "high": "Ls 255 diurnal mean (seasonal maximum at every site)"
+ },
+ "hydrostatic_scale_height_m": {
+  "jezero": 10400,
+  "olympus": 10800,
+  "note": "Effective H implied by MCD site pairs (10.8-10.9 km at Olympus); MCD near-surface scale height 9.4-10.9 km over the year. Used only to map pressure across each region's DEM (exploratory)."
+ },
+ "references": {
+  "zhang2022_pressures_pa": {
+   "olympus_top": 82,
+   "gale": 868,
+   "note": "Zhang et al. (2022), MCD at Ls 0, local midnight"
+  },
+  "sanchez_lavega2023": "MEDA daily mean 735 Pa (sols 15-20), max 761 Pa (sol ~105), 625 Pa (sol 306); MCD minus MEDA typically 4-6 Pa, at most ~10 Pa"
+ },
+ "meda_check": {
+  "n_sols": 55,
+  "mean_pa": 719.4,
+  "min_pa": 625.4,
+  "max_pa": 796.7,
+  "sols": [
+   {
+    "sol": 20,
+    "pa": 731.3,
+    "rover_elev_m": -2568.9,
+    "pa_at_landing_elev": 731.3
+   },
+   {
+    "sol": 40,
+    "pa": 747.5,
+    "rover_elev_m": -2570.0,
+    "pa_at_landing_elev": 747.4
+   },
+   {
+    "sol": 60,
+    "pa": 751.6,
+    "rover_elev_m": -2569.1,
+    "pa_at_landing_elev": 751.7
+   },
+   {
+    "sol": 80,
+    "pa": 755.8,
+    "rover_elev_m": -2568.8,
+    "pa_at_landing_elev": 755.9
+   },
+   {
+    "sol": 100,
+    "pa": 760.5,
+    "rover_elev_m": -2569.2,
+    "pa_at_landing_elev": 760.6
+   },
+   {
+    "sol": 120,
+    "pa": 758.6,
+    "rover_elev_m": -2568.1,
+    "pa_at_landing_elev": 758.7
+   },
+   {
+    "sol": 140,
+    "pa": 751.8,
+    "rover_elev_m": -2583.8,
+    "pa_at_landing_elev": 750.8
+   },
+   {
+    "sol": 160,
+    "pa": 737.9,
+    "rover_elev_m": -2584.9,
+    "pa_at_landing_elev": 736.8
+   },
+   {
+    "sol": 180,
+    "pa": 718.2,
+    "rover_elev_m": -2574.5,
+    "pa_at_landing_elev": 717.9
+   },
+   {
+    "sol": 200,
+    "pa": 695.9,
+    "rover_elev_m": -2571.8,
+    "pa_at_landing_elev": 695.8
+   },
+   {
+    "sol": 220,
+    "pa": 674.6,
+    "rover_elev_m": -2573.3,
+    "pa_at_landing_elev": 674.4
+   },
+   {
+    "sol": 240,
+    "pa": 657.3,
+    "rover_elev_m": -2569.2,
+    "pa_at_landing_elev": 657.3
+   },
+   {
+    "sol": 280,
+    "pa": 631.9,
+    "rover_elev_m": -2572.0,
+    "pa_at_landing_elev": 631.7
+   },
+   {
+    "sol": 300,
+    "pa": 625.6,
+    "rover_elev_m": -2574.4,
+    "pa_at_landing_elev": 625.4
+   },
+   {
+    "sol": 320,
+    "pa": 628.9,
+    "rover_elev_m": -2574.4,
+    "pa_at_landing_elev": 628.7
+   },
+   {
+    "sol": 340,
+    "pa": 636.5,
+    "rover_elev_m": -2573.4,
+    "pa_at_landing_elev": 636.3
+   },
+   {
+    "sol": 360,
+    "pa": 652.7,
+    "rover_elev_m": -2569.2,
+    "pa_at_landing_elev": 652.7
+   },
+   {
+    "sol": 380,
+    "pa": 673.6,
+    "rover_elev_m": -2569.8,
+    "pa_at_landing_elev": 673.6
+   },
+   {
+    "sol": 400,
+    "pa": 702.7,
+    "rover_elev_m": -2555.2,
+    "pa_at_landing_elev": 703.7
+   },
+   {
+    "sol": 420,
+    "pa": 729.2,
+    "rover_elev_m": -2523.1,
+    "pa_at_landing_elev": 732.5
+   },
+   {
+    "sol": 460,
+    "pa": 786.8,
+    "rover_elev_m": -2524.2,
+    "pa_at_landing_elev": 790.2
+   },
+   {
+    "sol": 480,
+    "pa": 792.5,
+    "rover_elev_m": -2520.9,
+    "pa_at_landing_elev": 796.2
+   },
+   {
+    "sol": 500,
+    "pa": 793.0,
+    "rover_elev_m": -2520.9,
+    "pa_at_landing_elev": 796.7
+   },
+   {
+    "sol": 520,
+    "pa": 781.9,
+    "rover_elev_m": -2523.2,
+    "pa_at_landing_elev": 785.4
+   },
+   {
+    "sol": 540,
+    "pa": 769.6,
+    "rover_elev_m": -2543.6,
+    "pa_at_landing_elev": 771.6
+   },
+   {
+    "sol": 560,
+    "pa": 748.7,
+    "rover_elev_m": -2526.5,
+    "pa_at_landing_elev": 751.8
+   },
+   {
+    "sol": 580,
+    "pa": 738.2,
+    "rover_elev_m": -2526.5,
+    "pa_at_landing_elev": 741.2
+   },
+   {
+    "sol": 600,
+    "pa": 723.3,
+    "rover_elev_m": -2525.3,
+    "pa_at_landing_elev": 726.5
+   },
+   {
+    "sol": 620,
+    "pa": 726.0,
+    "rover_elev_m": -2517.3,
+    "pa_at_landing_elev": 729.7
+   },
+   {
+    "sol": 640,
+    "pa": 718.2,
+    "rover_elev_m": -2523.9,
+    "pa_at_landing_elev": 721.4
+   },
+   {
+    "sol": 660,
+    "pa": 725.0,
+    "rover_elev_m": -2545.3,
+    "pa_at_landing_elev": 726.7
+   },
+   {
+    "sol": 680,
+    "pa": 729.5,
+    "rover_elev_m": -2545.1,
+    "pa_at_landing_elev": 731.2
+   },
+   {
+    "sol": 700,
+    "pa": 734.6,
+    "rover_elev_m": -2528.2,
+    "pa_at_landing_elev": 737.5
+   },
+   {
+    "sol": 720,
+    "pa": 742.6,
+    "rover_elev_m": -2462.9,
+    "pa_at_landing_elev": 750.2
+   },
+   {
+    "sol": 740,
+    "pa": 746.7,
+    "rover_elev_m": -2449.1,
+    "pa_at_landing_elev": 755.5
+   },
+   {
+    "sol": 760,
+    "pa": 748.3,
+    "rover_elev_m": -2441.5,
+    "pa_at_landing_elev": 757.6
+   },
+   {
+    "sol": 800,
+    "pa": 741.9,
+    "rover_elev_m": -2421.1,
+    "pa_at_landing_elev": 752.6
+   },
+   {
+    "sol": 880,
+    "pa": 671.5,
+    "rover_elev_m": -2418.0,
+    "pa_at_landing_elev": 681.4
+   },
+   {
+    "sol": 900,
+    "pa": 649.5,
+    "rover_elev_m": -2414.8,
+    "pa_at_landing_elev": 659.3
+   },
+   {
+    "sol": 920,
+    "pa": 633.5,
+    "rover_elev_m": -2423.3,
+    "pa_at_landing_elev": 642.5
+   },
+   {
+    "sol": 940,
+    "pa": 620.7,
+    "rover_elev_m": -2407.7,
+    "pa_at_landing_elev": 630.5
+   },
+   {
+    "sol": 980,
+    "pa": 617.0,
+    "rover_elev_m": -2407.3,
+    "pa_at_landing_elev": 626.7
+   },
+   {
+    "sol": 1000,
+    "pa": 619.1,
+    "rover_elev_m": -2398.5,
+    "pa_at_landing_elev": 629.4
+   },
+   {
+    "sol": 1020,
+    "pa": 634.9,
+    "rover_elev_m": -2407.9,
+    "pa_at_landing_elev": 644.8
+   },
+   {
+    "sol": 1040,
+    "pa": 656.3,
+    "rover_elev_m": -2406.0,
+    "pa_at_landing_elev": 666.7
+   },
+   {
+    "sol": 1100,
+    "pa": 739.1,
+    "rover_elev_m": -2379.5,
+    "pa_at_landing_elev": 752.8
+   },
+   {
+    "sol": 1120,
+    "pa": 767.4,
+    "rover_elev_m": -2355.2,
+    "pa_at_landing_elev": 783.4
+   },
+   {
+    "sol": 1180,
+    "pa": 771.0,
+    "rover_elev_m": -2362.8,
+    "pa_at_landing_elev": 786.5
+   },
+   {
+    "sol": 1200,
+    "pa": 760.1,
+    "rover_elev_m": -2354.5,
+    "pa_at_landing_elev": 776.0
+   },
+   {
+    "sol": 1220,
+    "pa": 741.8,
+    "rover_elev_m": -2360.1,
+    "pa_at_landing_elev": 756.9
+   },
+   {
+    "sol": 1240,
+    "pa": 735.6,
+    "rover_elev_m": -2347.8,
+    "pa_at_landing_elev": 751.5
+   },
+   {
+    "sol": 1260,
+    "pa": 714.3,
+    "rover_elev_m": -2275.0,
+    "pa_at_landing_elev": 734.8
+   },
+   {
+    "sol": 1280,
+    "pa": 704.9,
+    "rover_elev_m": -2162.8,
+    "pa_at_landing_elev": 733.0
+   },
+   {
+    "sol": 1300,
+    "pa": 696.5,
+    "rover_elev_m": -2055.6,
+    "pa_at_landing_elev": 731.8
+   },
+   {
+    "sol": 1340,
+    "pa": 694.4,
+    "rover_elev_m": -1966.5,
+    "pa_at_landing_elev": 735.9
+   }
+  ],
+  "note": "Every 20th sol (20-1340), derived pressure product DER_PS, hour-balanced sol means; sols with fill values or <10 local hours excluded; normalised to the landing elevation (-2,570 m) with H = 10.4 km.",
+  "source": "https://atmos.nmsu.edu/PDS/data/PDS4/Mars2020/mars2020_meda/data_derived_env/",
+  "mcd_annual_mean_pa": 723.2,
+  "mcd_minus_meda_pct": 0.53
+ }
+}

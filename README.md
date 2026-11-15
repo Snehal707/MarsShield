@@ -24,16 +24,29 @@ The site opens with a five-step guided story on the real terrain:
 
 The comparison is drawn as bars of the drop itself, so the gap between prediction and measurement is visible at a glance. Every number is read from the exported RAD reduction and audit files. Clicking the wordmark replays the story. Corrections and their earlier values are listed in [docs/SCIENCE_AUDIT.md](docs/SCIENCE_AUDIT.md); the research layout and accessibility changes in [docs/RESEARCH_WORKSPACE.md](docs/RESEARCH_WORKSPACE.md).
 
-## Beyond Gale: Mars overview, Jezero and Olympus Mons
+## Three regions: Gale, Jezero and Olympus Mons
 
-The region menu in the top bar also opens a **Mars overview** (MOLA global elevation), **Jezero Crater** (USGS Mars 2020 CTX DTM, 20 m, with Perseverance's 708 localized waypoints) and the **Olympus Mons caldera** (HRSC/MOLA blend, 200 m, with the USGS SIM 3470 geologic map).
+MarsShield opens on a **Mars overview**: why cosmic rays reach the Martian surface, the three research regions, and a comparison under one set of assumptions. The assumptions are quantity, solar modulation, season and mission duration, and they apply to every region.
 
-- **Terrain only.** These regions offer 3D terrain, slope, elevation profiles, landmarks and, for Olympus Mons, the geologic units.
-- **Capability matrix.** Each region lists every capability as *Validated*, *Exploratory model* or *Unavailable*, with the reason.
-- **No radiation.** Radiation dose is unavailable outside Gale: no local measurement exists there, and Curiosity's RAD data are not transferred.
-- **Loading.** Each region is a small manifest-described file set (0.7–2.2 MB), loaded only when it is opened.
+**Comparison method:**
+- **Transport model:** published AtRIS/Geant4 surface tables (Zhang et al. 2022, doi:10.1029/2021JE007157; data doi:10.5281/zenodo.5953666).
+- **Atmosphere:** Mars Climate Database v6.2 pressure at each site, checked against Perseverance MEDA at Jezero (0.5 % difference).
+- **Quantities:** effective dose, dose equivalent and water-phantom absorbed dose. These are not RAD-E dose, and are never converted into each other.
 
-Details: [docs/REGIONS.md](docs/REGIONS.md).
+**Findings:**
+- **Olympus Mons:** effective dose about 4 % lower than Gale at 700 MV, growing to 7 % at 1000 MV and vanishing at solar minimum; dose equivalent about 5.5 % lower at 580 MV.
+- **Jezero:** not distinguishable from Gale within the model's 1 % Monte Carlo noise.
+- **Pressure dependence:** the model's pressure dependence is about 50× weaker than RAD observes at Gale. The regional estimates are therefore exploratory, and nothing about them is validated outside Gale.
+
+**Regional workspaces:**
+- Jezero and the Olympus Mons caldera each have Radiation, Terrain, and Sources and limits tabs.
+- The radiation tab gives the atmosphere overhead and a click-to-evaluate location dose.
+- The terrain tab gives 3D terrain, slope, profiles, the Perseverance traverse and the USGS caldera geologic map.
+- The comparison chart and table, with CSV and research-package downloads, sit in the analysis dock.
+
+**Case study:** the Maria Gordon Notch story is an optional Gale case study, opened from the Gale card or the Gale top bar.
+
+Details: [docs/REGIONAL_RADIATION.md](docs/REGIONAL_RADIATION.md) (methods, equations, validation, uncertainty, blockers) and [docs/REGIONS.md](docs/REGIONS.md) (terrain data).
 
 ## Three ways in
 

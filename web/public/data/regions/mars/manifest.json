@@ -54,20 +54,23 @@
  ],
  "capabilities": [
   {
+   "area": "terrain",
    "name": "Global elevation",
    "status": "validated",
    "detail": "MOLA gridded elevations at about 15 km per pixel; finer features are not resolved."
   },
   {
-   "name": "Region outlines",
-   "status": "validated",
-   "detail": "Bounds of each regional dataset, from the regional manifests."
+   "area": "radiation",
+   "name": "Three-region dose comparison",
+   "status": "exploratory",
+   "detail": "Effective dose, dose equivalent and water-phantom absorbed dose at Gale, Jezero and Olympus Mons from one published transport model (Zhang et al. 2022) and one atmosphere source (Mars Climate Database v6.2), at matched assumptions. Reproduced from published tables; not validated outside Gale."
   },
   {
-   "name": "Radiation",
+   "area": "radiation",
+   "name": "Global radiation map",
    "status": "unavailable",
-   "detail": "No global radiation map is offered; MarsShield's radiation analysis is local to Gale Crater."
+   "detail": "Only three sites have matched atmospheric inputs here; a global map would need the full MCD and transport tables over every location."
   }
  ],
- "generated_utc": "2026-11-15T14:21:32+00:00"
+ "generated_utc": "2026-11-15T15:58:15+00:00"
 }

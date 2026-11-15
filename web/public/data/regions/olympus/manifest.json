@@ -404,35 +404,53 @@
  ],
  "capabilities": [
   {
+   "area": "terrain",
    "name": "Elevation, 3D caldera",
    "status": "validated",
    "detail": "HRSC/MOLA blend at 200 m posts over the 1:200,000 map area."
   },
   {
-   "name": "Slope",
+   "area": "terrain",
+   "name": "Slope and elevation profiles",
    "status": "validated",
-   "detail": "Over 200 m only. Caldera walls that are 1\u20133 km high are steeper over shorter distances than this shows."
+   "detail": "Over 200 m only. Caldera walls 1\u20133 km high are steeper over shorter distances than this shows."
   },
   {
-   "name": "Elevation profiles",
-   "status": "validated",
-   "detail": "Sampled from the 200 m grid."
-  },
-  {
+   "area": "terrain",
    "name": "Geologic units",
    "status": "validated",
    "detail": "USGS SIM 3470 polygons (Mouginis-Mark, 2021), 1:200,000."
   },
   {
-   "name": "Radiation dose",
-   "status": "unavailable",
-   "detail": "No surface radiation measurement exists here. Curiosity's RAD data belong to Gale and are not transferred; no model is offered."
+   "area": "atmosphere",
+   "name": "Surface pressure",
+   "status": "exploratory",
+   "detail": "Mars Climate Database v6.2 only; no pressure has been measured above about 4 km anywhere on Mars. A \u00b110 % assumption band is shown."
   },
   {
-   "name": "Sky blocked, routes",
+   "area": "radiation",
+   "name": "GCR dose estimate",
+   "status": "exploratory",
+   "detail": "Effective dose, dose equivalent and water-phantom absorbed dose from published AtRIS/Geant4 tables; the paper's 82 Pa case is the top of Olympus Mons. No measurement exists here."
+  },
+  {
+   "area": "radiation",
+   "name": "Dose differences across the caldera",
+   "status": "exploratory",
+   "detail": "Hydrostatic pressure from the DEM; the modeled change across the caldera is below the model's Monte Carlo noise."
+  },
+  {
+   "area": "radiation",
+   "name": "Terrain shielding of dose",
    "status": "unavailable",
-   "detail": "A 200 m grid cannot represent shielding or hazards at the scale of a person."
+   "detail": "No zenith-angle resolution in the published tables, and a 200 m grid cannot locate person-scale shelter."
+  },
+  {
+   "area": "radiation",
+   "name": "RAD-E comparison, walking routes",
+   "status": "unavailable",
+   "detail": "No RAD-equivalent model at 2\u20133 g/cm2; the 200 m grid cannot represent hazards at the scale of a person."
   }
  ],
- "generated_utc": "2026-11-15T14:21:32+00:00"
+ "generated_utc": "2026-11-15T15:58:15+00:00"
 }
