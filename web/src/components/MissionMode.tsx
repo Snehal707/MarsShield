@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Dataset, ScienceTarget } from "@/lib/data";
 import { dFlat, relTotal, ROUTE_COLORS, sampleGrid } from "@/lib/data";
 import type { Objective } from "@/lib/engine";
-import type { BEJs, RouteMetrics, useEngine } from "@/lib/useEngine";
+import type { BEJs, CalcStatus, RouteMetrics, useEngine } from "@/lib/useEngine";
 import type { ScenePin, SceneLine } from "./TerrainScene";
 import { SkyDisc, ZenithBars } from "./SkyDisc";
 import { A, Chip, download, Grammar, h, km, M, More, P, Seg, sgn, Slider, TradeoffChart } from "./ui";
@@ -42,7 +42,7 @@ function astronautTask(label: string) {
 
 const flagTag = (f: string) => (f.startsWith("Steep") ? "steep ground" : f.startsWith("Below") ? "below a cliff" : "flag");
 
-export function MissionMode({ ds, eng, setScene, focusOn }: { ds: Dataset; eng: Eng; setScene: (s: SceneSpec) => void; focusOn: (x: number, y: number, dist?: number) => void }) {
+export function MissionMode({ ds, eng, setScene, focusOn, calc }: { ds: Dataset; eng: Eng; setScene: (s: SceneSpec) => void; focusOn: (x: number, y: number, dist?: number) => void; calc?: CalcStatus }) {
   const byId = useMemo(() => Object.fromEntries(ds.scienceTargets.map((t) => [t.id, t])) as Record<string, ScienceTarget>, [ds]);
   const err = ds.breakeven["Maria Gordon Notch"].model_error;
   const alpha = 0.21, phi = 500, Dflat = dFlat(ds.flat, phi, alpha);
@@ -248,7 +248,7 @@ export function MissionMode({ ds, eng, setScene, focusOn }: { ds: Dataset; eng: 
             </select>
             <label className="check"><input type="checkbox" checked={ret} onChange={(e) => setRet(e.target.checked)} />Return to start</label>
           </div>
-          {busy && !routes && <p className="muted">Computing routes in your browser…</p>}
+          <p className="muted calc-time" aria-live="polite">{busy ? "Computing three routes in your browser…" : routes && calc?.last?.kind === "routes" ? `Three routes recalculated in your browser in ${Math.round(calc.last.ms)} ms.` : ""}</p>
           {routes && (
             <table className="routes-t">
               <thead><tr><th>Strategy</th><th>Distance</th><th>Time</th><th>Walk dose</th></tr></thead>
@@ -302,7 +302,7 @@ export function MissionMode({ ds, eng, setScene, focusOn }: { ds: Dataset; eng: 
         {step === 3 && (<>
           <h2 className="q">Where should the astronaut stand while working?</h2>
           <p className="prose">The work can be done anywhere within <A>{radius} m</A> of the target. Three candidate spots are marked on the terrain; walking is compared along your <b>{plan.strategy.toLowerCase()}</b> route{ret ? ", there and back" : ", one way"}.</p>
-          {!be && <p className="muted">Comparing every workable spot within {radius} m, in your browser…</p>}
+          <p className="muted calc-time" aria-live="polite">{!be ? `Comparing every workable spot within ${radius} m, in your browser…` : calc?.last?.kind === "breakeven" ? `${be.nCandidates} candidate spots compared in your browser in ${Math.round(calc.last.ms)} ms.` : ""}</p>
           {be && decision && bOpt && (<>
             <div className="verdict">
               <Chip kind={decision.chip}>{decision.label}</Chip>

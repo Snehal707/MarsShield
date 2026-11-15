@@ -8,7 +8,13 @@ import { breakEven, Engine, type Objective } from "./engine";
 export type RouteMetrics = ReturnType<Engine["metrics"]>;
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void };
 
-export function useEngine(ds: Dataset | null) {
+/** Measured wall-clock time of the last engine call (performance.now, in this browser), and calls still running. */
+export type CalcStatus = { running: number; last: { kind: string; ms: number } | null };
+
+export function useEngine(ds: Dataset | null, onStatus?: (s: CalcStatus) => void) {
+  const status = useRef<CalcStatus>({ running: 0, last: null });
+  const report = useRef(onStatus);
+  useEffect(() => { report.current = onStatus; }, [onStatus]);
   const worker = useRef<Worker | null>(null);
   const pending = useRef(new Map<number, Pending>());
   const seq = useRef(0);
@@ -50,6 +56,16 @@ export function useEngine(ds: Dataset | null) {
       return e as Engine;
     };
     const call = <T,>(msg: Record<string, unknown>, run: () => T): Promise<T> => {
+      const t0 = performance.now();
+      status.current = { ...status.current, running: status.current.running + 1 };
+      report.current?.(status.current);
+      const done = () => {
+        status.current = { running: Math.max(0, status.current.running - 1), last: { kind: String(msg.kind), ms: performance.now() - t0 } };
+        report.current?.(status.current);
+      };
+      return callRaw<T>(msg, run).finally(done);
+    };
+    const callRaw = <T,>(msg: Record<string, unknown>, run: () => T): Promise<T> => {
       if (worker.current) {
         const id = ++seq.current;
         return new Promise<T>((resolve, reject) => {

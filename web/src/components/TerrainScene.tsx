@@ -14,7 +14,7 @@ export type ScenePin = { key: string; x: number; y: number; color: string; label
 export type Focus = { x: number; y: number; dist?: number; n: number } | null;
 
 type Props = {
-  ds: Dataset; layer: Layer; alpha: number; exaggeration: number; disagreeErrPP: number; disagreeRefPP: number; viewShiftPx?: number;
+  ds: Dataset; layer: Layer; alpha: number; exaggeration: number; disagreeErrPP: number; disagreeRefPP: number; viewShiftPx?: number; viewShiftPy?: number;
   lines?: SceneLine[]; pins?: ScenePin[]; sky?: Sky | null; ring?: { x: number; y: number; r: number } | null;
   showObs: boolean; onObsClick?: (s: Stop) => void; onObsHover?: (s: Stop | null, cx: number, cy: number) => void;
   onPinHover?: (key: string | null, cx: number, cy: number) => void;
@@ -233,9 +233,8 @@ function Pin({ ds, pin, exag, onHover, lift = 0 }: { ds: Dataset; pin: ScenePin;
       <mesh position={[0, h / 2, 0]}><cylinderGeometry args={[0.6, 0.6, h, 6]} /><meshBasicMaterial color={pin.color} /></mesh>
       <Html position={[0, h, 0]} center zIndexRange={[3, 0]}>
         <div className={`pin${pin.selected ? " sel" : ""}${pin.onClick ? " click" : ""}`} style={{ width: px, height: px, background: pin.color }}
-          role={pin.onClick ? "button" : undefined} aria-label={pin.onClick ? pin.label ?? pin.key : undefined} tabIndex={pin.onClick ? 0 : undefined}
+          aria-hidden="true" data-sel={pin.selected ? "1" : undefined}
           onClick={pin.onClick ? (e) => { e.stopPropagation(); pin.onClick!(); } : undefined}
-          onKeyDown={pin.onClick ? (e) => { if (e.key === "Enter") pin.onClick!(); } : undefined}
           onMouseEnter={(e) => onHover?.(pin.key, e.clientX, e.clientY)} onMouseLeave={() => onHover?.(null, 0, 0)}>
           {pin.label && <span className={`pin-label${below ? " below" : ""}`} style={stack ? { bottom: `calc(100% + ${6 + stack}px)` } : undefined}>{pin.label}</span>}
         </div>
@@ -285,12 +284,12 @@ function WorkRing({ ds, ring, exag }: { ds: Dataset; ring: { x: number; y: numbe
 
 // Smooth camera flight to a focus point (0.9 s, eased); instant when reduced motion is requested.
 /** Shift the projection so the camera's focus appears centred in the visible part of the canvas (left of the panel). */
-function ViewShift({ px }: { px: number }) {
+function ViewShift({ px, py }: { px: number; py: number }) {
   const { camera, size } = useThree() as unknown as { camera: THREE.PerspectiveCamera; size: { width: number; height: number } };
   useEffect(() => {
-    if (px) camera.setViewOffset(size.width, size.height, px, 0, size.width, size.height); else camera.clearViewOffset();
+    if (px || py) camera.setViewOffset(size.width, size.height, px, py, size.width, size.height); else camera.clearViewOffset();
     camera.updateProjectionMatrix();
-  }, [camera, size.width, size.height, px]);
+  }, [camera, size.width, size.height, px, py]);
   return null;
 }
 
@@ -330,7 +329,7 @@ export default function TerrainScene(p: Props) {
       {p.pins?.map((q, i) => <Pin key={q.key} ds={p.ds} pin={q} exag={p.exaggeration} onHover={p.onPinHover} lift={labelLift(p.pins!, i)} />)}
       <OrbitControls makeDefault maxPolarAngle={Math.PI * 0.47} minDistance={60} maxDistance={7000} enableDamping />
       <CameraRig focus={p.focus} ds={p.ds} exag={p.exaggeration} />
-      <ViewShift px={p.viewShiftPx ?? 0} />
+      <ViewShift px={p.viewShiftPx ?? 0} py={p.viewShiftPy ?? 0} />
     </Canvas>
   );
 }

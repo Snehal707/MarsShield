@@ -22,14 +22,14 @@ The site opens with a five-step guided story on the real terrain:
 4. **The measurement.** NASA's RAD measured 19.4 % lower (285 → 230 µGy/day).
 5. **What it means.** A simple blocked-sky rule (18 %) came closer here, but across all eight measured spots neither model is reliably better.
 
-The comparison is drawn as bars of the drop itself, so the gap between prediction and measurement is visible at a glance. Every number is read from the exported RAD reduction and audit files. Clicking the wordmark replays the story. Corrections and their earlier values are listed in [docs/SCIENCE_AUDIT.md](docs/SCIENCE_AUDIT.md).
+The comparison is drawn as bars of the drop itself, so the gap between prediction and measurement is visible at a glance. Every number is read from the exported RAD reduction and audit files. Clicking the wordmark replays the story. Corrections and their earlier values are listed in [docs/SCIENCE_AUDIT.md](docs/SCIENCE_AUDIT.md); the research layout and accessibility changes in [docs/RESEARCH_WORKSPACE.md](docs/RESEARCH_WORKSPACE.md).
 
 ## Three ways in
 
 | Mode | Question it answers | What you can change in the browser |
 |---|---|---|
 | **Mission** | Plan a science Marswalk to one of nine documented Curiosity targets and back: is it worth walking farther to a more sheltered spot, and can the model tell? | Destination, start, return trip, walking speed, work duration, EVA time cap, work radius. Routes (4 strategies) and the break-even trade-off are recomputed live. |
-| **Experiment** | Test the radiation models against Curiosity's measurements: predict first, then reveal. Three experiments: terrain vs time at 322 stops; physical model vs blocked-sky rule at the 8 parking periods; the stops where the models disagree most. | Model, baseline, stop subset, number of time blocks, bootstrap block length, albedo α, the paper's alternative P6 drop, number of disagreement stops. Verdicts and intervals are recomputed live; every experiment exports JSON. |
+| **Experiment** | Test the radiation models against Curiosity's measurements: predict first, then reveal. Three experiments: terrain vs time at 322 stops; physical model vs blocked-sky rule at the 8 parking periods; the stops where the models disagree most. | Model, baseline, stop subset, number of time blocks, bootstrap block length, albedo α, the paper's alternative P6 drop, number of disagreement stops. Verdicts and intervals are recomputed live. Charts, the data table and the CSV and research-package downloads sit in a resizable analysis dock linked to the terrain ([docs/RESEARCH_WORKSPACE.md](docs/RESEARCH_WORKSPACE.md)). |
 | **Evidence** | What was measured, what was modeled, and how well they agree, including the RAD + REMS pressure analysis, validation, limitations and provenance. | Read-only. |
 
 The terrain is the main view, with a single **Layers** control: modeled dose rate, orbital image (USGS HiRISE orthophoto), relief, model disagreement, sky blocked and slope. Curiosity's 322 RAD stops are hidden by default and can be switched on there. Every experiment follows the same sequence: question, prediction, reveal NASA's observations, result, explanation. Uncertainty and statistics are one click away rather than in the way.

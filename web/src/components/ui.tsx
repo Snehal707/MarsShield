@@ -1,5 +1,5 @@
 "use client";
-import type { ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 // One shared grammar instead of badges on every line: shown once per view, then encoded by colour and style.
 export function Grammar() {
@@ -26,10 +26,12 @@ export function More({ label, children, open = false }: { label: string; childre
 export function Slider({ label, value, min, max, step, onChange, fmt }: {
   label: ReactNode; value: number; min: number; max: number; step: number; onChange: (v: number) => void; fmt: (v: number) => string;
 }) {
+  const id = useId();
   return (
-    <label className="slider">{label}<output>{fmt(value)}</output>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(+e.target.value)} />
-    </label>
+    <div className="slider">
+      <label htmlFor={id} id={`${id}-l`}>{label}</label><output htmlFor={id}>{fmt(value)}</output>
+      <input id={id} type="range" min={min} max={max} step={step} value={value} aria-valuetext={fmt(value)} onChange={(e) => onChange(+e.target.value)} />
+    </div>
   );
 }
 
@@ -85,6 +87,39 @@ export function TradeoffChart({ options, T, envelope, dwell, err }: {
 }
 
 /** One stage of an experiment's fixed sequence: Question, Prediction, NASA observations, Result, Explanation. */
-export function Step({ n, title, children }: { n: number; title: string; children: ReactNode }) {
-  return <section className="exp-step" aria-label={title}><h3><i>{n}</i>{title}</h3>{children}</section>;
+export function Step({ n, title, children, id }: { n: number; title: string; children: ReactNode; id?: string }) {
+  return <section className="exp-step" aria-labelledby={`${id ?? `step${n}`}-h`}><h3 id={`${id ?? `step${n}`}-h`} tabIndex={id ? -1 : undefined}><i aria-hidden="true">{n}</i>{title}</h3>{children}</section>;
+}
+
+/** True while the media query matches (false during static render). */
+export function useMedia(q: string) {
+  const [m, setM] = useState(false);
+  useEffect(() => { const mq = window.matchMedia(q); const f = () => setM(mq.matches); f(); mq.addEventListener("change", f); return () => mq.removeEventListener("change", f); }, [q]);
+  return m;
+}
+
+/** WAI-ARIA tabs: one tab stop, arrow keys move between tabs, Home/End jump. With `manual`, arrows only move focus and
+ *  Enter/Space activates (used where activating a tab is expensive, such as switching mode). */
+export function Tabs<T extends string>({ tabs, value, onChange, label, className, manual = false, vertical = false }: {
+  tabs: [T, string][]; value: T | null; onChange: (v: T) => void; label: string; className?: string; manual?: boolean; vertical?: boolean;
+}) {
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const cur = Math.max(0, tabs.findIndex(([k]) => k === value));
+  const [focusI, setFocusI] = useState(cur);
+  useEffect(() => setFocusI(cur), [cur]);
+  const move = (e: KeyboardEvent, i: number) => {
+    const n = tabs.length, next = { ArrowRight: i + 1, ArrowDown: i + 1, ArrowLeft: i - 1, ArrowUp: i - 1, Home: 0, End: n - 1 }[e.key];
+    if (next == null || (!vertical && (e.key === "ArrowUp" || e.key === "ArrowDown"))) return;
+    e.preventDefault();
+    const j = (next + n) % n;
+    setFocusI(j); refs.current[j]?.focus();
+    if (!manual) onChange(tabs[j][0]);
+  };
+  return (
+    <div className={className} role="tablist" aria-label={label} aria-orientation={vertical ? "vertical" : "horizontal"}>
+      {tabs.map(([k, l], i) => (
+        <button key={k} ref={(el) => { refs.current[i] = el; }} role="tab" aria-selected={k === value} tabIndex={i === focusI ? 0 : -1}
+          onClick={() => onChange(k)} onKeyDown={(e) => move(e, i)} onFocus={() => setFocusI(i)}>{l}</button>))}
+    </div>
+  );
 }

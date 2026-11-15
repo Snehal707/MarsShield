@@ -1,10 +1,14 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
-import type { Dataset, TSRow } from "@/lib/data";
+// Experiments: the narrow panel holds the reasoning (question, prediction, reveal, result, explanation); the research dock
+// holds the charts, the data table and the downloads, all linked to one selection that is also shown on the terrain.
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Dataset, Stop, TSRow } from "@/lib/data";
 import { corrCI, crossValidate, dMSE, MODELS, parkingPredictions, parkingVerdict, pct, rng, rmse, siteDMSE, siteOf, siteShares, type ModelId } from "@/lib/stats";
 import type { SceneSpec } from "./MissionMode";
-import { Chip, M, More, P, Seg, sgn, Slider, Step } from "./ui";
+import { Chip, M, More, P, Seg, sgn, Slider, Step, Tabs, useMedia } from "./ui";
 import { DataTable, datasetId, DownloadBar, software } from "./ExperimentTools";
+import { DockPortal } from "./Dock";
+import { DotRowsChart, IntervalChart, ScatterChart, TimeSeriesChart } from "./ResearchCharts";
 import { disagreeCSV, disagreePackage, parkingCSV, parkingPackage, terrainCSV, terrainPackage, type ScreeningRow, type TerrainInput } from "@/lib/exports";
 
 type Exp = "terrain" | "parking" | "disagree";
@@ -21,51 +25,6 @@ function inPublished(ds: Dataset, r: TSRow) {
   return Object.values(ds.parking.periods).some((p) => r.mid_sol >= p.sols[0] - 1 && r.mid_sol <= p.sols[1] + 1);
 }
 
-function Strip({ rows, pred, revealed, label, selected, onPick }: { rows: TSRow[]; pred: number[]; revealed: boolean; label: string; selected?: string | null; onPick?: (r: TSRow) => void }) {
-  const W = 380, H = 170, pl = 34, pr = 8, pt = 8, pb = 24;
-  const s0 = rows[0]?.mid_sol ?? 0, s1 = rows[rows.length - 1]?.mid_sol ?? 1;
-  const vals = pred.concat(revealed ? rows.map((r) => r.y_obs) : []).map(pctLog);
-  const lo = Math.max(-25, Math.min(-4, ...vals)), hi = Math.min(15, Math.max(4, ...vals));
-  const x = (s: number) => pl + ((s - s0) / (s1 - s0 || 1)) * (W - pl - pr), y = (v: number) => H - pb - ((v - lo) / (hi - lo)) * (H - pb - pt);
-  return (
-    <figure style={{ margin: 0 }}>
-      <div className="legend"><span><i style={{ background: "#7db3cb" }} />{label} prediction</span>{revealed && <span><i style={{ border: "2px solid #f6f1e7", background: "transparent" }} />Measured by RAD</span>}</div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="chart" role="img" aria-label="Predicted and measured local dose anomaly at each stop, in time order">
-        <g className="grid">{[-20, -10, 0, 10].filter((v) => v > lo && v < hi).map((v) => <line key={v} x1={pl} x2={W - pr} y1={y(v)} y2={y(v)} />)}</g>
-        <line x1={pl} x2={W - pr} y1={y(0)} y2={y(0)} stroke="rgba(239,230,216,0.35)" />
-        {revealed && rows.map((r, i) => <circle key={`m${i}`} cx={x(r.mid_sol)} cy={y(Math.max(lo, Math.min(hi, pctLog(r.y_obs))))} r={2.6} fill="none" stroke="#f6f1e7" strokeOpacity={0.75} />)}
-        {rows.map((r, i) => <circle key={`p${i}`} cx={x(r.mid_sol)} cy={y(Math.max(lo, Math.min(hi, pctLog(pred[i]))))} r={2.2} fill="#7db3cb" />)}
-        {[-20, -10, 0, 10].filter((v) => v > lo && v < hi).map((v) => <text key={v} x={pl - 5} y={y(v) + 4} textAnchor="end">{v}%</text>)}
-        {rows.map((r, i) => r.rmc === selected && <g key="sel" pointerEvents="none">
-          <line x1={x(r.mid_sol)} x2={x(r.mid_sol)} y1={pt} y2={H - pb} stroke="#e7b37d" strokeWidth={1} strokeDasharray="2 3" />
-          <circle cx={x(r.mid_sol)} cy={y(Math.max(lo, Math.min(hi, pctLog(revealed ? r.y_obs : pred[i]))))} r={6} fill="none" stroke="#e7b37d" strokeWidth={2} /></g>)}
-        {onPick && rows.map((r, i) => <circle key={`h${i}`} cx={x(r.mid_sol)} cy={y(Math.max(lo, Math.min(hi, pctLog(revealed ? r.y_obs : pred[i]))))} r={5}
-          fill="transparent" style={{ cursor: "pointer" }} onClick={() => onPick(r)}><title>{`Stop ${r.rmc}, sol ${r.sol}`}</title></circle>)}
-        <text x={pl} y={H - 6}>sol {Math.round(s0)}</text><text x={W - pr} y={H - 6} textAnchor="end">sol {Math.round(s1)}</text>
-      </svg>
-      <figcaption className="muted">Each dot is one rover stop: how much its dose rate differed from Curiosity&apos;s other stops within ±15 sols, as an actual percentage change. Values beyond the axis are drawn at its edge.{onPick ? " Click a dot to find the stop on the terrain." : ""}</figcaption>
-    </figure>
-  );
-}
-
-function Scatter({ x, y, slope }: { x: number[]; y: number[]; slope?: number }) {
-  const W = 380, H = 230, pl = 36, pb = 28, pt = 8, pr = 8, lo = -16, hi = 10;
-  const sx = (v: number) => pl + ((v - lo) / (hi - lo)) * (W - pl - pr), sy = (v: number) => H - pb - ((v - lo) / (hi - lo)) * (H - pb - pt);
-  const c = (v: number) => Math.max(lo, Math.min(hi, pctLog(v)));
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="chart" role="img" aria-label="Measured against predicted anomaly">
-      <g className="grid">{[-15, -10, -5, 0, 5].map((v) => <g key={v}><line x1={sx(v)} x2={sx(v)} y1={pt} y2={H - pb} /><line x1={pl} x2={W - pr} y1={sy(v)} y2={sy(v)} /></g>)}</g>
-      <line x1={sx(lo)} y1={sy(lo)} x2={sx(hi)} y2={sy(hi)} stroke="rgba(239,230,216,0.35)" strokeDasharray="4 4" />
-      {slope != null && <line x1={sx(lo)} y1={sy(lo * slope)} x2={sx(hi)} y2={sy(hi * slope)} stroke="#d0904f" strokeWidth={1.6} />}
-      {x.map((v, i) => <circle key={i} cx={sx(c(v))} cy={sy(c(y[i]))} r={2.6} fill="none" stroke="#f6f1e7" strokeOpacity={0.7} />)}
-      {[-15, -10, -5, 0, 5].map((v) => <text key={`a${v}`} x={sx(v)} y={H - pb + 13} textAnchor="middle">{v}</text>)}
-      {[-15, -10, -5, 0, 5].map((v) => <text key={`b${v}`} x={pl - 5} y={sy(v) + 4} textAnchor="end">{v}</text>)}
-      <text x={(pl + W) / 2} y={H - 2} textAnchor="middle" className="lbl">predicted change, %</text>
-      <text x={10} y={(pt + H - pb) / 2} textAnchor="middle" className="lbl" transform={`rotate(-90 10 ${(pt + H - pb) / 2})`}>measured change, %</text>
-    </svg>
-  );
-}
-
 function slopeCI(x: number[], y: number[], L = 20, B = 2000) {
   const s = (ix: number[]) => ix.reduce((a, i) => a + x[i] * y[i], 0) / ix.reduce((a, i) => a + x[i] * x[i], 0);
   const r = rng(17), bs: number[] = [], n = x.length;
@@ -73,13 +32,19 @@ function slopeCI(x: number[], y: number[], L = 20, B = 2000) {
   return { slope: s(x.map((_, i) => i)), lo: pct(bs, 0.025), hi: pct(bs, 0.975) };
 }
 
-export function ExperimentMode({ ds, setScene, setLayer, focusOn, initial = null }: { ds: Dataset; setScene: (s: SceneSpec) => void; setLayer: (l: "dose" | "disagree" | "image") => void;
-  focusOn: (x: number, y: number, dist?: number) => void; initial?: Exp | null }) {
+type ObsPick = (f: ((s: Stop) => void) | null) => void;
+export function ExperimentMode({ ds, setScene, setLayer, focusOn, initial = null, setObsPick }: { ds: Dataset; setScene: (s: SceneSpec) => void; setLayer: (l: "dose" | "disagree" | "image") => void;
+  focusOn: (x: number, y: number, dist?: number) => void; initial?: Exp | null; setObsPick?: ObsPick }) {
   const [exp, setExp] = useState<Exp | null>(initial);
-  const [revealed, setRevealed] = useState(false);
+  const [revealed, setRevealedRaw] = useState(false);
   const ts = ds.terrainSignal;
-  useEffect(() => { setRevealed(false); }, [exp]);
+  useEffect(() => { setRevealedRaw(false); }, [exp]);
   useEffect(() => { setLayer(exp === "disagree" ? "disagree" : "dose"); }, [exp, setLayer]);
+  // after Reveal, focus moves to the result heading (the Reveal button itself is replaced)
+  const setRevealed = useCallback((v: boolean) => {
+    setRevealedRaw(v);
+    if (v) window.setTimeout(() => document.getElementById("exp-result-h")?.focus(), 60);
+  }, []);
 
   if (!exp || !ts) return (
     <>
@@ -107,7 +72,7 @@ export function ExperimentMode({ ds, setScene, setLayer, focusOn, initial = null
         <p className="sub">{meta.n}</p>
       </div>
       <div className="panel-body">
-        {exp === "terrain" && <TerrainExp ds={ds} revealed={revealed} setRevealed={setRevealed} setScene={setScene} focusOn={focusOn} />}
+        {exp === "terrain" && <TerrainExp ds={ds} revealed={revealed} setRevealed={setRevealed} setScene={setScene} focusOn={focusOn} setObsPick={setObsPick} />}
         {exp === "parking" && <ParkingExp ds={ds} revealed={revealed} setRevealed={setRevealed} setScene={setScene} focusOn={focusOn} />}
         {exp === "disagree" && <DisagreeExp ds={ds} revealed={revealed} setRevealed={setRevealed} setScene={setScene} focusOn={focusOn} />}
       </div>
@@ -115,7 +80,7 @@ export function ExperimentMode({ ds, setScene, setLayer, focusOn, initial = null
   );
 }
 
-type ExpProps = { ds: Dataset; revealed: boolean; setRevealed: (v: boolean) => void; setScene: (s: SceneSpec) => void; focusOn: (x: number, y: number, dist?: number) => void };
+type ExpProps = { ds: Dataset; revealed: boolean; setRevealed: (v: boolean) => void; setScene: (s: SceneSpec) => void; focusOn: (x: number, y: number, dist?: number) => void; setObsPick?: ObsPick };
 const SUBSETS: Record<string, string> = { all: "All 322 stops", nomgn: "Without Maria Gordon Notch (site 92)", nopub: "Without the published Guo et al. periods",
   nostrong: "Without the 5 % strongest modeled terrain anomalies", long: "Stops with at least 2 sols of RAD data" };
 // Units: anomalies are natural-log ratios y (the statistical target); the public view shows the actual change 100*(e^y - 1).
@@ -125,8 +90,12 @@ const pcL = (y: number) => sgn(pctLog(y), 1);
 const pcF = (f: number) => sgn(f * 100, 1);
 const ppD = (a: number, b: number) => sgn(pctLog(a) - pctLog(b), 1);
 
-function TerrainExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps) {
+const RevealBtn = ({ onClick }: { onClick: () => void }) => <button className="btn primary reveal" onClick={onClick}>Reveal Curiosity&apos;s measurements</button>;
+const CalcNote = ({ ms, what }: { ms: number; what: string }) => <p className="muted calc-time">{what} recalculated in your browser in {Math.max(1, Math.round(ms))} ms.</p>;
+
+function TerrainExp({ ds, revealed, setRevealed, setScene, focusOn, setObsPick }: ExpProps) {
   const ts = ds.terrainSignal!;
+  const mobile = useMedia("(max-width: 860px)");
   const [a, setA] = useState<ModelId>("M3");
   const [b, setB] = useState<ModelId>("M0");
   const [subset, setSubset] = useState<"all" | "nomgn" | "nopub" | "nostrong" | "long">("all");
@@ -134,6 +103,7 @@ function TerrainExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps) 
   const [L, setL] = useState(20);
   const [sel, setSel] = useState<string | null>(null);
   const [sort, setSort] = useState<"time" | "residual">("time");
+  const [view, setView] = useState<"time" | "scatter" | "unc">("time");
   const rows = useMemo(() => {
     let r = ts.rows;
     if (subset === "nopub") r = r.filter((q) => !inPublished(ds, q));
@@ -143,6 +113,7 @@ function TerrainExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps) 
     return r;
   }, [ts, subset, ds]);
   const res = useMemo(() => {
+    const t0 = performance.now();
     const cv = crossValidate(rows, [a, b, "M0"], k, ts.window_sols);
     const y = rows.map((q) => q.y_obs);
     const d = dMSE(y, cv.pred[a], cv.pred[b], L);
@@ -153,8 +124,9 @@ function TerrainExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps) 
     const rc = fixed ? corrCI(rows.map((q) => q[fixed] as number), y, L) : null;
     const ds_ = siteDMSE(rows, y, cv.pred[a], cv.pred[b]);
     const rmseA = rmse(y.map((v, i) => v - cv.pred[a][i])) * 100, rmseB = rmse(y.map((v, i) => v - cv.pred[b][i])) * 100;
-    return { cv, y, d, ds: ds_, skillA: skill(a), skillB: skill(b), rmseA, rmseB, sl, rc, coefs: cv.coefs[a],
+    const out = { cv, y, d, ds: ds_, skillA: skill(a), skillB: skill(b), rmseA, rmseB, sl, rc, coefs: cv.coefs[a],
       mseRed: 1 - (rmseA / rmseB) ** 2, rmseRed: 1 - rmseA / rmseB, shares: siteShares(rows, y, cv.pred[a], cv.pred[b]) };
+    return { ...out, ms: performance.now() - t0 };
   }, [rows, a, b, k, L, ts.window_sols]);
   // conservative verdict: both the time-block and the whole-site interval must exclude zero
   const better = res.d.hi < 0 && res.ds.hi < 0, worse = res.d.lo > 0 && res.ds.lo > 0;
@@ -166,12 +138,18 @@ function TerrainExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps) 
     results: { rmseA: res.rmseA, rmseB: res.rmseB, rmseRed: res.rmseRed, mseRed: res.mseRed, skillA: res.skillA, skillB: res.skillB, d: res.d, ds: res.ds,
       shares: res.shares, slope: res.sl, corr: res.rc, verdict: verdict[1] },
     screening: subset === "all" && a === "M3" && b === "M0" && k === 8 ? (ts as unknown as { sep_screening?: { variants: ScreeningRow[] } }).sep_screening?.variants : undefined });
-  // linked selection: a chart dot or table row puts the stop on the terrain
+  // linked selection: a chart point, a table row or one of Curiosity's stops on the terrain selects the same stop everywhere
   const selRow = rows.find((q) => q.rmc === sel) ?? null, selI = selRow ? rows.indexOf(selRow) : -1;
-  const pick = (q: TSRow) => { setSel(q.rmc); focusOn(q.x, q.y, 700); };
+  const pick = useCallback((q: TSRow) => { setSel(q.rmc); focusOn(q.x, q.y, 700); }, [focusOn]);
   useEffect(() => {
     setScene({ pins: selRow ? [{ key: `stop-${selRow.rmc}`, x: selRow.x, y: selRow.y, label: `Sol ${selRow.sol}, stop ${selRow.rmc}`, color: "#e7b37d", size: 5.5, selected: true }] : [], lines: [] });
   }, [selRow, setScene]);
+  useEffect(() => {
+    if (!setObsPick) return;
+    setObsPick((s) => { const q = rows.find((r) => r.sol === s.sol && Math.hypot(r.x - s.x, r.y - s.y) < 3) ?? rows.find((r) => Math.hypot(r.x - s.x, r.y - s.y) < 3); if (q) pick(q); });
+    return () => setObsPick(null);
+  }, [setObsPick, rows, pick]);
+  useEffect(() => { if (!revealed) setView("time"); }, [revealed]);
   const order = useMemo(() => {
     const idx = rows.map((_, i) => i);
     return sort === "time" ? idx : idx.sort((i, j) => Math.abs(rows[j].y_obs - res.cv.pred[a][j]) - Math.abs(rows[i].y_obs - res.cv.pred[a][i]));
@@ -180,39 +158,86 @@ function TerrainExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps) 
   const nameA = MODELS[a].short.toLowerCase(), nameB = MODELS[b].short.toLowerCase();
   const rob = (v: string) => (ts as unknown as { robustness?: { variant: string; rmse_reduction?: { M3: number }; dMSE_vs_M0_site_ci95_pp2?: { M3: [number, number] } }[] }).robustness?.find((r) => r.variant.startsWith(v));
   const x5 = rob("excluding the 5 %"), x10 = rob("excluding the 10 %");
+  const fixed = MODELS[a].fixed;
+  const describe = (i: number) => <><b>Stop {rows[i].rmc}, sol {rows[i].sol}</b><span>{MODELS[a].short}: {pcL(res.cv.pred[a][i])} %</span>{revealed && <span>Measured: {pcL(rows[i].y_obs)} %</span>}</>;
+  const views: ["time" | "scatter" | "unc", string][] = revealed ? [["time", "Over time"], ...(fixed && res.sl ? [["scatter", "Measured against predicted"] as ["scatter", string]] : []), ["unc", "Uncertainty"]] : [["time", "Over time"]];
+
   return (<>
-    <DownloadBar name={`terrain-${a}-vs-${b}-${subset}`} rows={rows.length} csv={() => terrainCSV(input())}
-      pkg={async () => terrainPackage(input(), software(), await datasetId("terrain_signal.json", "science/marsshield/terrain_signal.py", (ts as unknown as { generated_utc?: string }).generated_utc))}
-      note={<>{SUBSETS[subset].toLowerCase()}, {MODELS[a].short.toLowerCase()} against {MODELS[b].short.toLowerCase()}, {k} time blocks</>} />
+    <DockPortal title={`${rows.length} stops: ${revealed ? "measured and " : ""}predicted change`}
+      head={<DownloadBar name={`terrain-${a}-vs-${b}-${subset}`} rows={rows.length} csv={() => terrainCSV(input())}
+        pkg={async () => terrainPackage(input(), software(), await datasetId("terrain_signal.json", "science/marsshield/terrain_signal.py", (ts as unknown as { generated_utc?: string }).generated_utc))}
+        note={<>{SUBSETS[subset].toLowerCase()}, {MODELS[a].short.toLowerCase()} against {MODELS[b].short.toLowerCase()}, {k} time blocks</>} />}>
+      <div className="dock-grid">
+        <div className="dock-main">
+          {views.length > 1 && <Tabs className="subnav dock-tabs" label="Chart" tabs={views} value={view} onChange={setView} />}
+          {view === "time" && <TimeSeriesChart items={rows.map((q) => q.rmc)} x={rows.map((q) => q.mid_sol)} measured={rows.map((q) => pctLog(q.y_obs))}
+            predicted={res.cv.pred[a].map(pctLog)} revealed={revealed} selected={sel} onSelect={(i) => pick(rows[i])} yLabel="change against neighbours, %"
+            describe={describe} predLabel={MODELS[a].short} />}
+          {view === "scatter" && fixed && res.sl && <ScatterChart items={rows.map((q) => q.rmc)} pred={rows.map((q) => pctLog(q[fixed] as number))} meas={rows.map((q) => pctLog(q.y_obs))}
+            slope={res.sl} selected={sel} onSelect={(i) => pick(rows[i])} describe={describe} />}
+          {view === "unc" && <IntervalChart unit="Difference in mean squared error, model minus baseline, pp² (log scale × 100)"
+            rows={[{ label: `Resampling ${res.ds.nSites} Curiosity sites`, mid: res.d.mean, lo: res.ds.lo, hi: res.ds.hi, color: "#e7b37d" },
+              { label: `Resampling blocks of ${L} stops in time`, mid: res.d.mean, lo: res.d.lo, hi: res.d.hi }]}
+            note="Left of zero: the tested model has the smaller error. The verdict needs both bars to stay on one side." />}
+          <p className="muted small dock-cap">{view === "time" ? <>One mark per rover stop: its dose rate against Curiosity&apos;s other stops within ±15 sols, actual % change{revealed ? "; thin lines join prediction and measurement" : ""}. Values beyond the axis sit at its edge.</>
+            : view === "scatter" ? <>One ring per stop; on the dashed line the prediction would be exact. Values beyond the axis sit at its edge.</> : null} Select a stop to show it on the terrain and in the table.</p>
+        </div>
+        <div className="dock-side">
+          {revealed ? (<>
+            <div className="dataset-head"><h3>The data behind this result</h3>
+              <Seg label="Sort stops" value={sort} onChange={setSort} options={[["time", "In time order"], ["residual", "Largest model error"]]} /></div>
+            {selRow && (
+              <div className="sel-card" aria-live="polite">
+                <b>Stop {selRow.rmc}, sol {selRow.sol}</b>
+                <span>{selRow.utc_start.slice(0, 10)}, {selRow.n_obs} RAD records, <M>{selRow.E_mean.toFixed(0)} µGy/day</M>, <M>{selRow.P_mean.toFixed(0)} Pa</M></span>
+                <span>Measured <M>{pcL(selRow.y_obs)} %</M> against its neighbours; {MODELS[a].short.toLowerCase()} <P>{pcL(res.cv.pred[a][selI])} %</P>; {(selRow.B * 100).toFixed(0)} % of the sky blocked (modeled).</span>
+              </div>)}
+            <DataTable rows={order.map((i) => i)} id={(i) => rows[i].rmc} selected={sel} onSelect={(i) => pick(rows[i])} compact={mobile}
+              caption={`${rows.length} stops in the selection; select a row to find it on the terrain`}
+              cols={[
+                { key: "stop", label: "Stop", render: (i) => rows[i].rmc },
+                { key: "sol", label: "Sol", num: true, render: (i) => rows[i].sol },
+                { key: "dose", label: "µGy/day", title: "RAD measured dose rate", num: true, wide: true, render: (i) => <M>{rows[i].E_mean.toFixed(0)}</M> },
+                { key: "p", label: "Pa", title: "REMS pressure", num: true, wide: true, render: (i) => <M>{rows[i].P_mean.toFixed(0)}</M> },
+                { key: "B", label: "Sky blocked", title: "Modeled blocked fraction", num: true, wide: true, render: (i) => <P>{(rows[i].B * 100).toFixed(0)} %</P> },
+                { key: "obs", label: "Measured", title: "Measured change against neighbours, actual %", num: true, render: (i) => <M>{pcL(rows[i].y_obs)}</M> },
+                { key: "pred", label: MODELS[a].short, title: "Predicted change, actual %", num: true, render: (i) => <P>{pcL(res.cv.pred[a][i])}</P> },
+                { key: "res", label: "Error", title: "Measured minus predicted change, percentage points", num: true, render: (i) => ppD(rows[i].y_obs, res.cv.pred[a][i]) },
+                { key: "blk", label: "Block", title: "Held-out time block", num: true, wide: true, render: (i) => res.cv.block[i] },
+              ]} />
+            <p className="muted small">Percentages are actual changes, 100 × (e<sup>y</sup> − 1), of the log anomaly y used in the calculation; errors are percentage-point differences. Measured values are NASA RAD and REMS data aggregated by MarsShield; the downloads add every column and its definition.</p>
+          </>) : <p className="muted dock-wait">The table of measured values appears after you reveal Curiosity&apos;s measurements in the panel.</p>}
+        </div>
+      </div>
+    </DockPortal>
+
     <Step n={1} title="Question">
       <p className="lede">Curiosity&apos;s dose rate rose and fell with the Sun&apos;s cycle and the seasons. Compared with its other stops at about the same time, was a stop&apos;s dose lower where the terrain shields more?</p>
     </Step>
     <Step n={2} title="Prediction">
-      <p className="prose">The {nameA} predicts each stop&apos;s difference from its neighbours in time: the blue dots. {MODELS[a].fit.length ? <>Its coefficients are fitted on other blocks of time and it is scored on the {k} blocks it was not fitted to.</> : <>It has no fitted parameters: it uses only the terrain, so the time blocks matter only for models with fitted coefficients (pressure, rescaled terrain).</>}</p>
-      <Strip rows={rows} pred={res.cv.pred[a]} revealed={revealed} label={MODELS[a].short} selected={sel} onPick={pick} />
+      <p className="prose">The {nameA} predicts each stop&apos;s difference from its neighbours in time: the blue dots in the analysis area. {MODELS[a].fit.length ? <>Its coefficients are fitted on other blocks of time and it is scored on the {k} blocks it was not fitted to.</> : <>It has no fitted parameters: it uses only the terrain, so the time blocks matter only for models with fitted coefficients (pressure, rescaled terrain).</>}</p>
       <More label="Change the test">
-        <div className="row"><span className="muted">Test</span>
-          <select className="sel" value={a} onChange={(e) => { setA(e.target.value as ModelId); setRevealed(false); }}>{opts.map(([m, l]) => <option key={m} value={m}>{l}</option>)}</select>
-          <span className="muted">against</span>
-          <select className="sel" value={b} onChange={(e) => { setB(e.target.value as ModelId); setRevealed(false); }}>{(["M0", "M1", "M2", "M3"] as ModelId[]).filter((m) => m !== a).map((m) => <option key={m} value={m}>{MODELS[m].short}</option>)}</select></div>
+        <div className="row"><label className="muted" htmlFor="exp-a">Test</label>
+          <select id="exp-a" className="sel" value={a} onChange={(e) => { setA(e.target.value as ModelId); setRevealed(false); }}>{opts.map(([m, l]) => <option key={m} value={m}>{l}</option>)}</select>
+          <label className="muted" htmlFor="exp-b">against</label>
+          <select id="exp-b" className="sel" value={b} onChange={(e) => { setB(e.target.value as ModelId); setRevealed(false); }}>{(["M0", "M1", "M2", "M3"] as ModelId[]).filter((m) => m !== a).map((m) => <option key={m} value={m}>{MODELS[m].short}</option>)}</select></div>
         <div className="row"><span className="muted">Stops</span>
           <Seg label="Data subset" value={subset} onChange={(v) => { setSubset(v); setRevealed(false); }} options={[["all", "All"], ["nomgn", "No notch"], ["nopub", "Not published"], ["nostrong", "No extreme"], ["long", "≥ 2 sols"]]} /></div>
         <Slider label="Held-out time blocks" value={k} min={4} max={12} step={1} onChange={setK} fmt={(v) => String(v)} />
         <div className="row"><span className="muted">Bootstrap block length</span><Seg label="Block length" value={L} onChange={setL} options={[[10, "10"], [20, "20"], [40, "40"]]} /></div>
         <p className="muted">Coefficients (pressure, rescaling) are fitted only on training blocks; stops within ±15 sols of a test block are dropped from training because they share background data.</p>
+        <CalcNote ms={res.ms} what="Cross-validation and both bootstraps" />
       </More>
     </Step>
-    {!revealed ? (
-      <button className="btn primary reveal" onClick={() => setRevealed(true)}>Reveal Curiosity&apos;s measurements</button>
-    ) : (<>
+    {!revealed ? <RevealBtn onClick={() => setRevealed(true)} /> : (<>
       <Step n={3} title="NASA observations">
         <p className="prose">White rings: what RAD measured at each of the {rows.length} stops. Most sit within a few percent of their neighbours; a few are 10 to 20 % lower.</p>
       </Step>
-      <Step n={4} title="Result">
+      <Step n={4} title="Result" id="exp-result">
         <Chip kind={verdict[0]}>{verdict[1]}</Chip>
         <p className="verdict-head">The {nameA}&apos;s typical error is <P>{res.rmseA.toFixed(2)}</P> against {res.rmseB.toFixed(2)} for {nameB}: {Math.abs(res.rmseRed * 100).toFixed(1)} % {res.rmseRed >= 0 ? "smaller" : "larger"}.</p>
         <p className="muted">Typical error is the RMSE of the log anomaly × 100, which at these sizes is close to percentage points of dose-rate change. The {Math.abs(res.rmseRed * 100).toFixed(1)} % is a relative reduction of that error, not {Math.abs(res.rmseRed * 100).toFixed(1)} percentage points of radiation.</p>
-        <p className="muted">{rows.length} stops; {verdict[0] === "supported" ? "the improvement holds when whole sites or blocks of time are resampled" : "within the uncertainty from resampling whole sites and blocks of time"}.</p>
+        <p className="muted">{rows.length} stops; {verdict[0] === "supported" ? "the improvement holds when whole sites or blocks of time are resampled" : "within the uncertainty from resampling whole sites and blocks of time"}. The intervals are under Uncertainty in the analysis area.</p>
       </Step>
       <Step n={5} title="Explanation">
         {top && top.share > 0.4 && res.mseRed > 0 && (<>
@@ -228,105 +253,13 @@ function TerrainExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps) 
         <More label="Uncertainty and statistics">
           <p className="prose">Mean squared error {sgn(-res.mseRed * 100, 1)} % ({sgn(res.d.mean, 2)} pp²). 95 % interval resampling whole Curiosity sites ({res.ds.nSites}): {sgn(res.ds.lo, 2)} to {sgn(res.ds.hi, 2)};
             resampling blocks of {L} stops in time: {sgn(res.d.lo, 2)} to {sgn(res.d.hi, 2)}. The verdict needs both intervals to exclude zero.</p>
-          {res.sl && res.rc && (<>
-            <Scatter x={rows.map((q) => q[MODELS[a].fixed!] as number)} y={res.y} slope={res.sl.slope} />
-            <p className="prose">Measured anomalies are <b>{res.sl.slope.toFixed(2)}×</b> the {nameA} prediction (95 % CI {res.sl.lo.toFixed(2)} to {res.sl.hi.toFixed(2)}; 1 = calibrated).
-              Correlation r = {res.rc.r.toFixed(2)} ({res.rc.lo.toFixed(2)} to {res.rc.hi.toFixed(2)}).</p>
-          </>)}
+          {res.sl && res.rc && (
+            <p className="prose">Measured anomalies are <b>{res.sl.slope.toFixed(2)}×</b> the {nameA} prediction on the log scale (95 % CI {res.sl.lo.toFixed(2)} to {res.sl.hi.toFixed(2)}; 1 = calibrated).
+              Correlation r = {res.rc.r.toFixed(2)} ({res.rc.lo.toFixed(2)} to {res.rc.hi.toFixed(2)}). The scatter plot is under Measured against predicted in the analysis area.</p>)}
           <p className="prose">Pressure: at this stop-level design, pressure differences between a stop and its neighbourhood are only a few pascals (spread {ts.predictor_spread_pp.pressure_term.toFixed(2)} pp of dose), so pressure control barely changes predictions. That does not mean pressure is unimportant: it drives the daily dose cycle (Guo et al. 2015).</p>
           <p className="prose">Two solar particle events fall inside the stops: 10–13 September 2017 and 28–29 October 2021 (detected in the RAD records).
             The reference result keeps every record, a choice made before this check (the analysis was not pre-registered). Removing the event records is a sensitivity analysis in Evidence → RAD + pressure analysis.</p>
         </More>
-      </Step>
-      <section className="dataset" aria-label="The data behind this result">
-        <div className="dataset-head"><h3>The data behind this result</h3>
-          <Seg label="Sort stops" value={sort} onChange={setSort} options={[["time", "In time order"], ["residual", "Largest model error"]]} /></div>
-        {selRow && (
-          <div className="sel-card" aria-live="polite">
-            <b>Stop {selRow.rmc}, sol {selRow.sol}</b>
-            <span>{selRow.utc_start.slice(0, 10)}, {selRow.n_obs} RAD records, <M>{selRow.E_mean.toFixed(0)} µGy/day</M>, <M>{selRow.P_mean.toFixed(0)} Pa</M></span>
-            <span>Measured <M>{pcL(selRow.y_obs)} %</M> against its neighbours; {MODELS[a].short.toLowerCase()} <P>{pcL(res.cv.pred[a][selI])} %</P>; {(selRow.B * 100).toFixed(0)} % of the sky blocked (modeled).</span>
-          </div>)}
-        <DataTable rows={order.map((i) => i)} id={(i) => rows[i].rmc} selected={sel} onSelect={(i) => pick(rows[i])}
-          caption={`${rows.length} stops in the selection; select a row to find it on the terrain`}
-          cols={[
-            { key: "stop", label: "Stop", render: (i) => rows[i].rmc },
-            { key: "sol", label: "Sol", num: true, render: (i) => rows[i].sol },
-            { key: "dose", label: "µGy/day", title: "RAD measured dose rate", num: true, wide: true, render: (i) => <M>{rows[i].E_mean.toFixed(0)}</M> },
-            { key: "p", label: "Pa", title: "REMS pressure", num: true, wide: true, render: (i) => <M>{rows[i].P_mean.toFixed(0)}</M> },
-            { key: "B", label: "Sky blocked", title: "Modeled blocked fraction", num: true, wide: true, render: (i) => <P>{(rows[i].B * 100).toFixed(0)} %</P> },
-            { key: "obs", label: "Measured", title: "Measured change against neighbours, actual %", num: true, render: (i) => <M>{pcL(rows[i].y_obs)}</M> },
-            { key: "pred", label: MODELS[a].short, title: "Predicted change, actual %", num: true, render: (i) => <P>{pcL(res.cv.pred[a][i])}</P> },
-            { key: "res", label: "Error", title: "Measured minus predicted change, percentage points", num: true, render: (i) => ppD(rows[i].y_obs, res.cv.pred[a][i]) },
-            { key: "blk", label: "Block", title: "Held-out time block", num: true, wide: true, render: (i) => res.cv.block[i] },
-          ]} />
-        <p className="muted">Percentages are actual changes, 100 × (e<sup>y</sup> − 1), of the log anomaly y used in the calculation; errors are percentage-point differences. Measured values are NASA RAD and REMS data aggregated by MarsShield; the downloads add every column and its definition.</p>
-      </section>
-    </>)}
-  </>);
-}
-
-function ParkingExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps) {
-  const ex = ds.parking;
-  const [alpha, setAlpha] = useState(ex.alpha_prior);
-  const [p6alt, setP6alt] = useState(false);
-  const rows = useMemo(() => parkingPredictions(ex, alpha, p6alt), [ex, alpha, p6alt]);
-  const v = useMemo(() => parkingVerdict(rows), [rows]);
-  const [sel, setSel] = useState<string | null>(null);
-  useEffect(() => {
-    setScene({ pins: rows.map((r) => ({ key: r.parking, x: r.x, y: r.y, label: r.parking, color: r.parking === sel ? "#e7b37d" : "#efe6d8", selected: r.parking === sel, size: r.parking === sel ? 5.5 : 4 })), lines: [] });
-  }, [rows, setScene, sel]);
-  const pickP = (id: string) => { const r = rows.find((q) => q.parking === id); if (r) { setSel(id); focusOn(r.x, r.y, 600); } };
-  const pin = { ex, alpha, p6alt, rows, verdict: v };
-  const name: Record<string, string> = { albedo: "Physical model (sky + rock re-emission)", sky: "Sky shielding only", proportional: "Proportional rule" };
-  const best = [...v.summary].sort((p, q) => p.mae - q.mae);
-  return (<>
-    <DownloadBar name={`parking-albedo${Math.round(alpha * 100)}${p6alt ? "-p6sec4" : ""}`} rows={rows.length} csv={() => parkingCSV(pin)}
-      pkg={async () => parkingPackage(pin, software(), await datasetId("experiment_parking.json", "science/marsshield/pipeline.py (export_experiments)"))}
-      note={<>albedo share {Math.round(alpha * 100)} %{p6alt ? ", P6 at the paper's 17 %" : ""}</>} />
-    <Step n={1} title="Question">
-      <p className="lede">Eight times, Curiosity parked beside a butte, hill or cliff, and RAD recorded the dose dropping. Which explanation predicts those drops?</p>
-    </Step>
-    <Step n={2} title="Prediction">
-      <ul className="models">
-        <li><i style={{ background: PARK_COLORS.proportional }} /><b>Proportional rule.</b> Dose falls with the share of sky blocked.</li>
-        <li><i style={{ background: PARK_COLORS.sky }} /><b>Sky only.</b> Remove the radiation from the blocked directions.</li>
-        <li><i style={{ background: PARK_COLORS.albedo }} /><b>Physical model.</b> Also add radiation re-emitted by the blocking rock (Guo et al. 2026).</li>
-      </ul>
-      <ParkingDots rows={rows} revealed={revealed} selected={sel} onPick={pickP} />
-      <More label="Change the assumptions">
-        <Slider label={<>Rock re-emission (albedo share of flat-ground dose)</>} value={alpha} min={0.18} max={0.24} step={0.01} onChange={(x) => { setAlpha(x); }} fmt={(x) => `${Math.round(x * 100)} %`} />
-        <label className="check"><input type="checkbox" checked={p6alt} onChange={(e) => setP6alt(e.target.checked)} />Use the paper&apos;s Section 4 value for P6 (17 %) instead of Table 1 and NASA data (19.4 %)</label>
-      </More>
-    </Step>
-    {!revealed ? <button className="btn primary reveal" onClick={() => setRevealed(true)}>Reveal Curiosity&apos;s measurements</button> : (<>
-      <Step n={3} title="NASA observations">
-        <p className="prose">White rings: the drops RAD measured, from {Math.min(...rows.map((r) => -r.measured * 100)).toFixed(1)} to {Math.max(...rows.map((r) => -r.measured * 100)).toFixed(1)} %.</p>
-      </Step>
-      <Step n={4} title="Result">
-        <Chip kind={v.verdict.startsWith("cannot") ? "inconclusive" : "supported"}>{v.verdict.startsWith("cannot") ? "Cannot tell them apart" : v.verdict}</Chip>
-        <p className="verdict-head">On average the predictions miss by {best.map((q, i) => <span key={q.model}>{i ? (i === best.length - 1 ? " and " : ", ") : ""}<P>{q.mae.toFixed(1)}</P> points ({name[q.model].split(" (")[0].toLowerCase()})</span>)}.</p>
-        <p className="muted">Close averages; with eight periods at five places the differences are within the uncertainty.</p>
-      </Step>
-      <Step n={5} title="Explanation">
-        <p className="prose">The models trade places from spot to spot. At Maria Gordon Notch (P6) the physical model predicted half the measured drop; at P8 our terrain geometry blocks more sky than the published analysis. Eight periods at five places cannot rank them.</p>
-        <More label="Uncertainty and statistics">
-          <table className="data">
-            <thead><tr><th>Model</th><th>Mean error</th><th>RMSE</th><th>Closest at</th></tr></thead>
-            <tbody>{v.summary.map((q) => <tr key={q.model}><td>{name[q.model]}</td><td>{q.mae.toFixed(2)} pp</td><td>{q.rmse.toFixed(2)} pp</td><td>{q.wins} of 8</td></tr>)}</tbody>
-          </table>
-          <p className="prose">RMSE difference, physical model minus proportional rule: {sgn(v.dRMSE.mean, 2)} pp (95 % interval {sgn(v.dRMSE.lo, 2)} to {sgn(v.dRMSE.hi, 2)}, resampling the {v.clusters} sites, because periods at one site are not independent).</p>
-        </More>
-        <DataTable rows={rows} id={(r) => r.parking} selected={sel} onSelect={(r) => pickP(r.parking)} caption="Eight parking periods; select a row to find it on the terrain"
-          cols={[
-            { key: "p", label: "Period", render: (r) => r.parking },
-            { key: "site", label: "Site", render: (r) => r.site },
-            { key: "m", label: "Measured", num: true, render: (r) => <M>{pcF(r.measured)}</M> },
-            { key: "a", label: "Physical", num: true, render: (r) => <P>{pcF(r.albedo)}</P> },
-            { key: "s", label: "Sky only", num: true, wide: true, render: (r) => <P>{pcF(r.sky)}</P> },
-            { key: "r", label: "Rule", num: true, render: (r) => <P>{pcF(r.proportional)}</P> },
-            { key: "dB", label: "Δ sky blocked (pts)", num: true, wide: true, render: (r) => <P>{pcF(r.dB)}</P> },
-          ]} />
       </Step>
     </>)}
   </>);
@@ -334,46 +267,126 @@ function ParkingExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps) 
 
 const PARK_COLORS = { albedo: "#3987e5", sky: "#d95926", proportional: "#199e70" } as const;
 
-/** Predicted (filled) and measured (ring) dose change at each parking period. */
-function ParkingDots({ rows, revealed, selected, onPick }: { rows: ReturnType<typeof parkingPredictions>; revealed: boolean; selected?: string | null; onPick?: (id: string) => void }) {
-  const W = 380, rowH = 28, top = 6, pl = 96, pr = 10, lo = -30, hi = 2, H = top + rows.length * rowH + 22;
-  const x = (v: number) => pl + ((Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo)) * (W - pl - pr);
-  return (
-    <figure style={{ margin: 0 }}>
-      <svg viewBox={`0 0 ${W} ${H}`} className="chart" role="img" aria-label="Predicted and measured dose change at each parking period">
-        <g className="grid">{[-30, -20, -10, 0].map((t) => <line key={t} x1={x(t)} x2={x(t)} y1={top} y2={H - 20} />)}</g>
-        <line x1={x(0)} x2={x(0)} y1={top} y2={H - 20} stroke="rgba(239,230,216,0.35)" />
-        {rows.map((r, i) => {
-          const cy = top + i * rowH + rowH / 2;
-          return (
-            <g key={r.pair} style={{ cursor: onPick ? "pointer" : undefined }} onClick={() => onPick?.(r.parking)}>
-              <rect x={0} y={cy - rowH / 2} width={W} height={rowH} fill={r.parking === selected ? "rgba(231,179,125,0.10)" : "transparent"} />
-              <text x={pl - 8} y={cy} textAnchor="end" className="lbl" style={{ fontWeight: 600 }}>{r.parking}</text>
-              <text x={pl - 8} y={cy + 11} textAnchor="end" style={{ fontSize: 9.5 }}>{r.site.replace("Maria Gordon Notch", "M. Gordon Notch")}</text>
-              {(["proportional", "sky", "albedo"] as const).map((k) => <circle key={k} cx={x(r[k] * 100)} cy={cy + 1} r={4.2} fill={PARK_COLORS[k]} stroke="#1d1814" strokeWidth={1.5} />)}
-              {revealed && <circle cx={x(r.measured * 100)} cy={cy + 1} r={6.5} fill="none" stroke="#f6f1e7" strokeWidth={2} />}
-            </g>
-          );
-        })}
-        {[-30, -20, -10, 0].map((t) => <text key={t} x={x(t)} y={H - 6} textAnchor="middle">{t} %</text>)}
-      </svg>
-      <figcaption className="muted">Change in dose rate against a nearby background position. Further left means more shielding.</figcaption>
-    </figure>
-  );
+function ParkingExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps) {
+  const ex = ds.parking;
+  const mobile = useMedia("(max-width: 860px)");
+  const [alpha, setAlpha] = useState(ex.alpha_prior);
+  const [p6alt, setP6alt] = useState(false);
+  const [view, setView] = useState<"rows" | "unc">("rows");
+  const calc = useMemo(() => { const t0 = performance.now(); const rows = parkingPredictions(ex, alpha, p6alt); const v = parkingVerdict(rows); return { rows, v, ms: performance.now() - t0 }; }, [ex, alpha, p6alt]);
+  const { rows, v } = calc;
+  const [sel, setSel] = useState<string | null>(null);
+  const pickP = useCallback((id: string) => { const r = rows.find((q) => q.parking === id); if (r) { setSel(id); focusOn(r.x, r.y, 600); } }, [rows, focusOn]);
+  // the selected period shows its parking position, its background position and the line between them
+  useEffect(() => {
+    const pins: SceneSpec["pins"] = rows.map((r) => ({ key: r.parking, x: r.x, y: r.y, label: r.parking, color: r.parking === sel ? "#e7b37d" : "#efe6d8",
+      selected: r.parking === sel, size: r.parking === sel ? 5.5 : 4, onClick: () => pickP(r.parking) }));
+    const lines: SceneSpec["lines"] = [];
+    const sr = rows.find((r) => r.parking === sel);
+    if (sr) {
+      const g = ex.periods[sr.pair.split("/")[1]];
+      pins!.push({ key: `bg-${sr.pair}`, x: g.x, y: g.y, label: `${sr.pair.split("/")[1]} (background)`, color: "#b9ab97", size: 4 });
+      lines.push({ key: `pair-${sr.pair}`, xy: [[sr.x, sr.y], [g.x, g.y]], color: "#e7b37d", width: 2, dashed: true });
+    }
+    setScene({ pins, lines });
+  }, [rows, setScene, sel, ex, pickP]);
+  useEffect(() => { if (!revealed) setView("rows"); }, [revealed]);
+  const pin = { ex, alpha, p6alt, rows, verdict: v };
+  const name: Record<string, string> = { albedo: "Physical model (sky + rock re-emission)", sky: "Sky shielding only", proportional: "Proportional rule" };
+  const best = [...v.summary].sort((p, q) => p.mae - q.mae);
+  const series = [...(revealed ? [{ key: "measured", label: "Curiosity RAD (measured)", shape: "ring" as const, color: "#f6f1e7" }] : []),
+    { key: "albedo", label: "Physical model", shape: "circle" as const, color: PARK_COLORS.albedo },
+    { key: "sky", label: "Sky only", shape: "triangle" as const, color: PARK_COLORS.sky },
+    { key: "proportional", label: "Proportional rule", shape: "square" as const, color: PARK_COLORS.proportional }];
+  return (<>
+    <DockPortal title={`Eight parking periods: ${revealed ? "measured and " : ""}predicted change`}
+      head={<DownloadBar name={`parking-albedo${Math.round(alpha * 100)}${p6alt ? "-p6sec4" : ""}`} rows={rows.length} csv={() => parkingCSV(pin)}
+        pkg={async () => parkingPackage(pin, software(), await datasetId("experiment_parking.json", "science/marsshield/pipeline.py (export_experiments)"))}
+        note={<>albedo share {Math.round(alpha * 100)} %{p6alt ? ", P6 at the paper's 17 %" : ""}</>} />}>
+      <div className="dock-grid">
+        <div className="dock-main">
+          {revealed && <Tabs className="subnav dock-tabs" label="Chart" tabs={[["rows", "By period"], ["unc", "Uncertainty"]]} value={view} onChange={setView} />}
+          {view === "rows" && <DotRowsChart unit="Change in dose rate against the background position" series={series} selected={sel} onSelect={pickP} lo={-30} hi={4}
+            rows={rows.map((r) => ({ id: r.parking, label: r.parking, sub: r.site.replace("Maria Gordon Notch", "M. Gordon Notch"),
+              values: { measured: revealed ? r.measured * 100 : null, albedo: r.albedo * 100, sky: r.sky * 100, proportional: r.proportional * 100 } }))} />}
+          {view === "unc" && <IntervalChart unit="RMSE difference, physical model minus proportional rule, percentage points"
+            rows={[{ label: `Resampling the ${v.clusters} sites`, mid: v.dRMSE.mean, lo: v.dRMSE.lo, hi: v.dRMSE.hi, color: "#e7b37d" }]}
+            note="Left of zero would favour the physical model, right of zero the rule." />}
+          <p className="muted small dock-cap">Further left means more shielding. Shapes as well as colours distinguish the models; the ring is the measurement. Select a period to show its parking and background positions on the terrain.</p>
+        </div>
+        <div className="dock-side">
+          {revealed ? (<>
+            <div className="dataset-head"><h3>The data behind this result</h3></div>
+            <DataTable rows={rows} id={(r) => r.parking} selected={sel} onSelect={(r) => pickP(r.parking)} compact={mobile} caption="Eight parking periods; select a row to find it on the terrain"
+              cols={[
+                { key: "p", label: "Period", render: (r) => r.parking },
+                { key: "site", label: "Site", wide: true, render: (r) => r.site },
+                { key: "m", label: "Measured", num: true, render: (r) => <M>{pcF(r.measured)}</M> },
+                { key: "a", label: "Physical", num: true, render: (r) => <P>{pcF(r.albedo)}</P> },
+                { key: "s", label: "Sky only", num: true, render: (r) => <P>{pcF(r.sky)}</P> },
+                { key: "r", label: "Rule", num: true, render: (r) => <P>{pcF(r.proportional)}</P> },
+                { key: "dB", label: "Δ sky blocked (pts)", num: true, wide: true, render: (r) => <P>{pcF(r.dB)}</P> },
+              ]} />
+            <table className="data">
+              <thead><tr><th>Model</th><th>Mean error</th><th>RMSE</th><th>Closest at</th></tr></thead>
+              <tbody>{v.summary.map((q) => <tr key={q.model}><td>{name[q.model]}</td><td>{q.mae.toFixed(2)} pp</td><td>{q.rmse.toFixed(2)} pp</td><td>{q.wins} of 8</td></tr>)}</tbody>
+            </table>
+          </>) : <p className="muted dock-wait">The table of measured values appears after you reveal Curiosity&apos;s measurements in the panel.</p>}
+        </div>
+      </div>
+    </DockPortal>
+
+    <Step n={1} title="Question">
+      <p className="lede">Eight times, Curiosity parked beside a butte, hill or cliff, and RAD recorded the dose dropping. Which explanation predicts those drops?</p>
+    </Step>
+    <Step n={2} title="Prediction">
+      <ul className="models">
+        <li><i style={{ background: PARK_COLORS.proportional, borderRadius: 1 }} /><b>Proportional rule</b> (square). Dose falls with the share of sky blocked.</li>
+        <li><i style={{ background: PARK_COLORS.sky, clipPath: "polygon(50% 0, 100% 100%, 0 100%)", borderRadius: 0 }} /><b>Sky only</b> (triangle). Remove the radiation from the blocked directions.</li>
+        <li><i style={{ background: PARK_COLORS.albedo }} /><b>Physical model</b> (circle). Also add radiation re-emitted by the blocking rock (Guo et al. 2026).</li>
+      </ul>
+      <p className="prose">Their predictions for each period are in the analysis area.</p>
+      <More label="Change the assumptions">
+        <Slider label={<>Rock re-emission (albedo share of flat-ground dose)</>} value={alpha} min={0.18} max={0.24} step={0.01} onChange={(x) => { setAlpha(x); }} fmt={(x) => `${Math.round(x * 100)} %`} />
+        <label className="check"><input type="checkbox" checked={p6alt} onChange={(e) => setP6alt(e.target.checked)} />Use the paper&apos;s Section 4 value for P6 (17 %) instead of Table 1 and NASA data (19.4 %)</label>
+        <CalcNote ms={calc.ms} what="Predictions and the site bootstrap" />
+      </More>
+    </Step>
+    {!revealed ? <RevealBtn onClick={() => setRevealed(true)} /> : (<>
+      <Step n={3} title="NASA observations">
+        <p className="prose">White rings: the drops RAD measured, from {Math.min(...rows.map((r) => -r.measured * 100)).toFixed(1)} to {Math.max(...rows.map((r) => -r.measured * 100)).toFixed(1)} %.</p>
+      </Step>
+      <Step n={4} title="Result" id="exp-result">
+        <Chip kind={v.verdict.startsWith("cannot") ? "inconclusive" : "supported"}>{v.verdict.startsWith("cannot") ? "Cannot tell them apart" : v.verdict}</Chip>
+        <p className="verdict-head">On average the predictions miss by {best.map((q, i) => <span key={q.model}>{i ? (i === best.length - 1 ? " and " : ", ") : ""}<P>{q.mae.toFixed(1)}</P> points ({name[q.model].split(" (")[0].toLowerCase()})</span>)}.</p>
+        <p className="muted">Close averages; with eight periods at five places the differences are within the uncertainty.</p>
+      </Step>
+      <Step n={5} title="Explanation">
+        <p className="prose">The models trade places from spot to spot. At Maria Gordon Notch (P6) the physical model predicted half the measured drop; at P8 our terrain geometry blocks more sky than the published analysis. Eight periods at five places cannot rank them.</p>
+        <More label="Uncertainty and statistics">
+          <p className="prose">RMSE difference, physical model minus proportional rule: {sgn(v.dRMSE.mean, 2)} pp (95 % interval {sgn(v.dRMSE.lo, 2)} to {sgn(v.dRMSE.hi, 2)}, resampling the {v.clusters} sites, because periods at one site are not independent).</p>
+        </More>
+      </Step>
+    </>)}
+  </>);
 }
 
 function DisagreeExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps) {
   const ts = ds.terrainSignal!;
+  const mobile = useMedia("(max-width: 860px)");
   const [n, setN] = useState(20);
+  const [view, setView] = useState<"rows" | "unc">("rows");
   const ranked = useMemo(() => [...ts.rows].sort((p, q) => Math.abs(q.m_terrain - q.g_proxy) - Math.abs(p.m_terrain - p.g_proxy)), [ts]);
-  const top = ranked.slice(0, n);
+  const top = useMemo(() => ranked.slice(0, n), [ranked, n]);
   const [sel, setSel] = useState<string | null>(null);
+  const pickD = useCallback((r: TSRow) => { setSel(r.rmc); focusOn(r.x, r.y, 700); }, [focusOn]);
   useEffect(() => {
-    setScene({ pins: top.map((r) => ({ key: `d${r.rmc}`, x: r.x, y: r.y, color: r.rmc === sel ? "#e7b37d" : "#d0904f", size: r.rmc === sel ? 5 : 2.4,
-      selected: r.rmc === sel, label: r.rmc === sel ? `Sol ${r.sol}` : undefined })), lines: [] });
-  }, [top, setScene, sel]);
-  const pickD = (r: TSRow) => { setSel(r.rmc); focusOn(r.x, r.y, 700); };
+    setScene({ pins: top.map((r) => ({ key: `d${r.rmc}`, x: r.x, y: r.y, color: r.rmc === sel ? "#e7b37d" : "#d0904f", size: r.rmc === sel ? 5 : 2.6,
+      selected: r.rmc === sel, label: r.rmc === sel ? `Sol ${r.sol}` : undefined, onClick: () => pickD(r) })), lines: [] });
+  }, [top, setScene, sel, pickD]);
+  useEffect(() => { if (!revealed) setView("rows"); }, [revealed]);
   const res = useMemo(() => {
+    const t0 = performance.now();
     const site = top.map((r) => r.rmc.split("_")[0]), sites = [...new Set(site)];
     const em = top.map((r) => r.y_obs - r.m_terrain), eg = top.map((r) => r.y_obs - r.g_proxy);
     const R = rng(29), bs: number[] = [];
@@ -383,15 +396,50 @@ function DisagreeExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps)
       bs.push((rmse(idx.map((i) => em[i])) - rmse(idx.map((i) => eg[i]))) * 100);
     }
     const perSite = sites.filter((s) => rmse(em.filter((_, i) => site[i] === s)) < rmse(eg.filter((_, i) => site[i] === s))).length;
-    return { d: (rmse(em) - rmse(eg)) * 100, lo: pct(bs, 0.025), hi: pct(bs, 0.975), stops: em.filter((e, i) => Math.abs(e) < Math.abs(eg[i])).length, sites: sites.length, perSite };
+    return { d: (rmse(em) - rmse(eg)) * 100, lo: pct(bs, 0.025), hi: pct(bs, 0.975), stops: em.filter((e, i) => Math.abs(e) < Math.abs(eg[i])).length, sites: sites.length, perSite,
+      ms: performance.now() - t0 };
   }, [top]);
   const cal = (ts as unknown as { calibration: Record<string, { slope: number; ci95_site_cluster: [number, number] }> }).calibration;
   const decisive = res.hi < 0 || res.lo > 0;
-  const din = { top, n, pub: (q: TSRow) => inPublished(ds, q), result: res, calibration: cal };
+  const { ms: _ms, ...resOut } = res;   // the timing is shown, not exported
+  void _ms;
+  const din = { top, n, pub: (q: TSRow) => inPublished(ds, q), result: resOut, calibration: cal };
+  const series = [...(revealed ? [{ key: "obs", label: "Curiosity RAD (measured)", shape: "ring" as const, color: "#f6f1e7" }] : []),
+    { key: "m", label: "Physical model", shape: "circle" as const, color: PARK_COLORS.albedo },
+    { key: "g", label: "Blocked-sky rule", shape: "square" as const, color: PARK_COLORS.proportional }];
   return (<>
-    <DownloadBar name={`disagreement-top${n}`} rows={top.length} csv={() => disagreeCSV(din)}
-      pkg={async () => disagreePackage(din, software(), await datasetId("terrain_signal.json", "science/marsshield/terrain_signal.py", (ts as unknown as { generated_utc?: string }).generated_utc))}
-      note={<>the {n} stops with the largest model disagreement</>} />
+    <DockPortal title={`The ${n} stops where the models disagree most`}
+      head={<DownloadBar name={`disagreement-top${n}`} rows={top.length} csv={() => disagreeCSV(din)}
+        pkg={async () => disagreePackage(din, software(), await datasetId("terrain_signal.json", "science/marsshield/terrain_signal.py", (ts as unknown as { generated_utc?: string }).generated_utc))}
+        note={<>the {n} stops with the largest model disagreement</>} />}>
+      <div className="dock-grid">
+        <div className="dock-main">
+          {revealed && <Tabs className="subnav dock-tabs" label="Chart" tabs={[["rows", "By stop"], ["unc", "Uncertainty"]]} value={view} onChange={setView} />}
+          {view === "rows" && <DotRowsChart unit="Change against neighbours" series={series} selected={sel} onSelect={(id) => { const r = top.find((q) => q.rmc === id); if (r) pickD(r); }}
+            rows={top.map((r) => ({ id: r.rmc, label: `${r.rmc}`, sub: `sol ${r.sol}`, values: { obs: revealed ? pctLog(r.y_obs) : null, m: pctLog(r.m_terrain), g: pctLog(r.g_proxy) } }))} />}
+          {view === "unc" && <IntervalChart unit="RMSE difference, physical model minus rule, percentage points (log scale × 100)"
+            rows={[{ label: `Resampling the ${res.sites} Curiosity sites`, mid: res.d, lo: res.lo, hi: res.hi, color: "#e7b37d" }]}
+            note="Left of zero would favour the physical model." />}
+          <p className="muted small dock-cap">Ranked by how far the two models disagree, chosen from the models alone. Select a stop to show it on the terrain and in the table.</p>
+        </div>
+        <div className="dock-side">
+          {revealed ? (<>
+            <div className="dataset-head"><h3>The data behind this result</h3></div>
+            <DataTable rows={top} id={(r) => r.rmc} selected={sel} onSelect={pickD} compact={mobile} caption={`The ${n} stops with the largest disagreement; select a row to find it on the terrain`}
+              cols={[
+                { key: "rank", label: "#", num: true, render: (r) => top.indexOf(r) + 1 },
+                { key: "stop", label: "Stop", render: (r) => r.rmc },
+                { key: "sol", label: "Sol", num: true, wide: true, render: (r) => r.sol },
+                { key: "obs", label: "Measured", num: true, render: (r) => <M>{pcL(r.y_obs)}</M> },
+                { key: "m", label: "Physical", num: true, render: (r) => <P>{pcL(r.m_terrain)}</P> },
+                { key: "g", label: "Rule", num: true, render: (r) => <P>{pcL(r.g_proxy)}</P> },
+                { key: "c", label: "Closer", render: (r) => (Math.abs(r.y_obs - r.m_terrain) < Math.abs(r.y_obs - r.g_proxy) ? "physical" : "rule") },
+              ]} />
+          </>) : <p className="muted dock-wait">The table of measured values appears after you reveal Curiosity&apos;s measurements in the panel.</p>}
+        </div>
+      </div>
+    </DockPortal>
+
     <Step n={1} title="Question">
       <p className="lede">The physical model and the blocked-sky rule mostly agree. Where they disagree, a measurement can tell them apart. Did Curiosity stop at such places, and which model did its measurements favour?</p>
     </Step>
@@ -399,8 +447,9 @@ function DisagreeExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps)
       <p className="prose">The map shows where the models disagree: brighter ground means the physical model predicts relatively more dose there than the rule. The {n} Curiosity stops with the largest disagreement are marked in gold, chosen from the models alone.</p>
       <Slider label="Stops with the largest disagreement" value={n} min={10} max={60} step={5} onChange={(q) => { setN(q); setRevealed(false); }} fmt={(q) => String(q)} />
       <p className="muted">{res.sites} Curiosity sites; disagreement at least {(Math.abs(top[top.length - 1].m_terrain - top[top.length - 1].g_proxy) * 100).toFixed(1)} points.</p>
+      <CalcNote ms={res.ms} what="The site bootstrap" />
     </Step>
-    {!revealed ? <button className="btn primary reveal" onClick={() => setRevealed(true)}>Reveal Curiosity&apos;s measurements</button> : (<>
+    {!revealed ? <RevealBtn onClick={() => setRevealed(true)} /> : (<>
       <Step n={3} title="NASA observations">
         <div className="stats">
           <div><b>{res.stops} / {n}</b><span>stops where the physical model was closer</span></div>
@@ -408,7 +457,7 @@ function DisagreeExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps)
           <div><b>{sgn(res.d, 2)}</b><span>points of error, physical minus rule</span></div>
         </div>
       </Step>
-      <Step n={4} title="Result">
+      <Step n={4} title="Result" id="exp-result">
         <Chip kind={res.hi < 0 ? "supported" : res.lo > 0 ? "against" : "inconclusive"}>{res.hi < 0 ? "Favours the physical model" : res.lo > 0 ? "Favours the rule" : "Cannot tell them apart"}</Chip>
         <p className="verdict-head">The physical model was closer at {res.stops} of {n} stops, but they come from {res.sites} places, and place by place it was closer at {res.perSite}. {decisive ? "That is decisive." : "That is not decisive."}</p>
       </Step>
@@ -420,16 +469,6 @@ function DisagreeExp({ ds, revealed, setRevealed, setScene, focusOn }: ExpProps)
           <p className="prose">RMSE difference, physical model minus rule: {sgn(res.d, 2)} pp; 95 % interval {sgn(res.lo, 2)} to {sgn(res.hi, 2)} pp, resampling whole Curiosity sites.</p>
           {cal && <p className="prose">Calibration slopes with site-cluster 95 % intervals: rule {cal.sky_proxy.ci95_site_cluster[0].toFixed(2)} to {cal.sky_proxy.ci95_site_cluster[1].toFixed(2)}; physical model {cal.terrain_model.ci95_site_cluster[0].toFixed(2)} to {cal.terrain_model.ci95_site_cluster[1].toFixed(2)}.</p>}
         </More>
-        <DataTable rows={top} id={(r) => r.rmc} selected={sel} onSelect={pickD} caption={`The ${n} stops with the largest disagreement; select a row to find it on the terrain`}
-          cols={[
-            { key: "rank", label: "#", num: true, render: (r) => top.indexOf(r) + 1 },
-            { key: "stop", label: "Stop", render: (r) => r.rmc },
-            { key: "sol", label: "Sol", num: true, wide: true, render: (r) => r.sol },
-            { key: "obs", label: "Measured", num: true, render: (r) => <M>{pcL(r.y_obs)}</M> },
-            { key: "m", label: "Physical", num: true, render: (r) => <P>{pcL(r.m_terrain)}</P> },
-            { key: "g", label: "Rule", num: true, render: (r) => <P>{pcL(r.g_proxy)}</P> },
-            { key: "c", label: "Closer", render: (r) => (Math.abs(r.y_obs - r.m_terrain) < Math.abs(r.y_obs - r.g_proxy) ? "physical" : "rule") },
-          ]} />
       </Step>
     </>)}
   </>);

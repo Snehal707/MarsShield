@@ -1,6 +1,7 @@
 "use client";
 // Shared research tools for the experiments: downloads (CSV and research package) and a data table linked to the terrain.
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useScrollRowIntoView } from "./ResearchCharts";
 import { BASE } from "@/lib/data";
 import { packageZip, type DatasetId, type Software } from "@/lib/exports";
 
@@ -49,21 +50,41 @@ export function DownloadBar({ name, rows, csv, pkg, note }: { name: string; rows
 }
 
 export type ColSpec<R> = { key: string; label: string; title?: string; render: (r: R) => ReactNode; num?: boolean; wide?: boolean };
-/** A compact table whose rows select an item (and so a place on the terrain). Wide-only columns appear in the expanded view. */
-export function DataTable<R>({ rows, cols, id, selected, onSelect, caption }: {
-  rows: R[]; cols: ColSpec<R>[]; id: (r: R) => string; selected: string | null; onSelect: (r: R) => void; caption: string;
+/** A data grid whose rows select an item (and so a place on the terrain and in the chart). One tab stop: arrow keys move
+ *  between rows, Home/End jump, Enter or Space selects. On phones the first 25 rows show, with "Show more". */
+export function DataTable<R>({ rows, cols, id, selected, onSelect, caption, compact = false }: {
+  rows: R[]; cols: ColSpec<R>[]; id: (r: R) => string; selected: string | null; onSelect: (r: R) => void; caption: string; compact?: boolean;
 }) {
-  return (
-    <div className="dt-wrap" tabIndex={0} aria-label={caption}>
-      <table className="dt">
-        <caption className="sr-only">{caption}</caption>
-        <thead><tr>{cols.map((c) => <th key={c.key} title={c.title} className={`${c.num ? "num" : ""}${c.wide ? " wide-only" : ""}`}>{c.label}</th>)}</tr></thead>
-        <tbody>{rows.map((r) => {
+  const wrap = useRef<HTMLDivElement>(null);
+  const [limit, setLimit] = useState(25);
+  const selIndex = rows.findIndex((r) => id(r) === selected);
+  const [active, setActive] = useState(Math.max(0, selIndex));
+  useEffect(() => { if (selIndex >= 0) { setActive(selIndex); if (compact && selIndex >= limit) setLimit(selIndex + 10); } }, [selIndex, compact, limit]);
+  useScrollRowIntoView(wrap, selected);
+  const shown = compact ? rows.slice(0, limit) : rows;
+  const focusRow = (i: number) => { const j = Math.max(0, Math.min(shown.length - 1, i)); setActive(j);
+    wrap.current?.querySelector<HTMLElement>(`[data-i="${j}"]`)?.focus({ preventScroll: false }); };
+  const key = (e: KeyboardEvent<HTMLTableRowElement>, i: number, r: R) => {
+    const step = { ArrowDown: 1, ArrowUp: -1, PageDown: 10, PageUp: -10 }[e.key];
+    if (step != null) { e.preventDefault(); focusRow(i + step); }
+    else if (e.key === "Home") { e.preventDefault(); focusRow(0); }
+    else if (e.key === "End") { e.preventDefault(); focusRow(shown.length - 1); }
+    else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(r); }
+  };
+  return (<>
+    <div className="dt-wrap" ref={wrap}>
+      <table className="dt" role="grid" aria-label={caption} aria-rowcount={rows.length + 1}>
+        <caption className="sr-only">{caption}. Arrow keys move between rows; Enter selects.</caption>
+        <thead><tr>{cols.map((c) => <th key={c.key} title={c.title} scope="col" className={`${c.num ? "num" : ""}${c.wide ? " wide-only" : ""}`}>{c.label}</th>)}</tr></thead>
+        <tbody>{shown.map((r, i) => {
           const k = id(r);
-          return <tr key={k} aria-selected={k === selected} tabIndex={0} onClick={() => onSelect(r)} onKeyDown={(e) => e.key === "Enter" && onSelect(r)}>
+          return <tr key={k} data-row={k} data-i={i} aria-selected={k === selected} aria-rowindex={i + 2} tabIndex={i === Math.min(active, shown.length - 1) ? 0 : -1}
+            onClick={() => { setActive(i); onSelect(r); }} onKeyDown={(e) => key(e, i, r)}>
             {cols.map((c) => <td key={c.key} className={`${c.num ? "num" : ""}${c.wide ? " wide-only" : ""}`}>{c.render(r)}</td>)}</tr>;
         })}</tbody>
       </table>
     </div>
-  );
+    {compact && rows.length > shown.length && (
+      <button className="btn show-more" onClick={() => setLimit(limit + 50)}>Show {Math.min(50, rows.length - shown.length)} more of {rows.length - shown.length} remaining rows</button>)}
+  </>);
 }

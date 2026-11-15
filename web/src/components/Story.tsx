@@ -8,7 +8,7 @@ import { dropScale, GUESS_MAX } from "@/lib/storyScale";
 import { M, P } from "./ui";
 
 type Mode = "mission" | "experiment" | "evidence";
-export type StoryScene = { pins: ScenePin[]; sky: boolean; focus: { x: number; y: number; dist: number } };
+export type StoryScene = { pins: ScenePin[]; sky: boolean; focus: { x: number; y: number; dist: number }; step?: number };
 const STEPS = ["The place", "The question", "The model", "The measurement", "What it means"];
 
 export function NotchStory({ ds, setStoryScene, onDone }: { ds: Dataset; setStoryScene: (s: StoryScene) => void; onDone: (m: Mode, exp?: "parking") => void }) {
@@ -31,7 +31,7 @@ export function NotchStory({ ds, setStoryScene, onDone }: { ds: Dataset; setStor
       { key: "bg6", x: mouth.x, y: mouth.y, label: "Notch mouth", color: "#b9ab97", size: 4.6 },
     ];
     const dist = [620, 330, 380, 380, 520][step];
-    setStoryScene({ pins, sky: step >= 1, focus: { x: (inside.x + mouth.x) / 2, y: (inside.y + mouth.y) / 2, dist } });
+    setStoryScene({ pins, step, sky: step >= 1, focus: { x: (inside.x + mouth.x) / 2, y: (inside.y + mouth.y) / 2, dist } });
   }, [step, inside, mouth, setStoryScene]);
 
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
@@ -58,7 +58,7 @@ export function NotchStory({ ds, setStoryScene, onDone }: { ds: Dataset; setStor
           <div className="guess">
             <label htmlFor="guess"><b>How much lower was the dose deep inside?</b> <span className="muted">Your guess, optional</span></label>
             <div className="guess-row">
-              <input id="guess" type="range" min={0} max={GUESS_MAX} step={1} value={guess ?? 0} onChange={(e) => setGuess(+e.target.value)}
+              <input id="guess" type="range" min={0} max={GUESS_MAX} step={1} value={guess ?? 0} aria-valuetext={guess == null ? "no guess yet" : `${guess} % lower`} onChange={(e) => setGuess(+e.target.value)}
                 onPointerUp={(e) => setGuess(+e.currentTarget.value)} onKeyUp={(e) => setGuess(+e.currentTarget.value)} />
               <output>{guess == null ? "–" : `${guess} % lower`}</output>
             </div>

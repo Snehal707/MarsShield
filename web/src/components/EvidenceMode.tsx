@@ -3,13 +3,13 @@
 import { useState } from "react";
 import type { Dataset } from "@/lib/data";
 import { HorizonCompare, PairDotPlot, ScatterXY, SensitivityBars } from "./Charts";
-import { Grammar, M, More, P, sgn } from "./ui";
+import { Grammar, M, More, P, sgn, Tabs } from "./ui";
 import { AuditSection } from "./AuditSection";
 
 type Sec = "overview" | "signal" | "validation" | "audit" | "limits" | "data";
 const SECS: [Sec, string][] = [["overview", "Overview"], ["signal", "RAD + pressure analysis"], ["validation", "Validation"], ["audit", "Audit & corrections"], ["limits", "Limitations"], ["data", "Data & reproducibility"]];
 
-export function EvidenceMode({ ds }: { ds: Dataset }) {
+export function EvidenceMode({ ds, reading = false }: { ds: Dataset; reading?: boolean }) {
   const [sec, setSec] = useState<Sec>("overview");
   const v = ds.validation, au = ds.audit, ts = ds.terrainSignal;
   const A8 = au.A3_eight_pairs["P6_19.4pct_table1"];
@@ -19,7 +19,8 @@ export function EvidenceMode({ ds }: { ds: Dataset }) {
       <div className="panel-head">
         <p className="eyebrowless">Evidence</p>
         <p className="sub">What was measured, what was modeled, and how well they agree.</p>
-        <div className="subnav" role="tablist">{SECS.map(([k, l]) => <button key={k} role="tab" aria-selected={sec === k} aria-pressed={undefined} onClick={() => setSec(k)}>{l}</button>)}</div>
+        <Tabs className={`subnav${reading ? " vertical" : ""}`} label="Evidence sections" tabs={SECS} value={sec} vertical={reading}
+          onChange={(k) => { setSec(k); document.querySelector(".panel-body")?.scrollTo({ top: 0 }); }} />
       </div>
       <div className="panel-body">
         <Grammar />
