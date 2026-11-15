@@ -168,7 +168,7 @@
 
 /* downloads: always visible at the top of an experiment */
 .dl-bar { position: sticky; top: -16px; z-index: 2; margin: -16px -20px 0; padding: 12px 20px 10px; display: grid; gap: 6px;
-  background: rgba(26, 21, 17, 0.97); border-bottom: 1px solid var(--line); }
+  background: rgb(26, 21, 17); border-bottom: 1px solid var(--line); }
 .panel.expanded .dl-bar { margin: -18px -32px 0; padding: 12px 32px 10px; top: -18px; }
 .dl-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .btn.dl { display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; font-size: 13px; font-weight: 600; }
