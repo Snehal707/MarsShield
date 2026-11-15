@@ -20,9 +20,9 @@ Interpolation: linear in surface pressure between published nodes; never extrapo
 (Olympus summit seasonal low) are evaluated at the 82 Pa node and flagged (the paper's 82 Pa case IS the top of
 Olympus Mons). Solar modulation is offered only at the published nodes (no phi interpolation).
 
-Monte Carlo noise: estimated from the published tables themselves as the RMS relative residual of each
-effective-dose curve about a straight line in pressure (the curves are non-monotonic at the 1-2 % level), so
-site differences smaller than ~2x that are not resolved by this model.
+Table scatter: the RMS relative residual of each published effective-dose curve about a straight line in pressure
+(the curves are non-monotonic at the 1-2 % level). It is an empirical indicator of Monte Carlo statistics, not a
+verified uncertainty interval; site differences are compared against twice this scatter as a model comparison only.
 
 Run: python -m marsshield.regional_dose
 """
@@ -157,9 +157,9 @@ def build() -> dict:
         "sites": sites,
         "uncertainty": {
             "mc_noise_rel": {str(k): round(v, 4) for k, v in noise.items()},
-            "mc_noise_note": "RMS relative residual of each published effective-dose curve about a straight line in pressure; a site difference smaller than about twice this is not resolved.",
+            "mc_noise_note": "RMS relative residual of each published effective-dose curve about a straight line in pressure. An empirical indicator of Monte Carlo statistics, not a verified uncertainty interval; differences beyond twice this scatter are reported as a model comparison, not as statistically significant.",
             "terms": [
-                {"term": "Monte Carlo statistics of the published simulation", "kind": "stat", "value": f"{max(noise.values()) * 100:.1f} % (largest of the three phi curves)", "source": "derived from Zhang et al. (2022) tables"},
+                {"term": "Scatter of the published curves (indicator of Monte Carlo statistics; not a verified interval)", "kind": "indicator", "value": f"{max(noise.values()) * 100:.1f} % (largest of the three phi curves)", "source": "derived from Zhang et al. (2022) tables"},
                 {"term": "Seasonal pressure (Ls 150 to Ls 255)", "kind": "range", "value": "per site, evaluated at the low and high pressures", "source": "MCD v6.2"},
                 {"term": "Olympus pressure", "kind": "assumption", "value": "±10 %", "source": "atmospheric review judgment; no measurement"},
                 {"term": "Solar modulation", "kind": "scenario", "value": "400, 700, 1000 MV (effective dose); 580 MV only for absorbed dose and dose equivalent", "source": "Zhang et al. (2022)"},
@@ -171,8 +171,8 @@ def build() -> dict:
                              "published_mGy_yr": [round(f6[P6.index(p)], 2) for p in P3],
                              "rel_diff": [round(float(a / f6[P6.index(p)] - 1), 4) for a, p in zip(repro_H, P3)]},
             "rad_pressure_slope": {"model_water_total_uGy_day_Pa": round(slope_water, 4), "model_water_HHe_uGy_day_Pa": round(slope_hhe, 4), "rad_observed": RAD_SLOPE,
-                                   "verdict": "The model's absorbed-dose change with pressure near Gale is far weaker than RAD observes (different target, so only the sign and order of magnitude are comparable). The small regional differences below are therefore model-dependent and not validated.",
-                                   "kind": "independent check (not used for fitting)"},
+                                   "verdict": "RAD E (plastic, inside the rover, diurnal pressure changes) and the model (water sphere, whole-year surface simulations) differ in detector material, geometry and observing conditions, so this is not a direct validation test. The model's much weaker pressure dependence is a limitation: the small regional differences that follow from it are model-dependent and not validated.",
+                                   "kind": "limitation: different detector material and observing conditions (not used for fitting)"},
             "pressure_checks": {"meda_vs_mcd_jezero_pct": atm.get("meda_check", {}).get("mcd_minus_meda_pct"),
                                 "zhang_olympus_82pa_vs_mcd_summit_annual": S["oly_summit"]["annual_mean_pa"]},
             "levels": {"fitting": "none in this module (no parameter is fitted)", "reproduction": "published tables reproduced (above)",

@@ -225,9 +225,9 @@ function LocationDose({ R, reg, region, sc, pick }: { R: Radiation; reg: Region;
       {here ? (<>
         <p className="role">Evaluated location (exploratory)</p>
         <p><b>{fmtM(here.z)}</b> elevation; modeled pressure <b>{here.p.toFixed(0)} Pa</b> ({here.X.toFixed(2)} g/cm²); <span className="v-model">{here.v.toFixed(1)} {u}</span>{here.edge ? " (at the 82 Pa grid edge)" : ""}.</p>
-        <p className="muted small">Against the region&apos;s reference point ({fmtM(h.ref_elev_m)}): {((here.v / ref.v - 1) * 100).toFixed(2)} %, {Math.abs(here.v / ref.v - 1) > 2 * noise ? "larger than" : "smaller than"} twice the model&apos;s Monte Carlo noise ({(noise * 100).toFixed(1)} %).</p>
+        <p className="muted small">Against the region&apos;s reference point ({fmtM(h.ref_elev_m)}): {((here.v / ref.v - 1) * 100).toFixed(2)} %, {Math.abs(here.v / ref.v - 1) > 2 * noise ? "larger than" : "smaller than"} twice the scatter of the published curves ({(noise * 100).toFixed(1)} %; an empirical indicator, not a verified Monte Carlo uncertainty interval).</p>
       </>) : <p className="muted">Click the terrain to evaluate a location. Pressure there comes from the elevation by the hydrostatic relation (scale height {(h.scale_height_m / 1000).toFixed(1)} km).</p>}
-      <p className="muted small">Across this region&apos;s full elevation range ({fmtM(zlo)} to {fmtM(zhi)}) the modeled {QUANTITIES[sc.q].label.toLowerCase()} changes by {(span * 100).toFixed(1)} %{span < 2 * noise ? ", below what the model resolves, so it does not distinguish locations here" : ""}. Terrain shielding of dose is not included (no angular data in the published tables).</p>
+      <p className="muted small">Across this region&apos;s full elevation range ({fmtM(zlo)} to {fmtM(zhi)}) the modeled {QUANTITIES[sc.q].label.toLowerCase()} changes by {(span * 100).toFixed(1)} %{span < 2 * noise ? ", within the scatter of the published tables, so the model gives no meaningful distinction between locations here" : ""}. Terrain shielding of dose is not included (no angular data in the published tables).</p>
     </div>
   );
 }

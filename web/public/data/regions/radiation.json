@@ -433,11 +433,11 @@
    "700": 0.0104,
    "1000": 0.0115
   },
-  "mc_noise_note": "RMS relative residual of each published effective-dose curve about a straight line in pressure; a site difference smaller than about twice this is not resolved.",
+  "mc_noise_note": "RMS relative residual of each published effective-dose curve about a straight line in pressure. An empirical indicator of Monte Carlo statistics, not a verified uncertainty interval; differences beyond twice this scatter are reported as a model comparison, not as statistically significant.",
   "terms": [
    {
-    "term": "Monte Carlo statistics of the published simulation",
-    "kind": "stat",
+    "term": "Scatter of the published curves (indicator of Monte Carlo statistics; not a verified interval)",
+    "kind": "indicator",
     "value": "1.1 % (largest of the three phi curves)",
     "source": "derived from Zhang et al. (2022) tables"
    },
@@ -501,8 +501,8 @@
     "quantity": "RAD E detector (plastic) absorbed dose",
     "source": "Guo et al. (2015), ApJ 810, 24, Sec. 4.1 (diurnal pressure-dose anticorrelation at Gale)"
    },
-   "verdict": "The model's absorbed-dose change with pressure near Gale is far weaker than RAD observes (different target, so only the sign and order of magnitude are comparable). The small regional differences below are therefore model-dependent and not validated.",
-   "kind": "independent check (not used for fitting)"
+   "verdict": "RAD E (plastic, inside the rover, diurnal pressure changes) and the model (water sphere, whole-year surface simulations) differ in detector material, geometry and observing conditions, so this is not a direct validation test. The model's much weaker pressure dependence is a limitation: the small regional differences that follow from it are model-dependent and not validated.",
+   "kind": "limitation: different detector material and observing conditions (not used for fitting)"
   },
   "pressure_checks": {
    "meda_vs_mcd_jezero_pct": 0.53,

@@ -5922,7 +5922,7 @@
    "area": "radiation",
    "name": "Dose differences across the region",
    "status": "exploratory",
-   "detail": "Hydrostatic pressure from the DTM; the modeled change across the region is far smaller than the model's Monte Carlo noise, so locations are not distinguished."
+   "detail": "Hydrostatic pressure from the DTM; the modeled change across the region is within the scatter of the published tables, so the model gives no meaningful distinction between locations."
   },
   {
    "area": "radiation",
@@ -5937,5 +5937,5 @@
    "detail": "No RAD-equivalent measurement or detector model exists for Jezero; the 20 m DTM cannot represent walking-scale hazards."
   }
  ],
- "generated_utc": "2026-11-15T15:58:15+00:00"
+ "generated_utc": "2026-11-15T16:44:41+00:00"
 }

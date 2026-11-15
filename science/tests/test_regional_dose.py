@@ -64,9 +64,9 @@ def test_noise_estimate_and_resolution_claims():
 
 def test_independent_check_is_reported_not_fitted():
     chk = R["validation"]["rad_pressure_slope"]
-    assert chk["kind"].startswith("independent check")
+    assert chk["kind"].startswith("limitation")
     assert chk["rad_observed"]["value"] == -0.13
-    assert abs(chk["model_water_total_uGy_day_Pa"]) < abs(chk["rad_observed"]["value"])   # the documented disagreement
+    assert abs(chk["model_water_total_uGy_day_Pa"]) < abs(chk["rad_observed"]["value"])   # the documented limitation
 
 
 def test_sol_conversion():

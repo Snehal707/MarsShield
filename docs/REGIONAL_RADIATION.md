@@ -80,15 +80,15 @@ Four independent reviews were run before implementation: radiation transport, at
 | Jezero | 245.9 (−0.0 %) | 167.8 (−0.7 %) | 126.3 (−1.0 %) | 247.5 (−0.3 %) | 62.09 |
 | Olympus, Zeus Patera | 245.5 (−0.2 %) | 161.8 (−4.2 %) | 118.6 (−7.0 %) | 234.7 (−5.5 %) | 62.53 (+0.9 %) |
 
-**Resolution.** The Monte Carlo noise of the published tables is 0.9–1.2 %, measured as the RMS residual of each effective-dose curve about a straight line in pressure. A difference is reported as resolved only when it exceeds twice that.
+**Comparison threshold.** The published curves scatter by 0.9–1.2 % point to point, measured as the RMS residual of each effective-dose curve about a straight line in pressure. This is an empirical indicator of the simulation's Monte Carlo statistics, not a verified uncertainty interval. A difference is labelled "beyond table scatter" when it exceeds twice that. The label is a model comparison, not a statistical significance test.
 
 **Findings:**
-- **Jezero against Gale:** not resolved for any quantity.
-- **Olympus Mons:** about 4 % lower effective dose and about 5.5 % lower dose equivalent than Gale at 700 MV and 580 MV. This is resolved by the model but not independently confirmed.
+- **Jezero against Gale:** within table scatter for every quantity, so the model gives no meaningful difference.
+- **Olympus Mons:** about 4 % lower effective dose and about 5.5 % lower dose equivalent than Gale at 700 MV and 580 MV. This is beyond table scatter in the model, which is not a statistical confirmation, and it has not been independently checked.
 - **Solar activity:** the Olympus difference grows with solar activity. It disappears at solar minimum (400 MV) and reaches −7.0 % at 1000 MV.
 - **Absorbed dose:** essentially independent of the column. As the atmosphere thins, heavy-ion dose rises while proton and helium dose falls.
 - **Within a region:**
-  - Across Jezero's 1.2 km of relief and the caldera's 3.6 km, the modeled effective dose changes by 0.4–0.5 %. That is below what the model resolves, so locations are not distinguished.
+  - Across Jezero's 1.2 km of relief and the caldera's 3.6 km, the modeled effective dose changes by 0.4–0.5 %. That is within table scatter, so the model gives no meaningful distinction between locations.
   - The app states this rather than drawing a dose map.
 
 ## 5. Verification and validation, kept separate
@@ -99,10 +99,10 @@ Four independent reviews were run before implementation: radiation transport, at
 - Integrating the published 580 MV proton integrands (Fig. 4) over energy reproduces the published surface proton dose (Fig. 6) to within 1.1–1.2 % at 82, 753 and 1200 Pa.
 - The browser reproduces the Python export at every site, quantity and season (`web/scripts/verify-radiation.mts`).
 
-**Independent check at Gale:** a disagreement, reported.
+**Pressure response at Gale:** a limitation, not a like-for-like validation test.
 - RAD's dose falls as pressure rises: −0.13 ± 0.02 µGy/day/Pa in the E detector (Guo et al. 2015).
 - The model's water-phantom absorbed dose changes by −0.0026 µGy/day/Pa near Gale, about 50× weaker, and its H+He part has the opposite sign.
-- The targets differ, but not enough to explain this. The model's small pressure dependence, and with it the small regional differences, is therefore **model-dependent and not validated**.
+- The comparison is between different detector materials (RAD E plastic inside the rover against a 15 cm water sphere), geometries and observing conditions (diurnal pressure changes against whole-year simulations at fixed pressures). So it is **not a direct validation failure**. It is a limitation: the model's small pressure dependence, and with it the small regional differences, is model-dependent and not validated.
 - HZETRN (Guo et al. 2017) gives a stronger dependence than AtRIS and the opposite sign for dose equivalent against depth.
 
 **Independent predictive validation at Jezero or Olympus Mons:** impossible. No ionizing-radiation detector has operated there. Perseverance's MEDA Radiation and Dust Sensor measures sunlight, not particles.
@@ -113,7 +113,7 @@ Agreement at Gale does not make the Jezero or Olympus Mons values accurate predi
 
 | Term | Kind | Value | Source |
 |---|---|---|---|
-| Monte Carlo statistics of the published simulation | stat | 0.9–1.2 % | derived from the tables |
+| Scatter of the published curves | indicator (not a verified interval) | 0.9–1.2 % | derived from the tables |
 | Seasonal pressure (Ls 150–255) | range | evaluated per site across the whole seasonal span | MCD v6.2 |
 | Olympus pressure | assumption | ±10 % | atmosphere review judgment; no measurement above about 4 km on Mars |
 | Solar modulation | scenario | 400/700/1000 MV, or 580 MV only | Zhang et al. (2022) |
@@ -148,8 +148,8 @@ The numerical review found no bug affecting the Gale relative (terrain) results.
 - **Case study.** The Maria Gordon Notch story is an optional Gale case study, from the Gale card or the top bar in Gale. It is never forced.
 - **Shared assumptions.** The quantity, solar modulation, season and mission duration are set once and apply to every site and every region view.
 - **Analysis dock:**
-  - dose against pressure, with the published nodes and a ±2× Monte Carlo noise band;
-  - a comparison table with seasonal and assumption ranges and a resolved or not-resolved flag against Gale;
+  - dose against pressure, with the published nodes and a ±2× table-scatter band (not a confidence interval);
+  - a comparison table with seasonal and assumption ranges and a beyond- or within-table-scatter label against Gale;
   - CSV and research-package downloads (README, comparison.csv, model_tables.json, scenario.json).
 - **Jezero and Olympus Mons workspaces:** tabbed (Radiation, Terrain, Sources and limits), one scroll level each. The radiation tab shows the atmosphere overhead, the shared assumptions, and a click-to-evaluate location dose (exploratory). The comparison sits in the dock and the profiles in the Terrain tab.
 - **Capability matrices:** grouped into Radiation evidence, Atmosphere and Terrain data, so a validated elevation model is never read as validated radiation.

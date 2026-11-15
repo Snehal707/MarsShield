@@ -437,7 +437,7 @@
    "area": "radiation",
    "name": "Dose differences across the caldera",
    "status": "exploratory",
-   "detail": "Hydrostatic pressure from the DEM; the modeled change across the caldera is below the model's Monte Carlo noise."
+   "detail": "Hydrostatic pressure from the DEM; the modeled change across the caldera is within the scatter of the published tables."
   },
   {
    "area": "radiation",
@@ -452,5 +452,5 @@
    "detail": "No RAD-equivalent model at 2\u20133 g/cm2; the 200 m grid cannot represent hazards at the scale of a person."
   }
  ],
- "generated_utc": "2026-11-15T15:58:15+00:00"
+ "generated_utc": "2026-11-15T16:44:41+00:00"
 }

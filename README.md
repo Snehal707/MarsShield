@@ -35,8 +35,8 @@ MarsShield opens on a **Mars overview**: why cosmic rays reach the Martian surfa
 
 **Findings:**
 - **Olympus Mons:** effective dose about 4 % lower than Gale at 700 MV, growing to 7 % at 1000 MV and vanishing at solar minimum; dose equivalent about 5.5 % lower at 580 MV.
-- **Jezero:** not distinguishable from Gale within the model's 1 % Monte Carlo noise.
-- **Pressure dependence:** the model's pressure dependence is about 50× weaker than RAD observes at Gale. The regional estimates are therefore exploratory, and nothing about them is validated outside Gale.
+- **Jezero:** within the roughly 1 % point-to-point scatter of the published tables, so the model gives no meaningful difference from Gale. That scatter is an empirical indicator, not a verified uncertainty interval.
+- **Pressure dependence (a limitation):** the model's water-sphere dose responds to pressure about 50× less than Curiosity's RAD plastic detector does over the day. The detector materials and observing conditions differ, so this is not a like-for-like validation test, but it leaves the small regional differences uncertain. Nothing is validated outside Gale.
 
 **Regional workspaces:**
 - Jezero and the Olympus Mons caldera each have Radiation, Terrain, and Sources and limits tabs.

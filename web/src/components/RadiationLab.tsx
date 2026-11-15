@@ -73,10 +73,10 @@ export function CompareTable({ R, sc, highlight }: { R: Radiation; sc: Scenario;
             <td className="num"><span className="v-model">{fmt(r.rate)}</span> <span className="muted small">{u}</span>
               <span className="range">season {fmt(r.seasonRange[0])}–{fmt(r.seasonRange[1])}{r.band ? `; ±10 % pressure ${fmt(Math.min(...r.band))}–${fmt(Math.max(...r.band))}` : ""}</span></td>
             <td className="num"><span className="v-model">{fmt(r.total)}</span> <span className="muted small">{cu}</span></td>
-            <td className="num">{r.resolved == null ? "reference" : <>{pct(r.dVsGale)}<span className={`res ${r.resolved ? "yes" : "no"}`}>{r.resolved ? "resolved" : "not resolved"}</span></>}</td>
+            <td className="num">{r.resolved == null ? "reference" : <>{pct(r.dVsGale)}<span className={`res ${r.resolved ? "yes" : "no"}`}>{r.resolved ? "beyond table scatter" : "within table scatter"}</span></>}</td>
           </tr>))}</tbody>
       </table>
-      <p className="muted small">All values are model estimates: AtRIS/Geant4 surface tables (Zhang et al. 2022) at Mars Climate Database pressures, quiet-time galactic cosmic rays, open flat ground, no habitat or suit shielding. A difference counts as resolved only when it exceeds twice the published tables&apos; Monte Carlo noise ({(noiseFor(R, sc.q, sc.phi) * 100).toFixed(1)} %). Cumulative dose uses 1 sol = {R.sol_days.toFixed(4)} Earth days.</p>
+      <p className="muted small">All values are model estimates: AtRIS/Geant4 surface tables (Zhang et al. 2022) at Mars Climate Database pressures, quiet-time galactic cosmic rays, open flat ground, no habitat or suit shielding. &ldquo;Beyond table scatter&rdquo; means the difference exceeds twice the point-to-point scatter of the published curves ({(noiseFor(R, sc.q, sc.phi) * 100).toFixed(1)} %). That scatter is an empirical indicator, not a verified Monte Carlo uncertainty interval, so these labels are a model comparison, not a statistical significance test. Cumulative dose uses 1 sol = {R.sol_days.toFixed(4)} Earth days.</p>
     </div>
   );
 }
@@ -92,7 +92,7 @@ export function MeasuredContext({ R }: { R: Radiation }) {
   );
 }
 
-/** Dose against surface pressure: the published curve (nodes joined), a ±2× Monte Carlo noise band, and the sites with seasonal ranges. */
+/** Dose against surface pressure: the published curve (nodes joined), a ±2× table-scatter band (not a confidence interval), and the sites with seasonal ranges. */
 export function DoseVsPressure({ R, sc }: { R: Radiation; sc: Scenario }) {
   const [ref, { w, h }] = useSize<HTMLDivElement>();
   const [tip, setTip] = useState<{ x: number; y: number; body: ReactNode } | null>(null);
@@ -114,7 +114,7 @@ export function DoseVsPressure({ R, sc }: { R: Radiation; sc: Scenario }) {
     <div className="rc-wrap">
       <div className="rc-tools">
         <LegendRow items={[{ shape: "circle", color: "#7db3cb", label: "Published model nodes" }, { shape: "square", color: "#c48bd6", label: "Site estimate (bar: season)" }]} />
-        <span className="muted small">Shaded: ±2× Monte Carlo noise</span>
+        <span className="muted small">Shaded: ±2× table scatter (not a confidence interval)</span>
       </div>
       <div className="rc-area" ref={ref} onMouseLeave={() => setTip(null)}>
         <svg width={w} height={h} role="img" aria-label={`${QUANTITIES[sc.q].label} against surface pressure from the published model, with the three sites marked`}>
@@ -146,7 +146,7 @@ export function ValidationNotes({ R }: { R: Radiation }) {
   return (
     <div className="val-notes">
       <div className="note"><p><b>Reproduction (achieved).</b> {v.reproduction.what}: {v.reproduction.integrated_mGy_yr.map((x, i) => `${fmt(x, 2)} against ${fmt(v.reproduction.published_mGy_yr[i], 2)}`).join("; ")} mGy/yr at {v.reproduction.pressures_pa.join(", ")} Pa (within {Math.max(...v.reproduction.rel_diff.map(Math.abs)) * 100 < 1.5 ? "1.5" : "2"} %).</p></div>
-      <div className="note"><p><b>Independent check at Gale (disagreement).</b> Curiosity RAD shows dose falling as pressure rises: {s.rad_observed.value} ± {s.rad_observed.sigma} {s.rad_observed.unit} ({s.rad_observed.source}). The model&apos;s water-phantom absorbed dose changes by only {s.model_water_total_uGy_day_Pa} {s.rad_observed.unit} near Gale. The targets differ, but the gap is far beyond that. {s.verdict}</p></div>
+      <div className="note"><p><b>Pressure response at Gale (a limitation, not a like-for-like test).</b> Curiosity&apos;s RAD E detector (plastic, inside the rover) sees dose fall as pressure rises over the day: {s.rad_observed.value} ± {s.rad_observed.sigma} {s.rad_observed.unit} ({s.rad_observed.source}). The model&apos;s water-sphere absorbed dose changes by {s.model_water_total_uGy_day_Pa} {s.rad_observed.unit} between whole-year surface simulations near Gale&apos;s pressure, roughly 50× less. The detector material, geometry and observing conditions differ, so this is not a direct validation failure; it does mean the model&apos;s small pressure dependence, and the regional differences that follow from it, are uncertain.</p></div>
       <div className="note"><p><b>Atmosphere check.</b> At Jezero, MEDA pressure (normalised to the landing elevation) and the Mars Climate Database differ by {v.pressure_checks.meda_vs_mcd_jezero_pct} %. Nothing comparable exists for Olympus Mons.</p></div>
       <div className="note"><p><b>What has and has not been shown.</b> Fitting: {v.levels.fitting}. Reproduction: {v.levels.reproduction}. Independent validation: {v.levels.independent_validation}.</p></div>
     </div>
@@ -169,7 +169,7 @@ export function RadiationDownloads({ R, sc }: { R: Radiation; sc: Scenario }) {
   const csv = () => {
     const phi = QUANTITIES[sc.q].phiFixed ?? sc.phi;
     const head = ["site_id", "site_name", "season", "pressure_pa", "pressure_source", "column_g_cm2", "quantity", "unit", "phi_MV", "rate_per_year", "season_low", "season_high",
-      "olympus_pressure_band_low", "olympus_pressure_band_high", "at_grid_edge", "mission_sols", "cumulative", "rel_diff_vs_gale", "resolved_vs_gale", "status"];
+      "olympus_pressure_band_low", "olympus_pressure_band_high", "at_grid_edge", "mission_sols", "cumulative", "rel_diff_vs_gale", "beyond_2x_table_scatter", "status"];
     const lines = rows(R, sc).map((r) => [r.s.id, `"${r.s.name}"`, sc.season, r.p.toFixed(1), r.s.pressure_source, r.X.toFixed(3), sc.q, QUANTITIES[sc.q].unit, phi, r.rate.toFixed(3),
       r.seasonRange[0].toFixed(3), r.seasonRange[1].toFixed(3), r.band ? Math.min(...r.band).toFixed(3) : "", r.band ? Math.max(...r.band).toFixed(3) : "", r.edge, sc.sols, r.total.toFixed(3),
       r.dVsGale.toFixed(5), r.resolved ?? "reference", "model estimate; not validated outside Gale"].join(","));
