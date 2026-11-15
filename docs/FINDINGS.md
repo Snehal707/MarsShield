@@ -14,7 +14,7 @@ Each statement carries one of these labels:
 
 | Mission and instrument | Product | Role |
 |---|---|---|
-| MSL Curiosity RAD (NASA) | Level 2 dosimetry, detector E, NASA SPDF (about 2 200 daily files) | Measured dose rates at 322 rover stops and 15 published periods; tests every model claim |
+| MSL Curiosity RAD (NASA) | Level 2 dosimetry, detector E, NASA SPDF (1,839 daily files) | Measured dose rates at 322 rover stops and 15 published periods; tests every model claim |
 | MSL Curiosity REMS (NASA/CAB) | MODRDR surface pressure, PDS (about 2 170 sols, 180 samples per sol) | Pressure control for the 322-stop analysis |
 | MSL Curiosity navigation (NASA/JPL) | Localised waypoints (MMGIS) | Where RAD was; where each science target lies |
 | MRO HiRISE and CTX (NASA) | Stereo DEMs inside the USGS Gale merged 1 m DEM | Terrain, slopes, horizons, 3D view |
@@ -23,6 +23,22 @@ Each statement carries one of these labels:
 | MSL science team publications | Bennett et al. 2023; NASA MSL blogs; NASA/JPL release | Objectives, what to look for and Curiosity results at nine stops |
 | TGO Liulin-MO (ESA/Roscosmos), via Guo et al. 2026 | Published solar modulation φ per RAD period (not ingested) | Model input for the 15 validation periods only |
 | Guo et al. 2021 GEANT4 zenith-angle model | Zenodo 10.5281/zenodo.4701689 | Downward dose by sky direction |
+
+## Three regions (added November 2026)
+
+MarsShield now compares Gale, Jezero and the Olympus Mons caldera using published AtRIS/Geant4 surface tables (Zhang et al. 2022) at Mars Climate Database pressures. Full details are in [REGIONAL_RADIATION.md](REGIONAL_RADIATION.md).
+
+- **Olympus Mons [Modeled]:**
+  - Effective dose about 4 % lower than Gale at 700 MV, about 7 % lower at 1000 MV, and no difference at 400 MV.
+  - Dose equivalent about 5.5 % lower at 580 MV.
+  - Water absorbed dose essentially unchanged.
+- **Jezero [Modeled]:** within the roughly 1 % point-to-point scatter of the published tables, so the model gives no meaningful difference from Gale. That scatter is an empirical indicator, not a verified uncertainty interval.
+- **Pressure [Measured at Jezero only]:**
+  - Gale 851 Pa, Jezero 723 Pa (MEDA agrees to 0.5 %), Olympus Mons caldera 103–110 Pa (model only).
+- **Limitation:**
+  - The model's dose responds to pressure about 50× less than Curiosity's RAD plastic detector does over the day at Gale.
+  - The detector materials and observing conditions differ, so this is not a like-for-like validation test, but it leaves the regional differences uncertain.
+  - Nothing outside Gale is validated, and these values are not astronaut risk assessments.
 
 ## Findings
 

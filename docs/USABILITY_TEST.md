@@ -10,7 +10,7 @@
 ## Setup and rules
 
 - **Session:** 20 to 30 minutes, one participant at a time.
-- **Device:** start on the public site in a fresh private window, so the opening story shows. Run students on a desktop or laptop; if possible, run one student on a phone as well.
+- **Device:** start on https://marsshield.vercel.app in a fresh private window. The site opens on the Mars overview; open the Maria Gordon Notch case study from the Gale card for the story tasks. Run students on a desktop or laptop; if possible, run one student on a phone as well.
 - **Facilitator:** reads each task aloud exactly as written below, and does not explain the interface or the science. When a participant asks a question, the facilitator replies: *"What would you try?"*
 - **Think aloud:** ask participants to say what they are thinking as they work.
 - **Recording:**

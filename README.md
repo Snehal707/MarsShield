@@ -1,54 +1,57 @@
 # MarsShield
 
-**On a Marswalk, where you stop matters more than how you walk.**
+**Cosmic radiation on the surface of Mars, region by region: measured at Gale Crater, estimated at Jezero Crater and on Olympus Mons.**
 
-MarsShield plans a science Marswalk through real Gale Crater terrain. It shows how the land around an astronaut blocks the sky and changes cosmic-ray exposure.
+MarsShield is a research platform for the radiation environment of three Martian regions, built on real NASA, ESA and USGS data. It opens on a Mars overview that explains why galactic cosmic rays reach the ground on Mars and compares the three regions under one set of assumptions. Each region then opens its own workspace.
+
 Built for the NASA Space Apps Challenge 2026, *Interplanetary Survival Guide: Martian Map*.
 
-**Data it combines:**
-- NASA's MSL Curiosity radiation measurements (RAD), surface pressure (REMS) and rover navigation
-- terrain and imagery from MRO HiRISE and CTX
-- MGS MOLA and Mars Express HRSC
-- the published Curiosity science record
+- **Live application:** https://marsshield.vercel.app (primary)
+- **Mirror:** https://snehal707.github.io/MarsShield/ (GitHub Pages; slower to load)
+- **Code:** https://github.com/Snehal707/MarsShield
 
-**Public demo (no backend needed):** https://marsshield.vercel.app (Vercel, fastest) and https://snehal707.github.io/MarsShield/ (GitHub Pages mirror)
+## Three regions, three kinds of evidence
 
-## The opening: Maria Gordon Notch
+| Region | Radiation evidence | What you can do |
+|---|---|---|
+| **Gale Crater** | **Measured.** Curiosity's RAD detector at 322 rover stops and 8 parking periods, with REMS surface pressure. A terrain-shielding dose model is tested against these measurements. | Plan a science Marswalk (Mission). Test models against RAD by predicting and then revealing the measurements (Experiment). Read the evidence, validation and audit (Evidence). The optional **Maria Gordon Notch case study** is here. |
+| **Jezero Crater** | **Modeled only.** No ionizing-radiation detector has operated there; Perseverance's MEDA measures pressure and sunlight. | GCR dose estimates at Mars Climate Database pressure (checked against MEDA). Click-to-evaluate dose at a location, mission-duration dose, 3D terrain from the USGS CTX DTM, and Perseverance's 708-waypoint traverse. |
+| **Olympus Mons caldera** | **Modeled only.** No lander has visited; the atmosphere comes from a climate model. | GCR dose estimates at about one eighth of Gale's atmospheric column. Caldera terrain from the HRSC/MOLA blend, the USGS SIM 3470 geologic map, and elevation profiles. |
 
-The site opens with a five-step guided story on the real terrain:
-1. **The place.** In December 2021 Curiosity parked twice, 16 m apart: deep inside the notch, then at its mouth.
-2. **The question.** How much lower is the dose deep inside? Visitors can guess first.
-3. **The model.** The published physical model, run on MarsShield's reconstruction of the notch, predicts 9.8 % lower (13.3 % with the published geometry; the reconstruction is uncertain in a 16 m-wide notch).
-4. **The measurement.** NASA's RAD measured 19.4 % lower (285 → 230 µGy/day).
-5. **What it means.** A simple blocked-sky rule (18 %) came closer here, but across all eight measured spots neither model is reliably better.
+Measured values are white, model values blue, and planning assumptions underlined in dashed gold, throughout the app.
 
-The comparison is drawn as bars of the drop itself, so the gap between prediction and measurement is visible at a glance. Every number is read from the exported RAD reduction and audit files. Clicking the wordmark replays the story. Corrections and their earlier values are listed in [docs/SCIENCE_AUDIT.md](docs/SCIENCE_AUDIT.md); the research layout and accessibility changes in [docs/RESEARCH_WORKSPACE.md](docs/RESEARCH_WORKSPACE.md).
+## Three-region radiation comparison
 
-## Three regions: Gale, Jezero and Olympus Mons
+All three regions, Gale included, are computed the same way. The assumptions are set once and apply to every region: quantity, solar modulation, season and mission duration.
 
-MarsShield opens on a **Mars overview**: why cosmic rays reach the Martian surface, the three research regions, and a comparison under one set of assumptions. The assumptions are quantity, solar modulation, season and mission duration, and they apply to every region.
-
-**Comparison method:**
-- **Transport model:** published AtRIS/Geant4 surface tables (Zhang et al. 2022, doi:10.1029/2021JE007157; data doi:10.5281/zenodo.5953666).
-- **Atmosphere:** Mars Climate Database v6.2 pressure at each site, checked against Perseverance MEDA at Jezero (0.5 % difference).
-- **Quantities:** effective dose, dose equivalent and water-phantom absorbed dose. These are not RAD-E dose, and are never converted into each other.
+**Method:**
+- **Transport model:** published AtRIS/Geant4 surface dose tables (Zhang et al. 2022, JGR Planets, doi:10.1029/2021JE007157; data doi:10.5281/zenodo.5953666).
+- **Atmosphere:** Mars Climate Database v6.2 pressure at each site. At Jezero it agrees with Perseverance MEDA to 0.5 %.
+- **Quantities:** effective dose, dose equivalent and water-phantom absorbed dose. These are not Curiosity RAD-E dose, and they are never converted into each other.
+- **Interpolation:** linear in pressure between the published nodes, never extrapolated.
 
 **Findings:**
-- **Olympus Mons:** effective dose about 4 % lower than Gale at 700 MV, growing to 7 % at 1000 MV and vanishing at solar minimum; dose equivalent about 5.5 % lower at 580 MV.
-- **Jezero:** within the roughly 1 % point-to-point scatter of the published tables, so the model gives no meaningful difference from Gale. That scatter is an empirical indicator, not a verified uncertainty interval.
-- **Pressure dependence (a limitation):** the model's water-sphere dose responds to pressure about 50× less than Curiosity's RAD plastic detector does over the day. The detector materials and observing conditions differ, so this is not a like-for-like validation test, but it leaves the small regional differences uncertain. Nothing is validated outside Gale.
+- **Olympus Mons:** effective dose about 4 % lower than Gale at 700 MV, growing to about 7 % at 1000 MV and vanishing at solar minimum (400 MV). Dose equivalent is about 5.5 % lower at 580 MV.
+- **Jezero:** within the roughly 1 % point-to-point scatter of the published tables, so the model gives no meaningful difference from Gale. That scatter is an empirical indicator, not a verified uncertainty interval, and the "beyond/within table scatter" labels are a model comparison, not a significance test.
+- **Within a region:** the modeled dose changes by under 0.5 % across each region's relief, so the model does not distinguish locations there.
+- **Pressure response (a limitation):** the model's water-sphere dose responds to pressure about 50× less than Curiosity's RAD plastic detector does over the day. The detector materials and observing conditions differ, so this is not a like-for-like validation test, but it leaves the small regional differences uncertain.
+- **Validation:** nothing is validated outside Gale. Agreement at Gale does not make the Jezero or Olympus Mons values accurate predictions, and none of them is an astronaut risk or safety assessment.
 
-**Regional workspaces:**
-- Jezero and the Olympus Mons caldera each have Radiation, Terrain, and Sources and limits tabs.
-- The radiation tab gives the atmosphere overhead and a click-to-evaluate location dose.
-- The terrain tab gives 3D terrain, slope, profiles, the Perseverance traverse and the USGS caldera geologic map.
-- The comparison chart and table, with CSV and research-package downloads, sit in the analysis dock.
+**Workspaces:**
+- **Jezero and Olympus Mons:** Radiation, Terrain, and Sources and limits tabs.
+- **Analysis dock:** the dose-against-pressure chart and the comparison table, with CSV and research-package downloads. It starts collapsed so the map stays visible, and opens on request.
 
-**Case study:** the Maria Gordon Notch story is an optional Gale case study, opened from the Gale card or the Gale top bar.
+**Not calculated, with the evidence each would need:**
+- RAD-E dose outside Gale
+- absorbed dose at solar modulation other than 580 MV
+- terrain shielding of dose outside Gale
+- an independent transport rerun
+- regional solar particle events
 
-Details: [docs/REGIONAL_RADIATION.md](docs/REGIONAL_RADIATION.md) (methods, equations, validation, uncertainty, blockers) and [docs/REGIONS.md](docs/REGIONS.md) (terrain data).
+Details: [docs/REGIONAL_RADIATION.md](docs/REGIONAL_RADIATION.md) (methods, equations, validation, uncertainty, blockers) and [docs/REGIONS.md](docs/REGIONS.md) (regional terrain data).
 
-## Three ways in
+## Gale Crater: measurements, experiments and Marswalk planning
+
 
 | Mode | Question it answers | What you can change in the browser |
 |---|---|---|
@@ -76,15 +79,35 @@ Packages identify the processed dataset by its SHA-256 and link to NASA's origin
 
 Audiences and the question each can answer: [docs/AUDIENCES.md](docs/AUDIENCES.md). No external user testing has been done.
 
+## Maria Gordon Notch case study (optional, in Gale)
+
+Open it from the Gale card in the overview or from the button in Gale's top bar. It is a five-step guided story on the real terrain:
+1. **The place.** In December 2021 Curiosity parked twice, 16 m apart: deep inside the notch, then at its mouth.
+2. **The question.** How much lower is the dose deep inside? Visitors can guess first.
+3. **The model.** The published physical model, run on MarsShield's reconstruction of the notch, predicts 9.8 % lower (13.3 % with the published geometry; the reconstruction is uncertain in a 16 m-wide notch).
+4. **The measurement.** NASA's RAD measured 19.4 % lower (285 → 230 µGy/day).
+5. **What it means.** A simple blocked-sky rule (18 %) came closer here, but across all eight measured spots neither model is reliably better.
+
+Corrections and their earlier values are listed in [docs/SCIENCE_AUDIT.md](docs/SCIENCE_AUDIT.md).
+
 ## Screens
+
+Captured from the live deployment at https://marsshield.vercel.app (`docs/img/current/`).
 
 | | |
 |---|---|
-| ![Notch story](docs/img/1-notch-story.png) The opening story: model prediction vs Curiosity's measurement at Maria Gordon Notch | ![Destination](docs/img/2-mission-destination.png) Mission: compact destination choice, objective first |
-| ![Where to stand](docs/img/3-where-to-stand.png) Where to stand: decision and dose difference first; the selected spot's own hazard flags | ![Summary](docs/img/4-mission-summary.png) The plan's route, stop and totals, all from one computation |
-| ![Experiment](docs/img/5-experiment-result.png) Experiment: question, prediction, reveal, result, explanation | ![Parking](docs/img/6-experiment-parking.png) Physical model or simple rule: cannot tell them apart |
+| ![Mars overview](docs/img/current/1-mars-overview.jpg) Mars overview: radiation framing and the three regions | ![Three-region comparison](docs/img/current/2-three-region-comparison.jpg) Three-region comparison: dose against pressure and the comparison table |
+| ![Jezero radiation](docs/img/current/3-jezero-radiation.jpg) Jezero: Radiation tab with an evaluated location on the traverse | ![Olympus radiation](docs/img/current/4-olympus-radiation.jpg) Olympus Mons caldera: Radiation tab and comparison |
+| ![Gale Mission](docs/img/current/5-gale-mission.jpg) Gale Mission: where to stand, judged against model error | ![Gale Experiment](docs/img/current/6-gale-experiment.jpg) Gale Experiment: model predictions revealed against Curiosity RAD |
+| ![Case study](docs/img/current/7-gale-case-study.jpg) Optional Gale case study: Maria Gordon Notch | ![Phone](docs/img/current/8-phone-overview.jpg) Phone: Mars overview ([Jezero on a phone](docs/img/current/9-phone-jezero.jpg)) |
 
-Story opening: [docs/img/1-notch-story-start.png](docs/img/1-notch-story-start.png). Mission evidence, three references: [docs/img/4-mission-evidence.png](docs/img/4-mission-evidence.png). Phone: [story](docs/img/7-phone-story.png), [where to stand](docs/img/8-phone-where-to-stand.png). No-WebGL fallback: [docs/img/9-no-webgl.png](docs/img/9-no-webgl.png). Earlier interfaces are in `docs/img/before/` (`v2-*` is the version before the current redesign).
+**Earlier screenshots, still accurate for Gale:**
+- Mission: [destination](docs/img/2-mission-destination.png), [where to stand](docs/img/3-where-to-stand.png), [evidence](docs/img/4-mission-evidence.png), [summary](docs/img/4-mission-summary.png)
+- Experiment: [parking](docs/img/6-experiment-parking.png), [result](docs/img/5-experiment-result.png)
+- Phone: [story](docs/img/7-phone-story.png), [where to stand](docs/img/8-phone-where-to-stand.png)
+- [No-WebGL fallback](docs/img/9-no-webgl.png)
+
+Development phases are in `docs/img/phase2/` and `docs/img/phase3/`. Earlier interfaces are in `docs/img/before/`.
 
 ## What is verified and what is modeled
 
@@ -102,14 +125,18 @@ Story opening: [docs/img/1-notch-story-start.png](docs/img/1-notch-story-start.p
 | Route doses, walking times, activity durations | **Modeled or assumed only**: quiet-time GCR absorbed dose in a plastic detector, Earth-derived walking speeds |
 
 **Further documentation:**
+- [docs/SUBMISSION.md](docs/SUBMISSION.md): submission text, data sources, limitations and AI-use disclosure
+- [docs/DEMO_30S.md](docs/DEMO_30S.md): a 30-second demonstration script
+- [docs/REGIONAL_RADIATION.md](docs/REGIONAL_RADIATION.md): three-region radiation model, validation and blockers
+- [docs/REGIONS.md](docs/REGIONS.md): regional terrain data and manifests
 - [docs/FINDINGS.md](docs/FINDINGS.md): findings and limitations for judges
 - [docs/VALIDATION.md](docs/VALIDATION.md): every number, generated from the results
 - [docs/METHODS.md](docs/METHODS.md): methods
 - [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md): provenance
-- [docs/DEMO.md](docs/DEMO.md): a 3-minute demo script
+- [docs/DEMO.md](docs/DEMO.md): a 3-minute walkthrough
 - [docs/USABILITY_TEST.md](docs/USABILITY_TEST.md): usability test script (not yet run with participants)
 - [docs/AUDIENCES.md](docs/AUDIENCES.md): intended audiences and their questions
-- [docs/SUBMISSION.md](docs/SUBMISSION.md): submission text
+- [docs/SCIENCE_AUDIT.md](docs/SCIENCE_AUDIT.md), [docs/SPE_FEASIBILITY.md](docs/SPE_FEASIBILITY.md), [docs/RESEARCH_WORKSPACE.md](docs/RESEARCH_WORKSPACE.md), [docs/FINAL_REPORT.md](docs/FINAL_REPORT.md): audit, solar events, workspace and phase report
 
 ## Run it
 
@@ -122,6 +149,9 @@ python -m venv .venv
 cd science
 ..\.venv\Scripts\python -m marsshield.pipeline        # ingest -> validation -> maps -> observations -> REMS + terrain signal -> route eval -> audit -> web export
 ..\.venv\Scripts\python -m marsshield.report          # regenerate docs/VALIDATION.md
+..\.venv\Scripts\python -m marsshield.regions         # Mars overview, Jezero and Olympus Mons terrain (about 12 MB plus range reads)
+..\.venv\Scripts\python -m marsshield.atmosphere ..\data\raw\atmosphere\meda_ps_sampled_every20sols.json   # site pressures (add --query to re-query MCD)
+..\.venv\Scripts\python -m marsshield.regional_dose   # three-region dose comparison (Zenodo 5953666)
 ..\.venv\Scripts\python -m pytest tests -q
 
 # 2. Live science service (custom Marswalks, routes, break-even, sky analysis)
@@ -134,6 +164,7 @@ npm run build
 npm start                                             # http://localhost:3000
 node scripts/verify-engine.mts                        # browser engine vs Python outputs (Node >= 22.18)
 node scripts/verify-stats.mts
+node scripts/verify-radiation.mts                     # three-region dose: browser vs Python
 ```
 
 **Public static build.** This is the same app as the public demo, with no backend:
@@ -149,12 +180,13 @@ GitHub Actions builds and deploys this on every push to `main` (`.github/workflo
 
 ```
 science/marsshield/   ingest, horizon, radiation, routing, planner, terrain, observations, rems, terrain_signal, validation,
-                      route_eval, breakeven, targets, mission, audit, report, pipeline, api, published (reference values)
+                      route_eval, breakeven, targets, mission, audit, report, pipeline, api, published (reference values),
+                      sep_events, parking_audit, regions, atmosphere, regional_dose
 science/tests/        pytest suite
 data/processed/       validation, observations, route evaluation, audit and mission results (JSON)
 web/                  Next.js + React + Three.js app; src/lib/engine.ts + stats.ts = browser engine;
-                      web/public/data = exported, precomputed assets
-docs/                 FINDINGS, METHODS, DATA_SOURCES, VALIDATION, AUDIENCES, DEMO, SUBMISSION
+                      web/public/data = exported, precomputed assets (regions/ = regional manifests and radiation.json)
+docs/                 SUBMISSION, DEMO_30S, DEMO, FINDINGS, REGIONAL_RADIATION, REGIONS, METHODS, DATA_SOURCES, VALIDATION, AUDIENCES, ...
 ```
 
 Downloaded source data (`data/raw/`) and the 53 MB routing grid are not committed; the pipeline recreates them.

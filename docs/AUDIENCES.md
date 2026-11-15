@@ -2,18 +2,19 @@
 
 Three intended audiences, each with one concrete question MarsShield can answer from data, and the path through the app that answers it.
 
-**No external user testing has been done.** The journeys below were walked through by the developer on the public build, at desktop, tablet and phone widths. They describe intended use, not validated use.
+**No external user testing has been done.** The journeys below were walked through on the public build with automated browser runs at desktop, tablet and phone widths. They describe intended use, not validated use.
 
 ## Students and educators
 
-**Question:** *Does standing next to a Martian cliff actually lower your radiation dose, and by how much?*
+**Question:** *Why does radiation differ from place to place on Mars, and does standing next to a cliff actually lower your dose?*
 
 **Answer in the app:**
-- The opening story shows −19.4 %, measured by Curiosity at Maria Gordon Notch, beside the −9.8 % the published model predicts on MarsShield's reconstructed geometry (−13.3 % with the published geometry).
+- The Mars overview compares Gale, Jezero and Olympus Mons under the same assumptions. It shows why the air overhead matters, and which values are measured (Gale only) and which are modeled.
+- The optional Maria Gordon Notch case study (Gale) shows −19.4 %, measured by Curiosity, beside the −9.8 % the published model predicts on MarsShield's reconstructed geometry (−13.3 % with the published geometry).
 - **Experiment → Does the landscape change the dose?** lets a class choose a model, predict 322 rover stops and only then reveal the measurements.
 
 **Journey:**
-1. Opening (30 s).
+1. Mars overview and the three-region comparison (30 s), then the Maria Gordon Notch case study.
 2. Experiment 1: choose, predict, reveal.
 3. Evidence → Overview.
 

@@ -1,6 +1,6 @@
 # Mars regions (Phase 3, November 2026)
 
-MarsShield now opens on a region menu: **Gale Crater** (the full radiation experience, unchanged), a **Mars overview**, **Jezero Crater** and the **Olympus Mons caldera**. The new regions are terrain views. Since the radiation phase they also carry model dose estimates. See [REGIONAL_RADIATION.md](REGIONAL_RADIATION.md); no local radiation measurement exists there. Curiosity's RAD data and every radiation result stay in Gale.
+MarsShield opens on the **Mars overview** and offers **Gale Crater** (the full radiation experience), **Jezero Crater** and the **Olympus Mons caldera** from it and from the region menu. This document covers the regional terrain data; the regions' radiation estimates are in [REGIONAL_RADIATION.md](REGIONAL_RADIATION.md). Since the radiation phase they also carry model dose estimates. See [REGIONAL_RADIATION.md](REGIONAL_RADIATION.md); no local radiation measurement exists there. Curiosity's RAD data and every radiation result stay in Gale.
 
 ## Architecture
 
@@ -139,7 +139,7 @@ SIM 3470 describes Zeus Patera's floor as about 18,000 m in the centre and 19,50
 **Tests:** `science/tests/test_regions.py` checks:
 - grid and file sizes against the manifests;
 - valid labels;
-- no radiation capability other than "unavailable" outside Gale;
+- no radiation capability labelled "validated" outside Gale (the radiation estimates there are exploratory or unavailable);
 - the exploratory labelling;
 - the true-scale frame;
 - the Jezero co-registration;
