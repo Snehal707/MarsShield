@@ -27,7 +27,7 @@ Each statement carries one of these labels:
 ## Findings
 
 **1. Martian terrain measurably lowers the cosmic-ray dose rate, by up to about a fifth. [Measured]**
-- At eight parking periods beside buttes, hills and cliffs (P1–P8, at five locations), Curiosity's RAD dose rate fell by 2.1–19.4 % against nearby background periods.
+- At eight parking periods beside buttes, hills and cliffs (P1–P8, at five locations), Curiosity's RAD dose rate fell by 2.1–19.4 % against nearby background periods. These raw changes include differences in solar modulation between periods: at P5 modulation alone accounts for −2.0 of the −2.1 %, and at P8 for −6.6 of −10.0 % (docs/VALIDATION.md, V10).
 - Our reduction of the raw NASA RAD L2 files agrees with Guo et al. (2026) Table 1 to a median of +0.24 %. 13 of 15 periods lie within +0.13 to +0.32 %; BG7 differs by +0.9 % and P7 (one sol) by +3.7 %.
 
 **2. We reproduce the terrain geometry behind those measurements, with two exceptions. [Measured terrain, our computation]**
@@ -46,7 +46,7 @@ Against **all eight** measured drops:
 | Sky only | 4.26 pp | 7.66 pp |
 
 - The physical model is closest at 5 of 8 periods, but it does not have the lowest RMSE.
-- Its largest misses are P8 (−10.8 pp: geometry over-counts blocking) and P6 (+9.6 pp: RAD measured −19.4 %, the model predicts −9.8 %).
+- Its largest misses are P8 (−10.8 pp: geometry over-counts blocking) and P6 (+9.6 pp: RAD measured −19.4 %; with MarsShield's reconstructed geometry the model predicts −9.8 %, with the published geometry −13.3 %; V10).
 
 **4. For a walking astronaut, time outside sets the dose. [Modeled]**
 - Over 150 random walks, the lowest-dose route matches the fastest route to within a median of 0.07 %.
@@ -96,7 +96,7 @@ This is a new analysis combining RAD with REMS surface pressure (`science/marssh
     | **The 10 % strongest modeled anomalies** | **−1.1 %** | **−0.66 to +0.08 pp² (includes zero)** |
 
   - The signal survives removing the notch, but not removing the most strongly shielded tenth of stops.
-  - Stop 66_0 (sol 1812, +48.8 %) falls in the September 2017 solar particle event and inflates every model's error. Excluding it would *raise* the relative improvement (RMSE −24 %). The pre-specified baseline keeps it, and we do not headline the larger number.
+  - Two solar particle events lie inside the stops (10–13 Sep 2017; 28–29 Oct 2021), located in the time-resolved RAD records (V9). Stop 66_0 (sol 1812) changes by +62.9 % (actual; +48.8 on the log scale) and stop 91_1544 by +20.4 %. Removing the event records (sensitivity analysis) raises the relative improvement to 26.6 % RMSE while the absolute gain barely changes; the historical full sample stays the reference.
 - **Only partly independent.**
   - The terrain model is not fitted in this cross-validation.
   - However, its one free parameter, the flat-terrain albedo share (18–24 %), was derived by Guo et al. (2026, Eq. 5) from RAD measurements at P1–P8 and BG1–BG8, which include the notch.
@@ -112,7 +112,7 @@ This is a new analysis combining RAD with REMS surface pressure (`science/marssh
   - For the terrain model the factor is 1.25× (0.86–1.53), consistent with 1.
 - **Correlation, corrected.**
   - The earlier figure (r = 0.36 at 324 stops) detrended observations and model differently. Under identical detrending, r = 0.48 (block-bootstrap 95 %: 0.26–0.77).
-  - Residual autocorrelation is low (lag-1 0.12, n_eff ≈ 294), but the evidence clusters in about 35 Curiosity sites.
+  - The evidence clusters in 35 Curiosity navigation sites; intervals resample whole sites. (An earlier 'effective n ≈ 294' was removed: that formula applies to correlations, not to the tested error difference.)
 
 ## Radiation magnitudes in context
 

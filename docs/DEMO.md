@@ -7,8 +7,8 @@ Everything below runs in the browser, with no Python backend. Routes, trade-offs
 
 The site opens on Maria Gordon Notch with two markers: Curiosity's two parking spots, 16 m apart.
 1. **The place**, then **Ask the question**. The dark curtain is the sky the walls hide: 33 % inside, 18 % at the mouth (modeled).
-2. Drag **Your guess**. Then **See the prediction**: the physical model's bar shows a 9.8 % drop.
-3. **Reveal the measurement**: Curiosity's bar shows 19.4 %, twice the model's drop.
+2. Drag **Your guess**. Then **See the prediction**: the physical model's bar shows a 9.8 % drop on MarsShield's reconstructed geometry (13.3 % with the published geometry, stated beside it).
+3. **Reveal the measurement**: Curiosity's bar shows 19.4 %, about twice MarsShield's version of the prediction and 1.5× the published-geometry one.
 4. **What it means**: a simple rule came closer here (18 %), but across the eight measured spots neither model is reliably better.
 
 Measured values are white, model values blue, and planning assumptions underlined in dashed gold, throughout the app.

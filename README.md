@@ -18,11 +18,11 @@ Built for the NASA Space Apps Challenge 2026, *Interplanetary Survival Guide: Ma
 The site opens with a five-step guided story on the real terrain:
 1. **The place.** In December 2021 Curiosity parked twice, 16 m apart: deep inside the notch, then at its mouth.
 2. **The question.** How much lower is the dose deep inside? Visitors can guess first.
-3. **The model.** The published physical model predicts 9.8 % lower.
+3. **The model.** The published physical model, run on MarsShield's reconstruction of the notch, predicts 9.8 % lower (13.3 % with the published geometry; the reconstruction is uncertain in a 16 m-wide notch).
 4. **The measurement.** NASA's RAD measured 19.4 % lower (285 → 230 µGy/day).
 5. **What it means.** A simple blocked-sky rule (18 %) came closer here, but across all eight measured spots neither model is reliably better.
 
-The comparison is drawn as bars of the drop itself, so "twice the predicted drop" is visible at a glance. Every number is read from the exported RAD reduction. Clicking the wordmark replays the story.
+The comparison is drawn as bars of the drop itself, so the gap between prediction and measurement is visible at a glance. Every number is read from the exported RAD reduction and audit files. Clicking the wordmark replays the story. Corrections and their earlier values are listed in [docs/SCIENCE_AUDIT.md](docs/SCIENCE_AUDIT.md).
 
 ## Three ways in
 

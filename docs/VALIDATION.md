@@ -184,7 +184,7 @@ Targets nontron, mgn, canaima (positions from NASA waypoints at the documented s
 
 ## V8 Does terrain explain RAD variation beyond pressure and time? (RAD + REMS, 322 stops)
 
-Generated 2026-11-15T02:12:21+00:00. 322 walk-area rover stops, sols 1722–3896; 143020 of 149021 RAD records (96.8 %) matched to a REMS pressure (372568 REMS samples). Target: stop mean ln E minus the median ln E at other stops within ±15 sols; every predictor is detrended identically. Scores are out of sample: leave-one-time-block-out, 8 blocks, training excludes stops within ±15 sols of the test block.
+Generated 2026-11-15T12:56:58+00:00. 322 walk-area rover stops, sols 1722–3896; 143020 of 149021 RAD records (96.8 %) matched to a REMS pressure (372568 REMS samples). Target: stop mean ln E minus the median ln E at other stops within ±15 sols; every predictor is detrended identically. Scores are out of sample: leave-one-time-block-out, 8 blocks, training excludes stops within ±15 sols of the test block.
 
 | Model | RMSE (pp) | MAE (pp) | Skill vs time only |
 |---|---|---|---|
@@ -302,3 +302,72 @@ Calibration slope of observed on predicted anomaly (no intercept; 1 = correctly 
 * sky_proxy: 0.70, block-20 0.47–0.90, site-cluster (35 sites) 0.48–0.87
 
 The blocked-sky proxy overstates shielding (slope below 1); the terrain model's slope is consistent with 1. Residual autocorrelation is low, but the evidence clusters in about 35 Curiosity sites, which limits what any stop count can show.
+
+## V9 Solar particle events in the RAD record and screened terrain results
+
+Rule (sep_events.py): event window = smoothed RAD detector-E dose rate above the pre-event quiet median by the threshold (default 10 %); level: A: visualisation and screening of historically observed RAD dose; no SPE dose model.
+
+| Event | Threshold | Window (UTC) | Hours | Peak / quiet median | Forbush decrease to |
+|---|---|---|---|---|---|
+| 10-11 September 2017 solar particle event (GLE72 at Earth) | 5 % | 2017-09-10T19:32+00:00 to 2017-09-13T04:36+00:00 | 57.1 | 2.24 | 0.84 |
+| 10-11 September 2017 solar particle event (GLE72 at Earth) | 10 % | 2017-09-10T21:14+00:00 to 2017-09-13T04:02+00:00 | 54.8 | 2.24 | 0.84 |
+| 10-11 September 2017 solar particle event (GLE72 at Earth) | 20 % | 2017-09-10T22:40+00:00 to 2017-09-12T11:24+00:00 | 36.7 | 2.24 | 0.84 |
+| 28 October 2021 solar particle event (GLE73 at Earth) | 5 % | 2021-10-28T17:00+00:00 to 2021-10-29T21:44+00:00 | 28.7 | 2.29 | 0.93 |
+| 28 October 2021 solar particle event (GLE73 at Earth) | 10 % | 2021-10-28T17:00+00:00 to 2021-10-29T17:11+00:00 | 24.2 | 2.29 | 0.93 |
+| 28 October 2021 solar particle event (GLE73 at Earth) | 20 % | 2021-10-28T17:17+00:00 to 2021-10-29T12:13+00:00 | 18.9 | 2.29 | 0.93 |
+| 15 February 2022 solar particle event | 0.05 | not in this dataset | | | |
+
+| Sample | Stops | RAD records removed | RMSE time only | RMSE terrain | RMSE reduction | MSE reduction | Site 95 % dMSE (pp2) | Terrain vs proxy, site 95 % |
+|---|---|---|---|---|---|---|---|---|
+| original (historical full sample) | 322 | 0 | 3.949 | 3.487 | 11.7 % | 22.0 % | [-8.42, -0.93] | [-1.90, +0.61] |
+| excluding September 2017 SPE | 321 | 270 | 2.869 | 2.224 | 22.5 % | 39.9 % | [-8.24, -0.78] | [-2.01, +0.41] |
+| excluding October 2021 SPE | 322 | 124 | 3.815 | 3.330 | 12.7 % | 23.8 % | [-8.45, -0.95] | [-1.89, +0.64] |
+| excluding both SPEs | 321 | 394 | 2.679 | 1.968 | 26.6 % | 46.1 % | [-8.30, -0.80] | [-1.98, +0.42] |
+| excluding both SPEs, 5 % detection threshold | 321 | 418 | 2.679 | 1.967 | 26.6 % | 46.1 % | [-8.30, -0.80] | [-1.98, +0.42] |
+| excluding both SPEs, 20 % detection threshold | 322 | 314 | 2.788 | 2.103 | 24.6 % | 43.1 % | [-8.33, -0.86] | [-1.97, +0.48] |
+| excluding both SPEs and their Forbush decreases | 318 | 1656 | 2.608 | 1.852 | 29.0 % | 49.6 % | [-8.42, -0.86] | [-2.00, +0.45] |
+
+The historical full sample is the reference result. Screening is a sensitivity analysis; it does not establish that the remaining records are free of all solar-particle effects.
+
+## V10 Parking-period comparisons and Maria Gordon Notch geometry (audit)
+
+P6 blocked sky: MarsShield 0.332, published 0.379. Sky dose at P6: MarsShield 167.1, published 153.7 uGy/day. Position sensitivity (1 m, 5-95 %): 0.307 to 0.384. Height: 0.5 m 0.358, 1.0 m 0.332, 1.5 m 0.310, 2.0 m 0.288. Near-field DEM: 2m 0.323, 4m 0.297, 8m 0.228.
+
+| P6 inputs | Physical model | Sky only | Blocked-sky rule |
+|---|---|---|---|
+| ours, albedo 0.18 | -10.16 % | -17.83 % | -18.06 % |
+| ours, albedo 0.19 | -9.77 % | -17.83 % | -18.06 % |
+| ours, albedo 0.21 | -8.99 % | -17.83 % | -18.06 % |
+| ours, albedo 0.24 | -7.85 % | -17.83 % | -18.06 % |
+| published, albedo 0.18 | -13.85 % | -24.10 % | -24.27 % |
+| published, albedo 0.19 | -13.33 % | -24.10 % | -24.27 % |
+| published, albedo 0.21 | -12.29 % | -24.10 % | -24.27 % |
+| published, albedo 0.24 | -10.76 % | -24.10 % | -24.27 % |
+
+Measured P6/BG6: -19.39 % (MarsShield reduction), -19.40 % (published).
+
+| Inputs (geometry / measurements) | Physical MAE / RMSE | Sky only MAE / RMSE | Rule MAE / RMSE | Lowest RMSE | dRMSE physical - rule, site resampling |
+|---|---|---|---|---|---|
+| geometry_ours__measured_ours | 3.37 / 5.24 | 4.26 / 7.66 | 3.61 / 5.20 | rule | +0.04 (-1.69 to +4.44, 126 distinct values) |
+| geometry_ours__measured_ours__rule_with_modulation | 3.37 / 5.24 | 4.26 / 7.66 | 4.03 / 6.80 | physical | -1.56 (-4.37 to +4.40, 126 distinct values) |
+| geometry_ours__measured_published | 3.69 / 5.41 | 3.96 / 7.53 | 3.29 / 5.03 | rule | +0.38 (-1.30 to +4.45, 126 distinct values) |
+| geometry_ours__measured_published__rule_with_modulation | 3.69 / 5.41 | 3.96 / 7.53 | 3.71 / 6.68 | physical | -1.27 (-3.82 to +4.42, 126 distinct values) |
+| geometry_published__measured_ours | 2.16 / 3.15 | 3.59 / 5.19 | 2.88 / 3.26 | physical | -0.12 (-1.18 to +0.75, 126 distinct values) |
+| geometry_published__measured_ours__rule_with_modulation | 2.16 / 3.15 | 3.59 / 5.19 | 3.08 / 4.31 | physical | -1.17 (-2.87 to +1.61, 126 distinct values) |
+| geometry_published__measured_published | 2.48 / 3.37 | 3.28 / 4.93 | 2.56 / 2.93 | rule | +0.45 (-1.14 to +1.30, 126 distinct values) |
+| geometry_published__measured_published__rule_with_modulation | 2.48 / 3.37 | 3.28 / 4.93 | 2.77 / 4.08 | physical | -0.70 (-1.93 to +1.63, 126 distinct values) |
+
+With five sites the resampling range has no reliable 95 % coverage; it is a spread, not a confidence interval.
+
+| Pair | Measured | Solar modulation alone | Terrain part |
+|---|---|---|---|
+| P1/BG1 | -4.01 % | +0.08 % | -4.09 % |
+| P2/BG2 | -7.04 % | -0.10 % | -6.95 % |
+| P3/BG3 | -6.48 % | +0.12 % | -6.59 % |
+| P4/BG45 | -3.90 % | -1.03 % | -2.89 % |
+| P5/BG45 | -2.10 % | -2.04 % | -0.07 % |
+| P6/BG6 | -19.39 % | +1.55 % | -20.62 % |
+| P7/BG7 | -9.17 % | +0.10 % | -9.26 % |
+| P8/BG8 | -9.98 % | -6.59 % | -3.62 % |
+
+P7: MarsShield 197.5 uGy/day (80 records) vs published 190.4; lowest half-sol mean nearby 194.0; with flagged records 195.8. No half-sol interval between sols 3563.6 and 3565.6 averages below 194 uGy/day, so a shifted window cannot reproduce the published 190.4; including flagged records does not either. Unresolved without the authors' exact time selection or processing.

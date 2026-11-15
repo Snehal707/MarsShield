@@ -89,7 +89,7 @@ CATALOG = [
          objective="Measure subsurface hydrogen (a proxy for water) beside the cliff with the DAN neutron instrument, from three positions.",
          objective_quote="DAN has the ability to measure the amount of hydrogen, a proxy for water, around the rover",
          look_for="Layering, veins and nodules exposed on the side of the outcrop, a few metres from the western cliff, in the notch's shadow.",
-         curiosity_found="The cited post describes the plan, not results. RAD separately recorded a 19.4% lower dose rate here (P6) than at nearby background positions.",
+         curiosity_found="The cited post describes the plan, not results. RAD separately recorded a 19.4% lower dose rate at parking position P6 (stop 92_84, about 2 m from this waypoint) than at the notch mouth (BG6), 16 m away.",
          sources=[FRAEMAN2021], rad_period="P6"),
     dict(id="canaima", name="Canaima, first sulfate-unit drill", curiosity_target="Canaima (drill)", sols=[3608, 3625],
          unit="Sulfate-bearing unit, south of Paraitepuy Pass", activity="sample",

@@ -64,7 +64,8 @@ def _match_pressure(t_obs: np.ndarray, ts: np.ndarray, ps: np.ndarray) -> np.nda
     return out
 
 
-def build_table(window: float = WINDOW, min_sols: float = MIN_SOLS) -> dict:
+def build_table(window: float = WINDOW, min_sols: float = MIN_SOLS, exclude=None) -> dict:
+    """exclude: [(start_ts, end_ts, label)] RAD record windows removed everywhere (stop means and backgrounds)."""
     obs_json = json.loads((C.PROC / "observations.json").read_text())
     model_by_rmc = {s["rmc"]: s for s in obs_json["stops"]}
     stops = walk_stops()
@@ -72,7 +73,14 @@ def build_table(window: float = WINDOW, min_sols: float = MIN_SOLS) -> dict:
     r = I.read_rad(I.fetch_rad_sols(a, b))
     good = (r["flag"] == 0) & np.isfinite(r["E"]) & (r["E"] > 0)
     sol, E, utc = r["sol"][good], r["E"][good], r["utc"][good]
-    t = np.array([dt.datetime.fromisoformat(u).timestamp() for u in utc])
+    t = np.array([dt.datetime.fromisoformat(u).replace(tzinfo=dt.timezone.utc).timestamp() for u in utc])
+    n_excluded = 0
+    if exclude:
+        keep = np.ones(t.shape, bool)
+        for a_, b_, _ in exclude:
+            keep &= ~((t >= a_) & (t <= b_))
+        n_excluded = int((~keep).sum())
+        sol, E, utc, t = sol[keep], E[keep], utc[keep], t[keep]
     ts, ps = rems.load_series(int(a) - 1, int(b) + 1)
     P = _match_pressure(t, ts, ps)
     # assign observations to stops (occupancy windows) and attach stop-level model values
@@ -104,12 +112,13 @@ def build_table(window: float = WINDOW, min_sols: float = MIN_SOLS) -> dict:
             utc_start=str(utc[m][0]), utc_end=str(utc[m][-1]),
             E_mean=float(E[m].mean()), P_mean=float(P[m].mean()), P_bg=float(np.median(P[bg])),
             y_obs=float(lnE[m].mean() - np.median(lnE[bg])),
+            lnE_stop=float(lnE[m].mean()), lnE_bg=float(np.median(lnE[bg])),
             x_p=float(P[m].mean() - np.median(P[bg])),
             m_terrain=float(lnr[m].mean() - np.median(lnr[bg])),
             g_proxy=float(lng[m].mean() - np.median(lng[bg])),
             rel_total=float(rel[m][0]), B=float(B[m][0])))
     rows.sort(key=lambda q: q["mid_sol"])
-    meta = dict(n_rad_obs_total=int(good.sum()), n_rad_obs_with_pressure_at_stops=int(use.sum()),
+    meta = dict(n_rad_obs_excluded=n_excluded, n_rad_obs_total=int(good.sum()), n_rad_obs_with_pressure_at_stops=int(use.sum()),
                 frac_obs_with_pressure=float(np.isfinite(_match_pressure(t, ts, ps)).mean()),
                 n_rems_samples=int(ts.size), sol_range=[float(a), float(b)])
     return dict(rows=rows, meta=meta)
@@ -389,6 +398,61 @@ def calibration_slopes(rows, B=4000, seed=41) -> dict:
     return out
 
 
+def _compare(rows, seed=11, B=2000):
+    """Terrain model (M3) and blocked-sky proxy (M2) against time only (M0), plus M3 vs M2, on one table."""
+    pred, *_ = cross_validate(rows)
+    y = _arr(rows, "y_obs"); site = np.array([_site(r) for r in rows]); n = len(y)
+    rm = lambda m: float(np.sqrt(np.mean((y - pred[m]) ** 2)) * 100)
+    out = dict(n_stops=n, n_sites=int(np.unique(site).size), rmse_pp={m: rm(m) for m in ("M0", "M2", "M3")})
+    rng = np.random.default_rng(seed)
+    for a_, b_ in (("M3", "M0"), ("M2", "M0"), ("M3", "M2")):
+        d = (y - pred[a_]) ** 2 - (y - pred[b_]) ** 2
+        bs = [np.mean(d[_mbb_indices(n, 20, rng)]) for _ in range(B)]
+        out[f"{a_}-{b_}"] = dict(rmse_reduction=1 - rm(a_) / rm(b_), mse_reduction=1 - (rm(a_) / rm(b_)) ** 2, dMSE_pp2=float(np.mean(d) * 1e4),
+                                 block20_ci95_pp2=[float(np.percentile(bs, 2.5) * 1e4), float(np.percentile(bs, 97.5) * 1e4)],
+                                 site_ci95_pp2=site_bootstrap_dmse(y, pred[a_], pred[b_], site, B=B))
+    shares, _, _ = gain_shares(y, pred["M3"], pred["M0"], site)
+    out["largest_site_share_M3"] = dict(site=shares[0][0], share=shares[0][1])
+    return out
+
+
+def screened_results(base_rows) -> dict:
+    """Terrain results with documented solar particle event (SPE) records removed (record level, not whole stops).
+    The historical full sample stays the reference; screening is a sensitivity analysis. Screening removes the detected
+    enhancement intervals only; it does not establish that the remaining records are free of all solar-particle effects."""
+    from . import sep_events as SE
+    variants = [("original (historical full sample)", None),
+                ("excluding September 2017 SPE", dict(only=["sep2017"])),
+                ("excluding October 2021 SPE", dict(only=["sep2021"])),
+                ("excluding both SPEs", dict()),
+                ("excluding both SPEs, 5 % detection threshold", dict(threshold=0.05)),
+                ("excluding both SPEs, 20 % detection threshold", dict(threshold=0.20)),
+                ("excluding both SPEs and their Forbush decreases", dict(include_forbush=True))]
+    out = []
+    base_by = {r["rmc"]: r for r in base_rows}
+    for name, kw in variants:
+        if kw is None:
+            rows, win, meta = base_rows, [], dict(n_rad_obs_excluded=0)
+        else:
+            win = SE.windows(**kw)
+            t = build_table(exclude=win); rows, meta = t["rows"], t["meta"]
+        res = _compare(rows)
+        by = {r["rmc"]: r for r in rows}
+        affected = []
+        for k, r0 in base_by.items():
+            r1 = by.get(k)
+            if r1 is None:
+                affected.append(dict(stop=k, change="removed (too few records left)", n_obs_before=r0["n_obs"]))
+            elif r1["n_obs"] != r0["n_obs"]:
+                affected.append(dict(stop=k, change="records removed", n_obs_before=r0["n_obs"], n_obs_after=r1["n_obs"],
+                                     y_before=r0["y_obs"], y_after=r1["y_obs"]))
+        out.append(dict(variant=name, windows=[dict(event=e, start=SE._iso(a_), end=SE._iso(b_)) for a_, b_, e in win],
+                        n_rad_records_excluded=meta.get("n_rad_obs_excluded", 0), stops_with_records_removed=affected, **res))
+    return dict(rule="sep_events.py: enhancement above the pre-event quiet median by the detection threshold (default 10 %)",
+                note="The historical full sample remains the reference result. Screened results are sensitivity analyses; "
+                     "the remaining records are not established to be free of all solar-particle effects.", variants=out)
+
+
 def run() -> dict:
     tab = build_table()
     rows = tab["rows"]
@@ -420,6 +484,7 @@ def run() -> dict:
         robustness=robustness(rows),
         influence=influence(rows, pred),
         evaluation_overlap=evaluation_overlap(rows),
+        sep_screening=screened_results(rows),
         disagreement_test=disagreement_test(rows),
         calibration=calibration_slopes(rows),
         spearman_terrain=_spearman(_arr(rows, 'y_obs'), _arr(rows, 'm_terrain')),

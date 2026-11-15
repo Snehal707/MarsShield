@@ -173,6 +173,12 @@ def main():
     tp = C.PROC / "terrain_signal.json"
     if tp.exists():
         _terrain_signal(json.loads(tp.read_text()), w)
+    sp = C.PROC / "sep_events.json"
+    if tp.exists() and sp.exists():
+        _sep(json.loads(sp.read_text()), json.loads(tp.read_text()).get("sep_screening"), w)
+    pa = C.PROC / "parking_audit.json"
+    if pa.exists():
+        _parking_audit(json.loads(pa.read_text()), w)
     (C.ROOT / "docs" / "VALIDATION.md").write_text("\n".join(L), encoding="utf-8")
     print("wrote docs/VALIDATION.md")
 
@@ -276,6 +282,60 @@ def _terrain_signal(t, w):
           f"site-cluster ({c['n_sites']} sites) {c['ci95_site_cluster'][0]:.2f}–{c['ci95_site_cluster'][1]:.2f}")
     w("\nThe blocked-sky proxy overstates shielding (slope below 1); the terrain model's slope is consistent with 1. "
       "Residual autocorrelation is low, but the evidence clusters in about 35 Curiosity sites, which limits what any stop count can show.\n")
+
+
+
+
+def _sep(e, scr, w):
+    w("## V9 Solar particle events in the RAD record and screened terrain results\n")
+    w(f"Rule (sep_events.py): event window = smoothed RAD detector-E dose rate above the pre-event quiet median by the threshold "
+      f"(default {e['rule']['threshold'] * 100:.0f} %); level: {e['level']}.\n")
+    w("| Event | Threshold | Window (UTC) | Hours | Peak / quiet median | Forbush decrease to |\n|---|---|---|---|---|---|")
+    for ev in e["events"]:
+        for th, x in ev["windows"].items():
+            if not x.get("available"):
+                w(f"| {ev['name']} | {th} | not in this dataset | | | |")
+                break
+            if x.get("detected"):
+                fd = ("%.2f" % x["forbush_min_ratio"]) if x.get("forbush_min_ratio") else "-"
+                w(f"| {ev['name']} | {float(th) * 100:.0f} % | {x['enhancement'][0]} to {x['enhancement'][1]} | {x['enhancement_hours']:.1f} | "
+                  f"{x['peak_ratio']:.2f} | {fd} |")
+    if scr:
+        w("\n| Sample | Stops | RAD records removed | RMSE time only | RMSE terrain | RMSE reduction | MSE reduction | Site 95 % dMSE (pp2) | Terrain vs proxy, site 95 % |\n|---|---|---|---|---|---|---|---|---|")
+        for v in scr["variants"]:
+            a = v["M3-M0"]
+            c = v["M3-M2"]
+            w(f"| {v['variant']} | {v['n_stops']} | {v['n_rad_records_excluded']} | {v['rmse_pp']['M0']:.3f} | {v['rmse_pp']['M3']:.3f} | "
+              f"{a['rmse_reduction'] * 100:.1f} % | {a['mse_reduction'] * 100:.1f} % | {_ci(a['site_ci95_pp2'])} | {_ci(c['site_ci95_pp2'])} |")
+        w("\nThe historical full sample is the reference result. Screening is a sensitivity analysis; it does not establish that the "
+          "remaining records are free of all solar-particle effects.\n")
+
+
+def _parking_audit(d, w):
+    w("## V10 Parking-period comparisons and Maria Gordon Notch geometry (audit)\n")
+    p = d["p6"]
+    ps = p["position_sensitivity"]["sigma_1m"]
+    w(f"P6 blocked sky: MarsShield {p['B_ours']:.3f}, published {p['B_published']:.3f}. Sky dose at P6: MarsShield {p['D_sky_P6_ours']:.1f}, "
+      f"published {p['D_sky_P6_published']:.1f} uGy/day. Position sensitivity (1 m, 5-95 %): {ps['p05']:.3f} to {ps['p95']:.3f}. Height: "
+      + ", ".join(f"{h} m {b:.3f}" for h, b in d["p6_sensitivity"]["height_m"].items())
+      + ". Near-field DEM: " + ", ".join(f"{r} {b:.3f}" for r, b in d["p6_sensitivity"]["near_field_resolution"].items()) + ".\n")
+    w("| P6 inputs | Physical model | Sky only | Blocked-sky rule |\n|---|---|---|---|")
+    for k, q in p["predictions"].items():
+        w(f"| {k.replace('_alpha', ', albedo ')} | {q['physical'] * 100:+.2f} % | {q['sky_only'] * 100:+.2f} % | {q['rule'] * 100:+.2f} % |")
+    w(f"\nMeasured P6/BG6: {p['measured_change_ours'] * 100:+.2f} % (MarsShield reduction), {p['measured_change_published'] * 100:+.2f} % (published).\n")
+    w("| Inputs (geometry / measurements) | Physical MAE / RMSE | Sky only MAE / RMSE | Rule MAE / RMSE | Lowest RMSE | dRMSE physical - rule, site resampling |\n|---|---|---|---|---|---|")
+    for k, x in d["variants"].items():
+        s = x["score"]
+        r = s["dRMSE_physical_minus_rule_pp"]
+        w(f"| {k} | {s['physical']['mae_pp']:.2f} / {s['physical']['rmse_pp']:.2f} | {s['sky_only']['mae_pp']:.2f} / {s['sky_only']['rmse_pp']:.2f} | "
+          f"{s['rule']['mae_pp']:.2f} / {s['rule']['rmse_pp']:.2f} | {s['ranking_by_rmse'][0]} | {r['point']:+.2f} ({r['p025']:+.2f} to {r['p975']:+.2f}, {r['distinct_values']} distinct values) |")
+    w("\nWith five sites the resampling range has no reliable 95 % coverage; it is a spread, not a confidence interval.\n")
+    w("| Pair | Measured | Solar modulation alone | Terrain part |\n|---|---|---|---|")
+    for r in d["modulation_only_change"]:
+        w(f"| {r['pair']} | {r['measured'] * 100:+.2f} % | {r['modulation_only'] * 100:+.2f} % | {((1 + r['measured']) / (1 + r['modulation_only']) - 1) * 100:+.2f} % |")
+    q = d["p7"]
+    w(f"\nP7: MarsShield {q['ours_mean']:.1f} uGy/day ({q['ours_n']} records) vs published {q['published']}; lowest half-sol mean nearby "
+      f"{q['min_half_sol']:.1f}; with flagged records {q['including_flagged_mean']:.1f}. {q['conclusion']}\n")
 
 
 if __name__ == "__main__":

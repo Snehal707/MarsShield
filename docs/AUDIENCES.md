@@ -9,7 +9,7 @@ Three intended audiences, each with one concrete question MarsShield can answer 
 **Question:** *Does standing next to a Martian cliff actually lower your radiation dose, and by how much?*
 
 **Answer in the app:**
-- The opening screen shows −19.4 %, measured by Curiosity at Maria Gordon Notch, beside the −9.8 % a published model predicts.
+- The opening story shows −19.4 %, measured by Curiosity at Maria Gordon Notch, beside the −9.8 % the published model predicts on MarsShield's reconstructed geometry (−13.3 % with the published geometry).
 - **Experiment → Does the landscape change the dose?** lets a class choose a model, predict 322 rover stops and only then reveal the measurements.
 
 **Journey:**

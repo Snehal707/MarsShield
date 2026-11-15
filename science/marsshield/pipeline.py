@@ -82,13 +82,16 @@ def export_experiments(out):
     for k, r in val["periods"].items():
         per[k] = dict(site=r["site"], sols=r["sols"], phi=r["phi"], B=r["B_model"], D_sky=r["D_sky_model"],
                       Dfs=m.sky_components(np.zeros(91), r["phi"])[2], D_RAD_ours=r["rad"]["E_mean"], D_RAD_sem=r["rad"]["E_sem"],
-                      D_RAD_pub=r["D_RAD_pub"], utc=[r["rad"]["utc_start"], r["rad"]["utc_end"]], n_obs=r["rad"]["n"],
+                      D_RAD_pub=r["D_RAD_pub"], B_pub=r["ROS_pub"], D_sky_pub=r["D_sky_pub"],
+                      utc=[r["rad"]["utc_start"], r["rad"]["utc_end"]], n_obs=r["rad"]["n"],
                       x=r["positions"][0]["x"], y=r["positions"][0]["y"])
     pairs = [dict(parking=p_, background=bg) for p_, bg in P.PAIRS.items()]
     au = json.loads((C.PROC / "audit.json").read_text())
     (out / "experiment_parking.json").write_text(json.dumps(dict(
         periods=per, pairs=pairs, alpha_prior=0.19, alpha_range=[0.18, 0.24],
         p6_alternative=dict(section4_decrease=0.17, table1_decrease=0.194),
+        alpha_sources=dict(story_and_parking=dict(value=0.19, source="Guo et al. (2021): Murray Buttes (Butte M12, 2016), not one of the eight parking periods"),
+                           map_and_322_stops=dict(value=0.21, source="midpoint of the 18-24 % range derived by Guo et al. (2026) from the parking periods P1-P8 and backgrounds, including Maria Gordon Notch")),
         audit=dict(cells_checked=au["A1_table1_transcription"]["cells_checked"], mismatches=au["A1_table1_transcription"]["mismatches"]),
         provenance="NASA RAD L2 (our reduction) and Guo et al. (2026) Table 1; DEM-derived blocked sky; Guo et al. (2021) zenith model")))
     (out / "flat_dose.json").write_text(json.dumps(flat))
@@ -103,10 +106,10 @@ def export_terrain_signal(out):
     ts = C.PROC / "terrain_signal.json"
     if ts.exists():
         d = json.loads(ts.read_text())
-        keep = ("rmc", "sol", "mid_sol", "x", "y", "n_obs", "data_sols", "utc_start", "utc_end", "E_mean", "P_mean", "P_bg",
+        keep = ("rmc", "sol", "mid_sol", "x", "y", "n_obs", "n_bg", "data_sols", "utc_start", "utc_end", "E_mean", "lnE_stop", "lnE_bg", "P_mean", "P_bg",
                 "y_obs", "x_p", "m_terrain", "g_proxy", "rel_total", "B", "block")
         (out / "terrain_signal.json").write_text(json.dumps(dict(
-            rows=[{k: r[k] for k in keep} for r in d["rows"]], window_sols=d["window_sols"], k_blocks=d["k_blocks"],
+            rows=[{k: r[k] for k in keep if k in r} for r in d["rows"]], window_sols=d["window_sols"], k_blocks=d["k_blocks"],
             performance=d["performance"], mse_differences=d["mse_differences"], correlations=d["correlations"],
             pressure_coefficient=d["pressure_coefficient"], meta=d["meta"], predictor_spread_pp=d["predictor_spread_pp"],
             robustness=d["robustness"], disagreement_test=d["disagreement_test"], calibration=d["calibration"],
@@ -114,7 +117,50 @@ def export_terrain_signal(out):
             rmse_reduction_vs_M0=d["rmse_reduction_vs_M0"], site_ci95_dMSE_vs_M0_pp2=d["site_ci95_dMSE_vs_M0_pp2"],
             influence={k: v for k, v in d["influence"].items() if k != "leave_one_site_out"} | dict(
                 leave_one_site_out={k: d["influence"]["leave_one_site_out"][k] for k in ("min", "max")}),
-            evaluation_overlap=d["evaluation_overlap"])))
+            evaluation_overlap=d["evaluation_overlap"],
+            sep_screening=d.get("sep_screening"))))
+    export_audits(out)
+
+
+def build_input_manifest() -> dict:
+    """Every cached source file behind the processed data: name, bytes, SHA-256, original URL, processing parameters.
+    Recorded from the files actually on disk; files that were never downloaded are not listed."""
+    import hashlib
+
+    def entry(p, url=None, **kw):
+        h = hashlib.sha256(p.read_bytes()).hexdigest()
+        side = p.with_name(p.name + ".json")
+        meta = json.loads(side.read_text()) if side.exists() else {}
+        return dict(file=p.name, bytes=p.stat().st_size, sha256=h, source=url or meta.get("source"), **{k: v for k, v in meta.items() if k != "source"}, **kw)
+    rad = sorted((C.RAW / "rad_l2").glob("*.cdf"))
+    rems_files = sorted((C.RAW / "rems").glob("sol_*.json"))
+    rems_h = hashlib.sha256()
+    for f in rems_files:
+        rems_h.update(f.read_bytes())
+    man = dict(
+        generated_utc=I._now(),
+        note="Inputs on the machine that produced the processed data. Re-running the pipeline downloads the same products from these URLs.",
+        rad_l2=dict(product="MSL RAD Level 2 observation dosimetry, CDF v04", base_url=C.RAD_L2_BASE, variable="DOSIMETRY_TOTAL[:, 2] (detector E), records with FLAGGED_DATA removed",
+                    files=[dict(file=f.name, bytes=f.stat().st_size, sha256=hashlib.sha256(f.read_bytes()).hexdigest(), url=f"{C.RAD_L2_BASE}/{f.name[15:19]}/{f.name}") for f in rad]),
+        rems_modrdr=dict(product="MSL REMS MODRDR (MSL-M-REMS-5-MODRDR-V1.0)", base_url="https://pds-atmospheres.nmsu.edu/PDS/data/mslrem_1001/DATA/",
+                         processing="180 evenly spaced records per sol, PRESSURE bytes 345-351, PS_CONFIDENCE_LEVEL bytes 362-369 (shadow-affected dropped); cached per sol as JSON with source URLs",
+                         sols=len(rems_files), combined_sha256_of_cached_sol_files=rems_h.hexdigest()),
+        terrain=[entry(p) for p in sorted((C.RAW / "dem").glob("*.tif"))] + [entry(p) for p in sorted((C.RAW / "ortho").glob("*.tif"))],
+        waypoints=[entry(p, url="https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_waypoints.json") for p in [C.RAW / "traverse" / "MSL_waypoints.json"] if p.exists()],
+        parameters=dict(detrending_window_sols=15, min_rad_sols_per_stop=1, max_rems_gap_s=3600, rad_height_m=C.RAD_HEIGHT_M,
+                        terrain_model=dict(phi_MV=500, albedo_share=0.21), proxy="ln(1 - sky_blocked_fraction)",
+                        sep_screening="science/marsshield/sep_events.py (sensitivity analysis only)"),
+    )
+    (C.PROC / "input_manifest.json").write_text(json.dumps(man, indent=1))
+    return man
+
+
+def export_audits(out):
+    """Solar-particle-event windows with hourly RAD series (observations only) and the parking/P6 audit, for Evidence."""
+    for name in ("sep_events.json", "parking_audit.json", "input_manifest.json"):
+        f = C.PROC / name
+        if f.exists():
+            (out / name).write_text(f.read_text())
 
 
 def export_web():
