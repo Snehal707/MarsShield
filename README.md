@@ -36,6 +36,16 @@ The terrain is the main view, with a single **Layers** control: modeled dose rat
 
 Colors keep sources apart throughout: measured values are white, model values blue, and planning assumptions underlined in dashed gold. If WebGL is unavailable, the app shows the orbital image and every panel keeps working.
 
+**Research downloads.** Every experiment has two download buttons, both generated in the browser with no server:
+- **Data (CSV):** the exact rows in your current selection (subset, model, baseline and validation settings), with observations and predictions joined.
+- **Research package (ZIP):**
+  - `observations.csv` and `predictions.csv`
+  - `experiment.json`: selections, model formulas, fitted coefficients per validation block, random seeds, results and limitations
+  - `datapackage.json`: a Frictionless Data Package schema giving every column's unit, type, definition and category (observed, derived or modeled)
+  - `README.md`: provenance, Mars coordinate reference, and a Python recipe that rebuilds the held-out predictions from `observations.csv`
+
+Packages identify the processed dataset by its SHA-256 and link to NASA's original archives. Processed values are not presented as raw measurements. Coordinates are Mars 2000 sphere equirectangular metres, plus Mars planetocentric degrees, labelled as Mars, not Earth.
+
 **What runs where.**
 - **In the browser:** routing (Dijkstra on the 5 m grid), the break-even search, cross-validation, bootstrap intervals and parking-period predictions. These are TypeScript ports checked against the Python outputs (`web/scripts/verify-*.mts`).
 - **Python only, precomputed:** horizon ray tracing, the RAD and REMS reductions, the dose-model fits, the sky fisheyes and the large site bootstraps. The API (`marsshield.api`) adds sky analysis at arbitrary points.

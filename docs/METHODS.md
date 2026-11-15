@@ -229,7 +229,42 @@ In the Mission mode, everything after the activity step comes from **one** stop 
 - **Alternatives.** Spots the model does not resolve are reported as alternatives with their saving, never mixed into the totals.
 - **Checks.** `web/scripts/verify-engine.mts` checks that the comparison's walking dose equals the dose of the reported paths for every strategy and for one-way trips.
 
-## 14. Browser engine (public site)
+## 14. Research exports (`web/src/lib/exports.ts`)
+
+Each experiment exports the rows in the user's current selection: one CSV, or a ZIP built in the browser (stored entries, CRC-32).
+
+Each column is defined once, with:
+- name and unit
+- type
+- definition
+- category:
+  - **observed:** a NASA measurement aggregated by MarsShield
+  - **derived:** computed from observations
+  - **modeled:** a model or ray-tracing output
+  - **identifier**, **coordinate** or **setting**
+
+The same definitions produce the CSV header, the `datapackage.json` schema and the README.
+
+**Package contents:**
+- **Software:** version and git commit.
+- **Dataset:** the processed dataset's SHA-256 and generation time.
+- **Sources:** NASA source archives.
+- **Coordinates:** PROJ string `+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +R=3396190 +units=m`, read from the USGS DEM.
+- **Selections**, including excluded stop IDs.
+- **Model formulas** and validation block edges.
+- **Fitted coefficients** per block.
+- **Random generator and seeds:** mulberry32 for the browser bootstraps. The Python pipeline uses NumPy, so intervals agree within Monte Carlo error.
+- **Results** and interpretation limits.
+
+**Tests:**
+- **`web/scripts/verify-exports.mts`** (in CI) checks:
+  - that exported rows follow the selection (all stops, no notch, no published periods, K = 6, L = 40, switched models)
+  - that RMSE, mean error and ΔMSE recomputed from the CSVs equal the in-app and Python values
+  - schema and header agreement
+  - ZIP integrity and provenance fields
+- **Package READMEs:** each recipe was executed on exported packages (including one downloaded from the browser). It rebuilt the held-out predictions to within 2e-16 and reproduced the reported statistics.
+
+## 15. Browser engine (public site)
 
 The static site recalculates without a server:
 - **Routes:** a TypeScript port of `routing.py`, with the same 16-connected grid, Tobler × suit factor, 25° walking limit and cost functions, and a binary-heap Dijkstra.

@@ -90,6 +90,9 @@ export default function App() {
   const [exag, setExag] = useState(1);
   const [webgl, setWebgl] = useState(true);
   const [panel, setPanel] = useState(true);
+  // Experiment and Evidence get a wider analysis panel that can expand into a reading/analysis view; Mission and the
+  // story keep the narrow panel so the terrain stays the main view.
+  const [expanded, setExpanded] = useState(false);
   const [focus, setFocus] = useState<Focus>(null);
   const [scene, setScene] = useState<SceneSpec>({});
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
@@ -138,8 +141,11 @@ export default function App() {
   const pins = welcome ? story?.pins ?? [] : mode === "evidence" ? targetPins : scene.pins;
   const skyId = welcome ? (story?.sky ? "mgn" : null) : mode === "mission" ? scene.skyId : null;
 
+  const desktop = vw > 860, analysis = !welcome && (mode === "experiment" || mode === "evidence");
+  const panelW = !analysis ? (vw > 1180 ? 400 : 370)
+    : expanded ? Math.round(Math.min(1080, Math.max(640, vw * 0.64))) : Math.round(Math.min(620, Math.max(460, vw * 0.38)));
   const sceneEl = (
-    <TerrainScene ds={ds} layer={layer} alpha={0.21} exaggeration={exag} disagreeErrPP={ds.breakeven["Maria Gordon Notch"].model_error.rmse_pp} disagreeRefPP={dref} viewShiftPx={panel && vw > 860 ? (vw > 1180 ? 208 : 193) : 0}
+    <TerrainScene ds={ds} layer={layer} alpha={0.21} exaggeration={exag} disagreeErrPP={ds.breakeven["Maria Gordon Notch"].model_error.rmse_pp} disagreeRefPP={dref} viewShiftPx={panel && desktop ? Math.round(panelW / 2) + 8 : 0}
       lines={welcome || mode === "evidence" ? [] : scene.lines} pins={pins} ring={!welcome && mode === "mission" ? scene.ring : null}
       sky={skyId ? ds.skiesTargets[skyId] : null} showObs={showObs} focus={focus}
       onObsClick={(s) => { setCard(s); setTip(null); }}
@@ -182,11 +188,19 @@ export default function App() {
         <button className="btn ghost panel-toggle" style={{ display: panel ? "none" : undefined }} onClick={() => setPanel(true)}>Show panel</button>
       </section>
 
-      <aside className={`panel ${panel ? "" : "hidden"}${welcome ? " fit" : ""}`} aria-label="Panel">
+      <aside className={`panel ${panel ? "" : "hidden"}${welcome ? " fit" : ""}${analysis ? " analysis" : ""}${analysis && expanded ? " expanded" : ""}`} aria-label="Panel"
+        style={desktop ? { width: panelW } : undefined}>
+        {analysis && desktop && (
+          <button className="panel-expand" onClick={() => setExpanded(!expanded)} aria-pressed={expanded}
+            title={expanded ? "Return to the narrower panel" : mode === "evidence" ? "Wider reading view for figures and tables" : "Wider analysis view for charts and data"}>
+            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">{expanded
+              ? <path d="M9.5 2.5v4h4M6.5 13.5v-4h-4M9.5 6.5 14 2M6.5 9.5 2 14" fill="none" stroke="currentColor" strokeWidth="1.4" />
+              : <path d="M10 2.5h3.5V6M6 13.5H2.5V10M13.5 2.5 9 7M2.5 13.5 7 9" fill="none" stroke="currentColor" strokeWidth="1.4" />}</svg>
+            {expanded ? "Narrow" : mode === "evidence" ? "Reading view" : "Expand analysis"}</button>)}
         {welcome ? (
           <NotchStory ds={ds} setStoryScene={setStoryScene} onDone={finishWelcome} />
         ) : mode === "mission" ? <MissionMode ds={ds} eng={eng} setScene={setSceneCb} focusOn={focusOn} />
-          : mode === "experiment" ? <ExperimentMode ds={ds} setScene={setSceneCb} setLayer={setLayerCb} initial={initExp} />
+          : mode === "experiment" ? <ExperimentMode ds={ds} setScene={setSceneCb} setLayer={setLayerCb} focusOn={focusOn} initial={initExp} />
           : <EvidenceMode ds={ds} />}
       </aside>
     </div>

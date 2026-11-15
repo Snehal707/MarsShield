@@ -45,3 +45,4 @@ jobs:
       - run: node scripts/verify-engine.mts
       - run: node scripts/verify-stats.mts
       - run: node scripts/verify-story.mts
+      - run: node scripts/verify-exports.mts

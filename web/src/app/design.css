@@ -154,3 +154,58 @@
   .story-title { font-size: 28px; }
   .dest-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ---------- research workspace: Experiment and Evidence ---------- */
+.panel.analysis .panel-head { padding-right: 168px; }
+.panel-expand { position: absolute; top: 14px; right: 16px; z-index: 3; display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 999px;
+  border: 1px solid var(--line-2); background: var(--basalt-800); color: var(--ink-2); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.panel-expand:hover, .panel-expand[aria-pressed="true"] { color: var(--ink); border-color: var(--ink-3); }
+.panel { transition: width 0.3s ease, transform 0.35s ease, opacity 0.35s ease; }
+.panel.expanded .panel-body { padding: 18px 32px 28px; }
+.panel.expanded .panel-head { padding-left: 32px; }
+.panel.analysis .chart { max-width: 600px; }
+.panel.expanded .prose, .panel.expanded .lede, .panel.expanded .note, .panel.expanded .verdict-head { max-width: 76ch; }
+
+/* downloads: always visible at the top of an experiment */
+.dl-bar { position: sticky; top: -16px; z-index: 2; margin: -16px -20px 0; padding: 12px 20px 10px; display: grid; gap: 6px;
+  background: rgba(26, 21, 17, 0.97); border-bottom: 1px solid var(--line); }
+.panel.expanded .dl-bar { margin: -18px -32px 0; padding: 12px 32px 10px; top: -18px; }
+.dl-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn.dl { display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; font-size: 13px; font-weight: 600; }
+.btn.dl:first-child { border-color: rgba(208, 144, 79, 0.6); color: var(--dust-2); }
+.dl-note { margin: 0; font-size: 11.5px; line-height: 1.45; color: var(--ink-3); }
+
+/* the data behind a result: compact, linked to the terrain */
+.dataset { display: grid; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); }
+.dataset-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dataset-head h3 { margin: 0; font-size: 14px; font-weight: 650; }
+.sel-card { display: grid; gap: 3px; padding: 9px 12px; border-left: 3px solid var(--dust-2); background: rgba(231, 179, 125, 0.07); border-radius: 0 8px 8px 0; font-size: 12.5px; color: var(--ink-2); }
+.sel-card b { color: var(--ink); font-size: 13.5px; }
+.dt-wrap { max-height: 330px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+.panel.expanded .dt-wrap { max-height: 520px; }
+table.dt { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+table.dt th { position: sticky; top: 0; z-index: 1; background: var(--basalt-850); color: var(--ink-3); font-weight: 600; text-align: left; white-space: nowrap; }
+table.dt th, table.dt td { padding: 6px 9px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+table.dt .num { text-align: right; }
+table.dt tbody tr { cursor: pointer; }
+table.dt tbody tr:hover td { background: rgba(239, 230, 216, 0.04); }
+table.dt tbody tr[aria-selected="true"] td { background: rgba(231, 179, 125, 0.15); }
+table.dt tbody tr:focus-visible { outline: 2px solid var(--dust-2); outline-offset: -2px; }
+.wide-only { display: none; }
+.panel.expanded .wide-only { display: table-cell; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* evidence as a report: readable measure, figures sized for reading */
+.panel.analysis table.data { font-size: 13px; }
+.panel.expanded .subnav { position: sticky; top: 0; }
+@media (max-width: 860px) {
+  .dl-bar { position: static; margin: 0; padding: 0 0 10px; background: none; }
+  .dt-wrap { max-height: 420px; }
+  .panel.analysis .panel-head { padding-right: 20px; }
+}
+
+/* desktop shell never scrolls: content scrolls inside the panel, so focusing a table row cannot shift the terrain view */
+@media (min-width: 861px) {
+  html, body { overflow: hidden; }
+  .app { overflow: clip; }
+}
