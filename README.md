@@ -9,6 +9,9 @@ Built for the NASA Space Apps Challenge 2026, *Interplanetary Survival Guide: Ma
 - **Live application:** https://marsshield.vercel.app (primary)
 - **Mirror:** https://snehal707.github.io/MarsShield/ (GitHub Pages; slower to load)
 - **Code:** https://github.com/Snehal707/MarsShield
+- **Demo video (29 s):** https://youtu.be/pvGjpGUpz6I
+
+[![MarsShield demo video](https://img.youtube.com/vi/pvGjpGUpz6I/maxresdefault.jpg)](https://youtu.be/pvGjpGUpz6I)
 
 ## Three regions, three kinds of evidence
 
