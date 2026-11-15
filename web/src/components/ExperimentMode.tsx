@@ -7,7 +7,7 @@ import { Chip, download, Grammar, M, More, P, Seg, sgn, Slider } from "./ui";
 
 type Exp = "terrain" | "parking" | "disagree";
 const EXPS: { id: Exp; title: string; q: string; n: string }[] = [
-  { id: "terrain", title: "Does the landscape explain the radiation Curiosity measured?", q: "After accounting for time and atmospheric pressure, do terrain models predict which of Curiosity's stops had lower dose?", n: "322 rover stops, 2019 to 2022" },
+  { id: "terrain", title: "Does the landscape explain the radiation Curiosity measured?", q: "After accounting for time and atmospheric pressure, do terrain models predict which of Curiosity's stops had lower dose?", n: "322 rover stops, 2017 to 2023" },
   { id: "parking", title: "Physical model or simple rule at the eight parking spots?", q: "Which predicts the measured dose drops better: the published terrain-albedo model, sky-only shielding, or 'dose falls with blocked sky'?", n: "8 published parking periods at 5 places" },
   { id: "disagree", title: "Where would a measurement best separate the models?", q: "Pick the stops where the two terrain models disagree most, before looking at the data. Which model was closer?", n: "Map of model disagreement, 322 stops" },
 ];
