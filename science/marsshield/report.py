@@ -170,8 +170,69 @@ def main():
         for s_ in m["stops"]:
             w(f"* Stop {s_['target']}: decision **{s_['decision']['status']}**. {s_['decision']['text']}")
         w("")
+    tp = C.PROC / "terrain_signal.json"
+    if tp.exists():
+        _terrain_signal(json.loads(tp.read_text()), w)
     (C.ROOT / "docs" / "VALIDATION.md").write_text("\n".join(L), encoding="utf-8")
     print("wrote docs/VALIDATION.md")
+
+
+def _ci(c, d=2):
+    return f"[{c[0]:+.{d}f}, {c[1]:+.{d}f}]"
+
+
+def _terrain_signal(t, w):
+    P, D, mt = t["performance"], t["mse_differences"], t["meta"]
+    w("## V8 Does terrain explain RAD variation beyond pressure and time? (RAD + REMS, 322 stops)\n")
+    w(f"Generated {t['generated_utc']}. {t['n_stops']} walk-area rover stops, sols {mt['sol_range'][0]:.0f}–{mt['sol_range'][1]:.0f}; "
+      f"{mt['n_rad_obs_with_pressure_at_stops']} of {mt['n_rad_obs_total']} RAD records ({mt['frac_obs_with_pressure'] * 100:.1f} %) matched to a "
+      f"REMS pressure ({mt['n_rems_samples']} REMS samples). Target: stop mean ln E minus the median ln E at other stops within "
+      f"±{t['window_sols']:.0f} sols; every predictor is detrended identically. Scores are out of sample: leave-one-time-block-out, "
+      f"{t['k_blocks']} blocks, training excludes stops within ±{t['window_sols']:.0f} sols of the test block.\n")
+    w("| Model | RMSE (pp) | MAE (pp) | Skill vs time only |\n|---|---|---|---|")
+    for k, v in P.items():
+        w(f"| {k} {v['label']} | {v['rmse_pp']:.2f} | {v['mae_pp']:.2f} | {v['skill_vs_M0'] * 100:+.1f} % |")
+    w("\nMSE differences with moving-block bootstrap 95 % intervals (pp², blocks of 10 / 20 / 40 stops; negative = first model better):\n")
+    w("| Comparison | Mean | L = 10 | L = 20 | L = 40 |\n|---|---|---|---|---|")
+    for k, v in D.items():
+        w(f"| {k} | {v['L20']['mean_dMSE_pp2']:+.2f} | {_ci(v['L10']['ci95_pp2'])} | {_ci(v['L20']['ci95_pp2'])} | {_ci(v['L40']['ci95_pp2'])} |")
+    pc = t["pressure_coefficient"]
+    sp = t["predictor_spread_pp"]
+    w(f"\n* Pressure: fitted coefficient {pc['fitted_uGy_d_per_pa']:+.3f} µGy/day/Pa against {pc['literature']['value']} ± "
+      f"{pc['literature']['err']} in {pc['literature']['cite']}. After whole-stop averaging and detrending the pressure term spreads the "
+      f"prediction by only {sp['pressure_term']:.2f} pp (observed spread {sp['y_obs']:.2f} pp), so this design cannot measure it. "
+      "**No measurable gain from pressure control at stop level.**")
+    w(f"* Terrain: the published terrain model reduces out-of-sample error against time only (skill {P['M3']['skill_vs_M0'] * 100:+.1f} %, "
+      f"interval excludes zero at every block length). **Terrain model vs blocked-sky proxy head to head: not distinguishable** "
+      f"(M3−M2 interval {_ci(D['M3-M2']['L20']['ci95_pp2'])} pp²). The proxy alone does not reliably beat time only (M2−M0 interval {_ci(D['M2-M0']['L20']['ci95_pp2'])} pp²).")
+    w("\nCorrelations of observed anomaly with each predictor (the previously reported 324-stop r = 0.36 used a different detrending "
+      "for observations and model and is superseded):\n")
+    w("| Predictor | r | i.i.d. 95 % | block-20 95 % | lag-1 autocorr. (obs / pred) | n_eff |\n|---|---|---|---|---|---|")
+    for k, c in t["correlations"].items():
+        w(f"| {k} | {c['r']:.3f} | {_ci(c['iid_ci95'])} | {_ci(c['block20_ci95'])} | {c['lag1_autocorr']['observed']:.2f} / "
+          f"{c['lag1_autocorr']['predictor']:.2f} | {c['n_eff']:.0f} |")
+    w(f"\nSpearman rank correlation, terrain model: {t['spearman_terrain']:.3f}.\n")
+    w("Robustness (skill vs time only, and 95 % block-bootstrap interval of ΔMSE vs time only, pp²):\n")
+    w("| Variant | n | Proxy skill | Terrain skill | Proxy ΔMSE | Terrain ΔMSE | r terrain |\n|---|---|---|---|---|---|---|")
+    for r in t["robustness"]:
+        c = r["dMSE_vs_M0_ci95_pp2"]
+        w(f"| {r['variant']} | {r['n']} | {r['skill']['M2'] * 100:+.1f} % | {r['skill']['M3'] * 100:+.1f} % | {_ci(c['M2'])} | "
+          f"{_ci(c['M3'])} | {r['r_terrain']:.2f} |")
+    w("\nThe terrain signal is concentrated in a few strongly shielded stops: without the 5 % largest modeled anomalies the "
+      "skill falls to a few percent.\n")
+    dt_ = t["disagreement_test"]
+    w(f"Disagreement test: stops selected by |terrain model − proxy| from model values only, before comparison with RAD; "
+      f"intervals resample whole sites ({dt_['cluster']}).\n")
+    w("| Top N | Sites | RMSE model / proxy (pp) | Stops model closer | Sites model closer | ΔRMSE (pp) | Site-bootstrap 95 % | Verdict |\n|---|---|---|---|---|---|---|---|")
+    for r in dt_["results"]:
+        w(f"| {r['top']} | {r['n_sites']} | {r['rmse_model_pp']:.2f} / {r['rmse_proxy_pp']:.2f} | {r['stops_model_closer']} | "
+          f"{r['sites_model_closer']} | {r['dRMSE_pp']:+.2f} | {_ci(r['ci95_site_bootstrap_pp'])} | {r['verdict']} |")
+    w("\nCalibration slope of observed on predicted anomaly (no intercept; 1 = correctly scaled):\n")
+    for k, c in t["calibration"].items():
+        w(f"* {k}: {c['slope']:.2f}, block-20 {c['ci95_block20'][0]:.2f}–{c['ci95_block20'][1]:.2f}, "
+          f"site-cluster ({c['n_sites']} sites) {c['ci95_site_cluster'][0]:.2f}–{c['ci95_site_cluster'][1]:.2f}")
+    w("\nThe blocked-sky proxy overstates shielding (slope below 1); the terrain model's slope is consistent with 1. "
+      "Residual autocorrelation is low, but the evidence clusters in about 35 Curiosity sites, which limits what any stop count can show.\n")
 
 
 if __name__ == "__main__":

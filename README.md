@@ -6,34 +6,40 @@ MarsShield plans a science Marswalk through real Gale Crater terrain. It shows h
 Built for the NASA Space Apps Challenge 2026, *Interplanetary Survival Guide: Martian Map*.
 
 **Data it combines:**
-- NASA's MSL Curiosity radiation measurements (RAD) and rover navigation
+- NASA's MSL Curiosity radiation measurements (RAD), surface pressure (REMS) and rover navigation
 - terrain and imagery from MRO HiRISE and CTX
 - MGS MOLA and Mars Express HRSC
 - the published Curiosity science record
 
 **Public demo (no backend needed):** https://snehal707.github.io/MarsShield/
 
-## What you can do
+## Three ways in
 
-| View | What it does | Live or precomputed |
+| Mode | Question it answers | What you can change in the browser |
 |---|---|---|
-| **Science Marswalk** | Nine documented Curiosity science targets (Hutton, Edinburgh, Glasgow, Bloodstone Hill, Mary Anning, Groken, Nontron, Maria Gordon Notch, Canaima). Each shows its objective, what to look for, what Curiosity found, the source, measured RAD at that spot and modeled dose. Choose objectives: MarsShield routes the walk and decides where to stand at each stop, but only when its model can resolve the difference. | Example Marswalk precomputed; other combinations need the science service |
-| **Explore the sky** | Fisheye view of the sky above any point. It shows which directions the terrain blocks and how much cosmic-ray dose each direction carries. | Five sites precomputed; any point needs the science service |
-| **Routes** | Five route strategies (shortest, fastest, lowest dose, maximum shielding, gentlest) compared on distance, slope, time and modeled dose, with uncertainty bands. | Example precomputed; new routes need the science service |
-| **Break-even** | When does walking farther to a sheltered stop pay off? It reports break-even time, a resolvability status against validated model error, a model-error band, sensitivity to walking speed, radius and slope limit, and terrain flags. | Precomputed cases; custom targets need the science service |
-| **Evidence** | Validation against NASA RAD data, the published study and the RAD team's horizon mask, plus the audit and sensitivity results. | Static |
-| **Findings** | Scientific findings, which conclusions rest on observations, mission datasets, and limitations. | Static |
+| **Mission** | Plan a science Marswalk to one of nine documented Curiosity targets and back: is it worth walking farther to a more sheltered spot, and can the model tell? | Destination, start, return trip, walking speed, work duration, EVA time cap, work radius. Routes (4 strategies) and the break-even trade-off are recomputed live. |
+| **Experiment** | Test the radiation models against Curiosity's measurements: predict first, then reveal. Three experiments: terrain vs time at 322 stops; physical model vs blocked-sky rule at the 8 parking periods; the stops where the models disagree most. | Model, baseline, stop subset, number of time blocks, bootstrap block length, albedo α, the paper's alternative P6 drop, number of disagreement stops. Verdicts and intervals are recomputed live; every experiment exports JSON. |
+| **Evidence** | What was measured, what was modeled, and how well they agree, including the RAD + REMS pressure analysis, validation, limitations and provenance. | Read-only. |
 
-Map layers: modeled dose rate, sky blocked, slope, orbital image (USGS HiRISE orthophoto) and relief. Curiosity's RAD stops are clickable and show sol, dates, measured dose rate and local anomaly.
-If WebGL is unavailable, the app shows the orbital image and all panels keep working.
+The terrain is the main view. Map layers show modeled dose rate, orbital image (USGS HiRISE orthophoto), model disagreement, relief, sky blocked and slope. Curiosity's RAD stops can be hovered and clicked.
+
+Colors keep sources apart throughout: measured values are white, model values blue, and planning assumptions underlined in dashed gold. If WebGL is unavailable, the app shows the orbital image and every panel keeps working.
+
+**What runs where.**
+- **In the browser:** routing (Dijkstra on the 5 m grid), the break-even search, cross-validation, bootstrap intervals and parking-period predictions. These are TypeScript ports checked against the Python outputs (`web/scripts/verify-*.mts`).
+- **Python only, precomputed:** horizon ray tracing, the RAD and REMS reductions, the dose-model fits, the sky fisheyes and the large site bootstraps. The API (`marsshield.api`) adds sky analysis at arbitrary points.
+
+Audiences and the question each can answer: [docs/AUDIENCES.md](docs/AUDIENCES.md). No external user testing has been done.
 
 ## Screens
 
 | | |
 |---|---|
-| ![Opening finding](docs/img/1-opening-finding.png) The opening finding, with measured and modeled claims labelled | ![Science Marswalk](docs/img/2-science-marswalk.png) A documented Curiosity science stop: objective, quote, source, measured RAD, modeled dose, assumptions |
-| ![Break-even, resolved](docs/img/3-break-even-notch.png) Maria Gordon Notch: a resolved break-even, with steep-stop and cliff flags | ![Break-even, unresolved](docs/img/4-break-even-unresolved.png) Mt Mercou: differences below model error are marked unresolved |
-| ![Orbital image](docs/img/5-orbital-image.png) USGS HiRISE orthophoto draped on the 1 m terrain | ![RAD observation](docs/img/6-rad-observation.png) Clicking a Curiosity stop shows the measured RAD observation |
+| ![Opening](docs/img/1-opening.png) Opening: measured vs modeled shelter at Maria Gordon Notch | ![Mission route](docs/img/2-mission-route.png) Mission: four route strategies, computed in the browser |
+| ![Trade-off](docs/img/3-mission-tradeoff.png) Mission: where to stand, judged against model error | ![Experiment](docs/img/4-experiment-terrain.png) Experiment: predict 322 stops, then reveal RAD |
+| ![Disagreement](docs/img/5-experiment-disagreement.png) Where the two models disagree; verdict resampled by site | ![Evidence](docs/img/6-evidence-rad-pressure.png) Evidence: the RAD + REMS pressure analysis |
+
+Phone layout: [docs/img/7-phone.png](docs/img/7-phone.png). No-WebGL fallback: [docs/img/8-no-webgl.png](docs/img/8-no-webgl.png). Screens of the previous interface are in `docs/img/before/`.
 
 ## What is verified and what is modeled
 
@@ -47,6 +53,7 @@ If WebGL is unavailable, the app shows the orbital image and all panels keep wor
 | Break-even near Maria Gordon Notch | 0.36 h, **resolved** (0.25–0.60 h within model error); the stop is steep and below cliffs, and rockfall is not modeled |
 | Break-even at Mt Mercou | **Unresolved**: below model error, so no recommendation |
 | Audit of Guo et al. (2026) | 136 Table 1 cells, 0 transcription errors. The paper gives two P6 drops (19.4 % and 17 %); NASA data reproduce 19.4 % |
+| Terrain beyond pressure and time, 322 rover stops (RAD + REMS) | Held-out skill **+22 %** vs time only (ΔMSE −3.44 pp², 95 % block bootstrap −8.2 to −0.8); concentrated in a few strongly shielded stops. **Pressure: no measurable gain** at stop level. **Terrain model vs blocked-sky rule: cannot distinguish** (site-level test) |
 | Route doses, walking times, activity durations | **Modeled or assumed only**: quiet-time GCR absorbed dose in a plastic detector, Earth-derived walking speeds |
 
 **Further documentation:**
@@ -55,6 +62,7 @@ If WebGL is unavailable, the app shows the orbital image and all panels keep wor
 - [docs/METHODS.md](docs/METHODS.md): methods
 - [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md): provenance
 - [docs/DEMO.md](docs/DEMO.md): a 3-minute demo script
+- [docs/AUDIENCES.md](docs/AUDIENCES.md): intended audiences and their questions
 - [docs/SUBMISSION.md](docs/SUBMISSION.md): submission text
 
 ## Run it
@@ -66,7 +74,7 @@ Requirements: Python 3.10+, Node 20+.
 python -m venv .venv
 .venv\Scripts\pip install -r science\requirements.txt
 cd science
-..\.venv\Scripts\python -m marsshield.pipeline        # ingest -> validation -> maps -> observations -> route eval -> audit -> web export
+..\.venv\Scripts\python -m marsshield.pipeline        # ingest -> validation -> maps -> observations -> REMS + terrain signal -> route eval -> audit -> web export
 ..\.venv\Scripts\python -m marsshield.report          # regenerate docs/VALIDATION.md
 ..\.venv\Scripts\python -m pytest tests -q
 
@@ -78,6 +86,8 @@ cd web
 npm ci
 npm run build
 npm start                                             # http://localhost:3000
+node scripts/verify-engine.mts                        # browser engine vs Python outputs (Node >= 22.18)
+node scripts/verify-stats.mts
 ```
 
 **Public static build.** This is the same app as the public demo, with no backend:
@@ -87,17 +97,18 @@ cd web
 STATIC_EXPORT=1 NEXT_PUBLIC_BASE_PATH=/MarsShield NEXT_PUBLIC_MARSSHIELD_API= npm run build   # writes web/out
 ```
 
-GitHub Actions builds and deploys this on every push to `main` (`.github/workflows/pages.yml`). The test suite also runs on a clean machine (`tests.yml`); tests that need the full terrain data skip themselves there.
+GitHub Actions builds and deploys this on every push to `main` (`.github/workflows/pages.yml`). The test suite also runs on a clean machine (`tests.yml`); tests that need the full terrain data skip themselves there. The same workflow typechecks, lints and verifies the browser engine.
 
 ## Repository layout
 
 ```
-science/marsshield/   ingest, horizon, radiation, routing, planner, terrain, observations, validation, route_eval,
-                      breakeven, targets, mission, audit, report, pipeline, api, published (reference values)
+science/marsshield/   ingest, horizon, radiation, routing, planner, terrain, observations, rems, terrain_signal, validation,
+                      route_eval, breakeven, targets, mission, audit, report, pipeline, api, published (reference values)
 science/tests/        pytest suite
 data/processed/       validation, observations, route evaluation, audit and mission results (JSON)
-web/                  Next.js + React + Three.js app; web/public/data = exported, precomputed assets
-docs/                 FINDINGS, METHODS, DATA_SOURCES, VALIDATION, DEMO, SUBMISSION
+web/                  Next.js + React + Three.js app; src/lib/engine.ts + stats.ts = browser engine;
+                      web/public/data = exported, precomputed assets
+docs/                 FINDINGS, METHODS, DATA_SOURCES, VALIDATION, AUDIENCES, DEMO, SUBMISSION
 ```
 
 Downloaded source data (`data/raw/`) and the 53 MB routing grid are not committed; the pipeline recreates them.

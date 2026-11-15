@@ -181,3 +181,72 @@ Sensitivity of the least-walking to most-sheltered switch:
 Targets nontron, mgn, canaima (positions from NASA waypoints at the documented sols). Distance 2183 m, walking 1.01 h, planned stationary work 7.0 h (planning assumptions). Modeled dose 82.6 µGy (10.5 walking, 72.1 stationary); the same hours on open flat ground: 91.4 µGy. Stop-location choices change the total by 0.00 µGy against working at each target.
 
 * Stop mgn: decision **unresolved**. Option C would save 0.30 µGy at the nominal duration, but its stationary rate differs from the target by only 0.9 rate points, below the model's validated error (3.4 pp MAE). The model cannot rank them: work at the target and decide on science and safety grounds.
+
+## V8 Does terrain explain RAD variation beyond pressure and time? (RAD + REMS, 322 stops)
+
+Generated 2026-11-15T00:56:01+00:00. 322 walk-area rover stops, sols 1722–3896; 143020 of 149021 RAD records (96.8 %) matched to a REMS pressure (372568 REMS samples). Target: stop mean ln E minus the median ln E at other stops within ±15 sols; every predictor is detrended identically. Scores are out of sample: leave-one-time-block-out, 8 blocks, training excludes stops within ±15 sols of the test block.
+
+| Model | RMSE (pp) | MAE (pp) | Skill vs time only |
+|---|---|---|---|
+| M0 Time only | 3.95 | 1.85 | +0.0 % |
+| M1 Pressure | 3.95 | 1.84 | -0.1 % |
+| M2 Blocked-sky proxy | 3.56 | 1.68 | +18.7 % |
+| M3 Terrain model | 3.49 | 1.57 | +22.0 % |
+| M4 Pressure + terrain model | 3.48 | 1.57 | +22.2 % |
+| M5 Pressure + blocked-sky proxy | 3.55 | 1.68 | +19.1 % |
+| M6 Pressure + scaled terrain model | 3.54 | 1.61 | +19.8 % |
+
+MSE differences with moving-block bootstrap 95 % intervals (pp², blocks of 10 / 20 / 40 stops; negative = first model better):
+
+| Comparison | Mean | L = 10 | L = 20 | L = 40 |
+|---|---|---|---|---|
+| M1-M0 | +0.02 | [-0.03, +0.09] | [-0.02, +0.08] | [-0.02, +0.07] |
+| M3-M0 | -3.44 | [-8.34, -0.80] | [-8.19, -0.82] | [-8.61, -0.71] |
+| M2-M0 | -2.91 | [-8.61, +0.32] | [-8.27, +0.32] | [-8.44, -0.04] |
+| M4-M1 | -3.48 | [-8.52, -0.81] | [-8.36, -0.80] | [-8.39, -0.68] |
+| M5-M1 | -2.99 | [-8.81, +0.18] | [-8.52, +0.22] | [-8.35, +0.06] |
+| M6-M1 | -3.11 | [-7.87, -0.58] | [-7.88, -0.56] | [-7.77, -0.59] |
+| M4-M5 | -0.48 | [-2.18, +0.80] | [-2.15, +0.73] | [-1.78, +0.60] |
+| M3-M2 | -0.53 | [-2.16, +0.76] | [-2.27, +0.64] | [-1.89, +0.51] |
+
+* Pressure: fitted coefficient -0.035 µGy/day/Pa against -0.13 ± 0.02 in Guo et al. (2015) ApJ 810, 24 (first Martian year, diurnal fit). After whole-stop averaging and detrending the pressure term spreads the prediction by only 0.04 pp (observed spread 3.95 pp), so this design cannot measure it. **No measurable gain from pressure control at stop level.**
+* Terrain: the published terrain model reduces out-of-sample error against time only (skill +22.0 %, interval excludes zero at every block length). **Terrain model vs blocked-sky proxy head to head: not distinguishable** (M3−M2 interval [-2.27, +0.64] pp²). The proxy alone does not reliably beat time only (M2−M0 interval [-8.27, +0.32] pp²).
+
+Correlations of observed anomaly with each predictor (the previously reported 324-stop r = 0.36 used a different detrending for observations and model and is superseded):
+
+| Predictor | r | i.i.d. 95 % | block-20 95 % | lag-1 autocorr. (obs / pred) | n_eff |
+|---|---|---|---|---|---|
+| terrain_model | 0.482 | [+0.28, +0.76] | [+0.26, +0.77] | 0.12 / 0.39 | 294 |
+| sky_proxy | 0.481 | [+0.28, +0.76] | [+0.26, +0.76] | 0.12 / 0.40 | 293 |
+| pressure | -0.046 | [-0.16, +0.02] | [-0.18, +0.04] | 0.12 / 0.78 | 268 |
+| terrain_after_pressure | 0.482 | [+0.28, +0.76] | [+0.26, +0.77] | 0.12 / 0.39 | 294 |
+
+Spearman rank correlation, terrain model: 0.377.
+
+Robustness (skill vs time only, and 95 % block-bootstrap interval of ΔMSE vs time only, pp²):
+
+| Variant | n | Proxy skill | Terrain skill | Proxy ΔMSE | Terrain ΔMSE | r terrain |
+|---|---|---|---|---|---|---|
+| baseline (window 15 sols, >= 1 sol of data) | 322 | +18.7 % | +22.0 % | [-8.43, +0.28] | [-8.07, -0.75] | 0.48 |
+| excluding stops inside the published Guo et al. periods | 295 | +11.2 % | +12.5 % | [-4.38, +0.05] | [-4.36, -0.36] | 0.37 |
+| excluding the 5 % of stops with the largest modeled anomaly | 305 | +1.0 % | +2.9 % | [-0.85, +0.59] | [-0.72, -0.02] | 0.17 |
+| stops with >= 2 sols of data | 181 | -8.4 % | +13.6 % | [-1.18, +2.12] | [-2.14, -0.19] | 0.38 |
+| detrending window 10 sols | 309 | +18.1 % | +21.9 % | [-7.60, -0.06] | [-7.88, -0.74] | 0.48 |
+| detrending window 30 sols | 326 | +19.7 % | +28.3 % | [-8.62, +0.08] | [-10.01, -1.05] | 0.54 |
+
+The terrain signal is concentrated in a few strongly shielded stops: without the 5 % largest modeled anomalies the skill falls to a few percent.
+
+Disagreement test: stops selected by |terrain model − proxy| from model values only, before comparison with RAD; intervals resample whole sites (Curiosity navigation site (RMC site index)).
+
+| Top N | Sites | RMSE model / proxy (pp) | Stops model closer | Sites model closer | ΔRMSE (pp) | Site-bootstrap 95 % | Verdict |
+|---|---|---|---|---|---|---|---|
+| 10 | 7 | 4.49 / 5.45 | 7 | 4 | -0.96 | [-5.34, +2.31] | cannot distinguish |
+| 20 | 11 | 3.27 / 4.03 | 14 | 6 | -0.76 | [-3.44, +1.42] | cannot distinguish |
+| 40 | 16 | 2.66 / 3.33 | 30 | 8 | -0.67 | [-2.38, +0.78] | cannot distinguish |
+
+Calibration slope of observed on predicted anomaly (no intercept; 1 = correctly scaled):
+
+* terrain_model: 1.25, block-20 0.85–1.56, site-cluster (35 sites) 0.86–1.53
+* sky_proxy: 0.70, block-20 0.47–0.90, site-cluster (35 sites) 0.48–0.87
+
+The blocked-sky proxy overstates shielding (slope below 1); the terrain model's slope is consistent with 1. Residual autocorrelation is low, but the evidence clusters in about 35 Curiosity sites, which limits what any stop count can show.

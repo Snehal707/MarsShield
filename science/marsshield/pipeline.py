@@ -66,6 +66,49 @@ def export_ortho(out):
     return meta
 
 
+def export_experiments(out):
+    """Small, exact inputs for in-browser recalculation (the browser does arithmetic only, no physics fitting)."""
+    from .radiation import TerrainDoseModel
+    from .planner import sky_at
+    from . import targets as TG
+    m = TerrainDoseModel()
+    phis = list(range(380, 901, 10))
+    # full-sky downward dose (heavy-ion and radial factors applied); D_flat = Dfs / (1 - alpha)
+    flat = dict(phi=phis, Dfs=[m.sky_components(np.zeros(91), p)[2] for p in phis],
+                note="Downward full-sky GCR dose, RAD-E equivalent, uGy/day (Guo et al. 2021 model); open-flat total = Dfs/(1-alpha)")
+    # eight parking/background pairs: everything needed to recompute the three model predictions for any alpha
+    val = json.loads((C.PROC / "validation.json").read_text())
+    per = {}
+    for k, r in val["periods"].items():
+        per[k] = dict(site=r["site"], sols=r["sols"], phi=r["phi"], B=r["B_model"], D_sky=r["D_sky_model"],
+                      Dfs=m.sky_components(np.zeros(91), r["phi"])[2], D_RAD_ours=r["rad"]["E_mean"], D_RAD_sem=r["rad"]["E_sem"],
+                      D_RAD_pub=r["D_RAD_pub"], utc=[r["rad"]["utc_start"], r["rad"]["utc_end"]], n_obs=r["rad"]["n"],
+                      x=r["positions"][0]["x"], y=r["positions"][0]["y"])
+    pairs = [dict(parking=p_, background=bg) for p_, bg in P.PAIRS.items()]
+    au = json.loads((C.PROC / "audit.json").read_text())
+    (out / "experiment_parking.json").write_text(json.dumps(dict(
+        periods=per, pairs=pairs, alpha_prior=0.19, alpha_range=[0.18, 0.24],
+        p6_alternative=dict(section4_decrease=0.17, table1_decrease=0.194),
+        audit=dict(cells_checked=au["A1_table1_transcription"]["cells_checked"], mismatches=au["A1_table1_transcription"]["mismatches"]),
+        provenance="NASA RAD L2 (our reduction) and Guo et al. (2026) Table 1; DEM-derived blocked sky; Guo et al. (2021) zenith model")))
+    (out / "flat_dose.json").write_text(json.dumps(flat))
+    # high-resolution sky profiles at the nine science targets (Python ray tracing; the browser only displays them)
+    tg = TG.build()
+    (out / "skies_targets.json").write_text(json.dumps({t["id"]: sky_at(t["x"], t["y"]) for t in tg}))
+    # terrain-signal analysis rows (if built): observed/predictor anomalies per stop for browser cross-validation
+    ts = C.PROC / "terrain_signal.json"
+    if ts.exists():
+        d = json.loads(ts.read_text())
+        keep = ("rmc", "sol", "mid_sol", "x", "y", "n_obs", "data_sols", "utc_start", "utc_end", "E_mean", "P_mean", "P_bg",
+                "y_obs", "x_p", "m_terrain", "g_proxy", "rel_total", "B", "block")
+        (out / "terrain_signal.json").write_text(json.dumps(dict(
+            rows=[{k: r[k] for k in keep} for r in d["rows"]], window_sols=d["window_sols"], k_blocks=d["k_blocks"],
+            performance=d["performance"], mse_differences=d["mse_differences"], correlations=d["correlations"],
+            pressure_coefficient=d["pressure_coefficient"], meta=d["meta"], predictor_spread_pp=d["predictor_spread_pp"],
+            robustness=d["robustness"], disagreement_test=d["disagreement_test"], calibration=d["calibration"],
+            spearman_terrain=d["spearman_terrain"], generated_utc=d["generated_utc"])))
+
+
 def export_web():
     from .planner import plan, sky_at
     from .terrain import load, walk_grid
@@ -132,6 +175,7 @@ def export_web():
     (out / "science_targets.json").write_text(json.dumps(TG.build()))
     (out / "mission.json").write_text(json.dumps(M.build_default(), default=float))
     export_ortho(out)
+    export_experiments(out)
     re = json.loads((C.PROC / "route_eval.json").read_text())
     re["R1"].pop("pairs", None)
     (out / "route_eval.json").write_text(json.dumps(re))
@@ -141,10 +185,12 @@ def export_web():
 def main(argv):
     if "--export" not in argv:
         ingest()
-        from . import validation, terrain, observations, route_eval
+        from . import validation, terrain, observations, route_eval, rems, terrain_signal
         validation.run()
         terrain.build()
         observations.build()
+        rems.fetch_range(1720, 3895)          # REMS pressure, sampled rows (NASA PDS)
+        terrain_signal.run()                  # RAD + REMS + terrain: does terrain add information?
         route_eval.run()
     export_web()
 

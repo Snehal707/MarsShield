@@ -14,7 +14,8 @@ Each statement carries one of these labels:
 
 | Mission and instrument | Product | Role |
 |---|---|---|
-| MSL Curiosity RAD (NASA) | Level 2 dosimetry, detector E, NASA SPDF (about 2 200 daily files) | Measured dose rates at 324 rover stops and 15 published periods; tests every model claim |
+| MSL Curiosity RAD (NASA) | Level 2 dosimetry, detector E, NASA SPDF (about 2 200 daily files) | Measured dose rates at 322 rover stops and 15 published periods; tests every model claim |
+| MSL Curiosity REMS (NASA/CAB) | MODRDR surface pressure, PDS (about 2 170 sols, 180 samples per sol) | Pressure control for the 322-stop analysis |
 | MSL Curiosity navigation (NASA/JPL) | Localised waypoints (MMGIS) | Where RAD was; where each science target lies |
 | MRO HiRISE and CTX (NASA) | Stereo DEMs inside the USGS Gale merged 1 m DEM | Terrain, slopes, horizons, 3D view |
 | MRO HiRISE (NASA) | USGS Gale merged orthophoto mosaic, 25 cm, averaged to 1 m | Orbital image layer |
@@ -69,9 +70,31 @@ A break-even time is reported as usable only when the stationary-rate gap betwee
   - At the notch's own work radius (30 m, a planning assumption) the best alternative differs from working at the target by 0.9 points.
   - That is unresolved, so the plan keeps the astronaut at the target. The stop choice changes the 82.6 µGy total by 0.00 µGy.
 
-**6. Most measured stop-to-stop variation is not terrain. [Measured vs Modeled]**
-- At 324 rover stops with at least one sol of RAD data, the detrended local anomaly correlates with the modeled one at r = 0.36 (bootstrap 95 % CI 0.19–0.71).
-- Observed scatter (4.7 pp) is about three times the modeled terrain signal (1.5 pp).
+**6. Across 322 rover stops, terrain adds out-of-sample information beyond pressure and time, but the two terrain models cannot be told apart. [Measured vs Modeled]**
+
+This is a new analysis combining RAD with REMS surface pressure (`science/marsshield/terrain_signal.py`; full tables in `docs/VALIDATION.md`, section V8).
+- **Design.**
+  - Each stop's mean ln dose rate is compared with the median at other walk-area stops within ±15 sols. The identical operation is applied to pressure and to both terrain predictors.
+  - Seven models are scored on held-out time blocks: 8 blocks, with training stops within ±15 sols of the test block removed.
+  - Intervals come from a moving-block bootstrap (10/20/40 stops) and, for model-versus-model questions, from resampling whole Curiosity sites.
+- **Pressure: no measurable gain.**
+  - Adding pressure changes the held-out skill by −0.1 %.
+  - After whole-stop averaging and detrending, pressure differences are a few pascals, worth 0.04 pp of dose rate against an observed spread of 3.95 pp.
+  - The fitted coefficient (−0.035 µGy/day/Pa) is poorly constrained and does not test Guo et al. (2015)'s −0.13 ± 0.02. This is a limit of the design, not evidence against the pressure effect.
+- **Terrain: real, but concentrated.**
+  - The published terrain model lowers held-out mean squared error by 3.44 pp² against time only, a skill of +22 % (95 % block-bootstrap interval −8.2 to −0.8 pp²).
+  - The interval excludes zero in every robustness variant: windows of 10 and 30 sols, ≥ 2 sols of data, and excluding the published Guo et al. periods.
+  - Most of the signal comes from a few strongly shielded stops. Without the 5 % largest modeled anomalies, the skill falls to +2.9 % (interval −0.72 to −0.02 pp²).
+- **Terrain model vs blocked-sky proxy: cannot distinguish.**
+  - Head to head, the difference is −0.53 pp² [−2.27, +0.64].
+  - At the stops where the two models disagree most, selected before looking at RAD, the terrain model is closer at 14 of 20 stops, but at only 6 of 11 sites. The site-resampled interval is −3.44 to +1.42 pp.
+  - Stops at one site are not independent, so the stop count overstates the evidence.
+- **Scaling.**
+  - Measured anomalies are 0.70× the proxy's prediction (site-cluster 95 %: 0.48–0.87), so the proxy overstates shielding.
+  - For the terrain model the factor is 1.25× (0.86–1.53), consistent with 1.
+- **Correlation, corrected.**
+  - The earlier figure (r = 0.36 at 324 stops) detrended observations and model differently. Under identical detrending, r = 0.48 (block-bootstrap 95 %: 0.26–0.77).
+  - Residual autocorrelation is low (lag-1 0.12, n_eff ≈ 294), but the evidence clusters in about 35 Curiosity sites.
 
 ## Radiation magnitudes in context
 
@@ -89,6 +112,9 @@ A break-even time is reported as usable only when the stationary-rate gap betwee
 | Time outside dominates walking dose | Model, structural |
 | Moving to shelter near Maria Gordon Notch pays back within about half an hour | Model, resolved; direction supported by the measured −19.4 % |
 | Stop choice at Mt Mercou | Model, unresolved: no conclusion |
+| Terrain adds information on held-out rover stops beyond pressure and time | Measured vs model, 322 stops, interval excludes zero; concentrated in a few stops |
+| Pressure control improves the stop-level comparison | Measured: no measurable gain |
+| Terrain model better than the blocked-sky rule | Measured comparison: cannot distinguish (8 periods, and 322 stops at site level) |
 | Safety, hazard or effective dose | Not modeled: no claim |
 
 ## Audit against Guo et al. (2026)
@@ -106,7 +132,7 @@ A break-even time is reported as usable only when the stationary-rate gap betwee
 - **Not modeled:** solar particle events, the neutron energy response (Charpentier et al. 2026), regolith composition, suit or vehicle shielding, rockfall, slope stability, footing, life support and EVA-duration limits.
 - **Albedo assumption.** It fails in deep notches, and the most sheltered stops sit on steep ground below cliffs.
 - **Terrain resolution.** Coarser DEMs undercount shielding (−2.3 pp mean at 8 m), and the DEM falls back to CTX/HRSC where HiRISE stereo is missing.
-- **Statistics.** The validation sample is eight parking periods. No significance is claimed for model rankings.
+- **Statistics.** The parking-period validation has eight periods at five sites. The 322-stop analysis has more stops but only about 35 independent sites. No ranking of the two terrain models is claimed.
 - **[Assumption] Planning choices:**
   - walking speed (Tobler's Earth hiking function × 0.6)
   - 25° walking slope limit

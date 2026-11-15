@@ -166,3 +166,54 @@ and computes the full eight-period model errors under both values.
 
 The USGS MSL Gale Merged Orthophoto Mosaic (25 cm, built from HiRISE and co-registered with the DEM) is read for the walk area only.
 Only the intersecting 128-pixel tiles of the 24 GB file are fetched. It is block-averaged to 1 m and percentile-stretched for display only.
+
+## 12. RAD + REMS terrain-signal analysis (`rems.py`, `terrain_signal.py`)
+
+**Question.** After controlling for atmospheric pressure and time, does local terrain explain additional variation in Curiosity's measured dose rate?
+
+**Pressure data (MEASURED).**
+- Source: REMS MODRDR (MSL-M-REMS-5-MODRDR-V1.0) from the PDS Atmospheres node, sols 1720–3895.
+- Format: fixed-width ASCII, 372-byte records. PRESSURE is read from bytes 345–351 and PS_CONFIDENCE_LEVEL from bytes 362–369, both 1-indexed as in the PDS label.
+- Quality: records whose last confidence flag is `0` (shadow-affected) or unavailable are dropped.
+- Sampling: 180 evenly spaced records per sol, fetched with HTTP range requests and cached in `data/raw/rems/`.
+- Time: UTC = label START_TIME + (SCLK − SCLK at start).
+- Matching: each RAD record takes the mean REMS pressure inside its time span. Records with no REMS sample within an hour are excluded from every model, so all models are scored on the same observations (96.8 % retained).
+
+**Target and predictors.**
+- Target y: the stop mean of ln E minus the median ln E of RAD records at *other* walk-area stops within ±15 sols.
+- Predictors, built with the identical operation:
+  - pressure x (Pa)
+  - blocked-sky proxy g = ln(1 − B)
+  - published terrain model m = ln(relative total dose), with φ = 500 MV and α = 0.21 at 1 m height
+
+**Models.**
+- M0: time only (y = 0).
+- M1: pressure (fitted coefficient).
+- M2: proxy; M3: terrain model. Both are fixed, with no fitted parameter.
+- M4 and M5: pressure + terrain model and pressure + proxy.
+- M6: pressure + scaled terrain model.
+
+**Validation.**
+- Leave-one-time-block-out with 8 contiguous blocks in sol.
+- Training excludes stops within ±15 sols of the test block, because their targets share background observations.
+- A test (`tests/test_terrain_signal.py`) checks that held-out predictions are unchanged when the test block's outcomes are altered.
+
+**Uncertainty.**
+- MSE differences and correlations: moving-block bootstrap over time-ordered stops (block lengths 10, 20 and 40; 4 000 resamples).
+- Effective sample size: Bretherton et al. (1999), from the lag-1 autocorrelations of observation and predictor.
+- Model-versus-model tests: resample whole Curiosity sites (RMC site index), because stops at one site share terrain and time.
+
+**Disagreement test.** The 10, 20 and 40 stops with the largest |m − g| are selected from model values alone, then compared with RAD.
+
+**Robustness.** Detrending windows of 10 and 30 sols; ≥ 2 sols of data; excluding stops inside the published Guo et al. periods; excluding the 5 % largest modeled anomalies.
+
+## 13. Browser engine (public site)
+
+The static site recalculates without a server:
+- **Routes:** a TypeScript port of `routing.py`, with the same 16-connected grid, Tobler × suit factor, 25° walking limit and cost functions, and a binary-heap Dijkstra.
+- **Break-even:** a port of `breakeven.py` (forward and reverse Dijkstra over every candidate stop cell).
+- **Experiment statistics:** a port of the cross-validation and bootstrap above.
+
+The dose-rate map is recomputed in float32 to match the Python arrays. `web/scripts/verify-engine.mts` and `verify-stats.mts` compare the ports with the committed Python outputs, and CI runs both.
+
+Horizon ray tracing, the dose-model fits, the RAD and REMS reduction and the 4 000-resample site bootstraps are *not* recomputed in the browser. Their outputs are precomputed by the Python pipeline and loaded as data.

@@ -177,11 +177,15 @@ export type Dataset = {
   scienceTargets: ScienceTarget[];
   mission: Mission;
   ortho: OrthoMeta | null;
+  flat: FlatDose;
+  parking: ParkingExperiment;
+  skiesTargets: Record<string, Sky>;
+  terrainSignal: TerrainSignal | null;
   breakeven: Record<string, BreakEven>;
 };
 
 export async function loadDataset(): Promise<Dataset> {
-  const [meta, height, relSky, B, slope, sites, skies, scenario, observations, validation, audit, breakeven, scienceTargets, mission, ortho] = await Promise.all([
+  const [meta, height, relSky, B, slope, sites, skies, scenario, observations, validation, audit, breakeven, scienceTargets, mission, ortho, flat, parking, skiesTargets, terrainSignal] = await Promise.all([
     json<Meta>("meta.json"),
     f32("height.f32"),
     f32("rel_sky.f32"),
@@ -197,6 +201,10 @@ export async function loadDataset(): Promise<Dataset> {
     json<ScienceTarget[]>("science_targets.json"),
     json<Mission>("mission.json"),
     json<OrthoMeta>("ortho.json").catch(() => null),
+    json<FlatDose>("flat_dose.json"),
+    json<ParkingExperiment>("experiment_parking.json"),
+    json<Record<string, Sky>>("skies_targets.json"),
+    json<TerrainSignal>("terrain_signal.json").catch(() => null),
   ]);
   return {
     meta,
@@ -212,6 +220,10 @@ export async function loadDataset(): Promise<Dataset> {
     scienceTargets,
     mission,
     ortho,
+    flat,
+    parking,
+    skiesTargets,
+    terrainSignal,
   };
 }
 
@@ -353,3 +365,25 @@ export type OrthoMeta = { x0: number; y0: number; res: number; shape: [number, n
 export const RESOLVE_LABEL: Record<Resolvability, string> = {
   resolved: "Resolved", marginal: "Marginal", unresolved: "Unresolved",
 };
+
+export type FlatDose = { phi: number[]; Dfs: number[]; note: string };
+export function dFlat(flat: FlatDose, phi: number, alpha: number) {
+  const i = Math.max(0, Math.min(flat.phi.length - 2, Math.floor((phi - flat.phi[0]) / (flat.phi[1] - flat.phi[0]))));
+  const w = (phi - flat.phi[i]) / (flat.phi[i + 1] - flat.phi[i]);
+  return (flat.Dfs[i] * (1 - w) + flat.Dfs[i + 1] * w) / (1 - alpha);
+}
+
+export type ParkingPeriod = { site: string; sols: [number, number]; phi: number; B: number; D_sky: number; Dfs: number;
+  D_RAD_ours: number; D_RAD_sem: number; D_RAD_pub: number; utc: [string, string]; n_obs: number; x: number; y: number };
+export type ParkingExperiment = { periods: Record<string, ParkingPeriod>; pairs: { parking: string; background: string }[];
+  alpha_prior: number; alpha_range: [number, number]; p6_alternative: { section4_decrease: number; table1_decrease: number };
+  audit: { cells_checked: number; mismatches: number }; provenance: string };
+
+export type TSRow = { rmc: string; sol: number; mid_sol: number; x: number; y: number; n_obs: number; data_sols: number;
+  utc_start: string; utc_end: string; E_mean: number; P_mean: number; P_bg: number; y_obs: number; x_p: number;
+  m_terrain: number; g_proxy: number; rel_total: number; B: number; block: number };
+export type TerrainSignal = { rows: TSRow[]; window_sols: number; k_blocks: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  performance: Record<string, any>; mse_differences: Record<string, any>; correlations: Record<string, any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  pressure_coefficient: any; meta: any; predictor_spread_pp: Record<string, number> };
