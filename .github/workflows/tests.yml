@@ -24,3 +24,23 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python -c "from marsshield import ingest; ingest.fetch_zenodo(); ingest.fetch_papers()"
       - run: python -m pytest tests -q -rs
+
+  browser-engine:
+    # The public site recalculates routes, break-even and the experiments in the browser. These scripts check the
+    # TypeScript ports against the Python pipeline outputs committed in web/public/data.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.18"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit -p .
+      - run: npx next lint
+      - run: node scripts/verify-engine.mts
+      - run: node scripts/verify-stats.mts
